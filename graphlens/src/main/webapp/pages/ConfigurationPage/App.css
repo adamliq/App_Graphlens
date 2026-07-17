@@ -1,0 +1,18 @@
+.graphlens-section {
+  margin-bottom: 20px;
+}
+
+.graphlens-section h2 {
+  font-size: 14px;
+  margin: 0 0 8px 0;
+}
+
+.graphlens-error-banner {
+  border: 1px solid #d93f3f;
+  background: #fdecec;
+  color: #7a1f1f;
+  padding: 8px 12px;
+  border-radius: 4px;
+  margin-bottom: 16px;
+  font-size: 13px;
+}

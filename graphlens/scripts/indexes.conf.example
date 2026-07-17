@@ -1,0 +1,20 @@
+# Example indexes.conf stanza for the observed-relationship index used by
+# GraphLens. This file is NOT shipped inside default/ and is never applied
+# automatically - GraphLens must not create indexes on install. An
+# administrator creates the index deliberately, either through Splunk Web
+# (Settings > Indexes > New Index) or by placing an equivalent stanza in
+# their own Splunk Cloud "indexes" app / index configuration change
+# request. See INSTALL.md.
+#
+# On Splunk Cloud Platform, index creation is normally performed through
+# the Cloud Monitoring Console / self-service index management UI, or by
+# submitting an index configuration through your Splunk Cloud admin
+# workflow, not by shipping indexes.conf inside an app.
+
+[graphlens_relationships]
+homePath   = $SPLUNK_DB/graphlens_relationships/db
+coldPath   = $SPLUNK_DB/graphlens_relationships/colddb
+thawedPath = $SPLUNK_DB/graphlens_relationships/thaweddb
+# Adjust retention to your organisation's requirements.
+frozenTimePeriodInSecs = 7776000
+maxTotalDataSizeMB = 51200

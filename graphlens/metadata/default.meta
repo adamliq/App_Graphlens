@@ -1,0 +1,82 @@
+#
+# GraphLens default permissions.
+#
+# Least-privilege defaults: knowledge objects are readable by any role that
+# has been granted access to the app (export = system, read = *), but
+# writable only by administrators by default. Nothing is globally writable.
+# KV Store collection permissions are additionally enforced per-collection
+# below, scoped to the specific graphlens_* roles defined in
+# authorize.conf, and are the second, functional layer of access control on
+# top of the capabilities checked by the application itself.
+#
+# Known limitation: Splunk KV Store access control is collection-level, not
+# row-level. A role granted write on graphlens_annotations or
+# graphlens_saved_views can technically write or delete any document in
+# that collection via the REST API, not only its own records. The
+# application itself only ever writes/edits a user's own records (or, for
+# admins, records being managed on behalf of the team) and filters reads by
+# owner/sharing in SPL and in the browser, but this is an application-level
+# convention, not a KV Store enforced boundary. See SECURITY.md.
+#
+
+[]
+access = read : [ * ], write : [ admin, sc_admin, graphlens_admin ]
+export = system
+
+[views]
+access = read : [ * ], write : [ admin, sc_admin, graphlens_admin ]
+export = system
+
+[nav]
+access = read : [ * ], write : [ admin, sc_admin, graphlens_admin ]
+export = system
+
+[savedsearches]
+access = read : [ * ], write : [ admin, sc_admin, graphlens_admin ]
+export = system
+
+[macros]
+access = read : [ * ], write : [ admin, sc_admin, graphlens_admin ]
+export = system
+
+[transforms]
+access = read : [ * ], write : [ admin, sc_admin, graphlens_admin ]
+export = system
+
+# Curated node/edge metadata: readable by anyone using the app, writable
+# only by administrators (graphlens_manage_collections capability).
+[collections/graphlens_nodes]
+access = read : [ * ], write : [ admin, sc_admin, graphlens_admin ]
+export = system
+
+[collections/graphlens_edges]
+access = read : [ * ], write : [ admin, sc_admin, graphlens_admin ]
+export = system
+
+[collections/graphlens_node_types]
+access = read : [ * ], write : [ admin, sc_admin, graphlens_admin ]
+export = system
+
+[collections/graphlens_relationship_types]
+access = read : [ * ], write : [ admin, sc_admin, graphlens_admin ]
+export = system
+
+# Saved views: readable within the app (the browser filters to the
+# requesting user's own views plus views shared at "app" level); writable
+# only by roles that hold graphlens_save_view (analyst and admin), never by
+# read-only viewers.
+[collections/graphlens_saved_views]
+access = read : [ * ], write : [ graphlens_analyst, graphlens_admin ]
+export = none
+
+# Annotations: same pattern as saved views.
+[collections/graphlens_annotations]
+access = read : [ * ], write : [ graphlens_analyst, graphlens_admin ]
+export = none
+
+# Audit log: append-only from every role that can use the app (so each
+# user's own actions are recorded), but readable only by roles holding
+# graphlens_view_health.
+[collections/graphlens_audit_log]
+access = read : [ admin, sc_admin, graphlens_admin ], write : [ graphlens_viewer, graphlens_analyst, graphlens_admin ]
+export = none

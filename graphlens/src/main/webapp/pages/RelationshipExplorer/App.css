@@ -1,0 +1,156 @@
+.graphlens-app {
+  display: grid;
+  grid-template-rows: auto 1fr auto;
+  grid-template-columns: 260px 1fr 320px;
+  grid-template-areas:
+    "toolbar toolbar toolbar"
+    "filters canvas details"
+    "evidence evidence evidence";
+  height: 100vh;
+  min-height: 640px;
+  gap: 1px;
+  background: var(--graphlens-border, #d3d3d3);
+  box-sizing: border-box;
+}
+
+.graphlens-app * {
+  box-sizing: border-box;
+}
+
+.graphlens-toolbar {
+  grid-area: toolbar;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 12px;
+  background: var(--graphlens-surface, #fff);
+}
+
+.graphlens-filters {
+  grid-area: filters;
+  overflow-y: auto;
+  padding: 12px;
+  background: var(--graphlens-surface, #fff);
+}
+
+.graphlens-canvas-wrapper {
+  grid-area: canvas;
+  position: relative;
+  background: var(--graphlens-canvas-bg, #fafafa);
+  min-height: 300px;
+}
+
+.graphlens-canvas {
+  position: absolute;
+  inset: 0;
+}
+
+.graphlens-details {
+  grid-area: details;
+  overflow-y: auto;
+  padding: 12px;
+  background: var(--graphlens-surface, #fff);
+}
+
+.graphlens-evidence {
+  grid-area: evidence;
+  max-height: 220px;
+  overflow-y: auto;
+  padding: 8px 12px;
+  background: var(--graphlens-surface, #fff);
+}
+
+.graphlens-section {
+  margin-bottom: 16px;
+}
+
+.graphlens-section h3 {
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--graphlens-muted, #5c5c5c);
+  margin: 0 0 8px 0;
+}
+
+.graphlens-legend-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  margin-bottom: 4px;
+}
+
+.graphlens-legend-swatch {
+  width: 12px;
+  height: 12px;
+  border-radius: 3px;
+  flex: none;
+  border: 1px solid rgba(0, 0, 0, 0.35);
+}
+
+.graphlens-limit-banner {
+  grid-area: canvas;
+  align-self: start;
+  justify-self: center;
+  margin-top: 8px;
+  padding: 8px 14px;
+  background: #fff3cd;
+  border: 1px solid #e0b400;
+  border-radius: 4px;
+  font-size: 13px;
+  z-index: 5;
+}
+
+.graphlens-empty-state {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  color: var(--graphlens-muted, #5c5c5c);
+  text-align: center;
+  padding: 24px;
+}
+
+.graphlens-error-banner {
+  border: 1px solid #d93f3f;
+  background: #fdecec;
+  color: #7a1f1f;
+  padding: 8px 12px;
+  border-radius: 4px;
+  margin-bottom: 12px;
+  font-size: 13px;
+}
+
+.graphlens-actions-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.graphlens-visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.graphlens-focusable:focus-visible {
+  outline: 3px solid #2b7de9;
+  outline-offset: 2px;
+}
+
+@media (max-width: 1024px) {
+  .graphlens-app {
+    grid-template-columns: 220px 1fr 260px;
+  }
+}

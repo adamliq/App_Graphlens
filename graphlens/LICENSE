@@ -1,0 +1,44 @@
+GraphLens Third-Party License
+Copyright (c) 2026 Adam Liquorish. All rights reserved.
+
+GraphLens is an independent, third-party application for the Splunk
+platform. It is not developed, owned, or endorsed by Splunk Inc. "Splunk"
+and "Splunk Cloud Platform" are trademarks of Splunk Inc., used here only
+to describe compatibility.
+
+1. Grant of licence. Subject to the terms below, Adam Liquorish ("the
+   Licensor") grants any person who obtains GraphLens through Splunkbase
+   or another distribution channel authorised by the Licensor a
+   non-exclusive, worldwide, royalty-free licence to install, run, and use
+   GraphLens within their own Splunk Cloud Platform or Splunk Enterprise
+   deployment(s), and to configure and extend it (SPL, knowledge objects,
+   KV Store data, and administrator configuration) for that internal use.
+
+2. Redistribution. You may not redistribute, sublicense, sell, or publish
+   GraphLens (in source or packaged form) outside of the official
+   distribution channel(s) designated by the Licensor, except that you may
+   keep internal backups and deploy it across your own organisation's
+   Splunk environments.
+
+3. Modifications. You may modify a local copy of GraphLens for your own
+   internal use. Modified copies remain subject to this licence and may
+   not be redistributed as if they were the unmodified, official release.
+
+4. Third-party components. GraphLens bundles third-party open-source
+   components under their own licences, listed with full licence texts in
+   THIRDPARTY.md. Those components remain licensed under their original
+   terms; this licence governs GraphLens's own source code and
+   configuration only.
+
+5. No warranty. GRAPHLENS IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY
+   KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES
+   OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE, AND
+   NONINFRINGEMENT. IN NO EVENT SHALL THE LICENSOR BE LIABLE FOR ANY
+   CLAIM, DAMAGES, OR OTHER LIABILITY ARISING FROM, OUT OF, OR IN
+   CONNECTION WITH GRAPHLENS OR ITS USE.
+
+6. Termination. This licence terminates automatically if you breach its
+   terms. Splunkbase's own terms of use apply in addition to this licence
+   for copies obtained through Splunkbase.
+
+For licensing questions, contact the vendor address in SUPPORT.md.

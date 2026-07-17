@@ -1,0 +1,52 @@
+{
+    "schemaVersion": "2.0.0",
+    "info": {
+        "title": "GraphLens",
+        "id": {
+            "group": null,
+            "name": "graphlens",
+            "version": "1.0.0"
+        },
+        "author": [
+            {
+                "name": "Adam Liquorish",
+                "email": null,
+                "company": null
+            }
+        ],
+        "releaseDate": null,
+        "description": "GraphLens is an independent, third-party Splunk application that provides an interactive, node-and-edge relationship graph experience for data already stored in Splunk. GraphLens does not require, embed, or connect to Neo4j or any other external graph database.",
+        "classification": {
+            "intendedAudience": "T1400",
+            "categories": [
+                "C007",
+                "C001"
+            ],
+            "developmentStatus": "Production/Stable"
+        },
+        "commonInformationModels": null,
+        "license": {
+            "name": "Third-Party License (see LICENSE)",
+            "text": "LICENSE",
+            "uri": null
+        },
+        "privacyPolicy": {
+            "name": "Privacy Policy",
+            "text": "PRIVACY.md",
+            "uri": null
+        },
+        "releaseNotes": {
+            "name": "Release Notes",
+            "text": "CHANGELOG.md",
+            "uri": null
+        }
+    },
+    "dependencies": null,
+    "tasks": null,
+    "inputGroups": null,
+    "supportedDeployments": [
+        "_standalone",
+        "_search_head_clustering",
+        "_distributed"
+    ]
+}
