@@ -1,0 +1,32 @@
+node_type,display_label,color,shape,icon,enabled
+user,User,#5A2BE2,ellipse,user,true
+host,Host,#2B7DE9,round-rectangle,server,true
+process,Process,#E97D2B,diamond,cog,true
+ip,IP Address,#2BB6E9,hexagon,globe,true
+domain,Domain,#2BE9A0,hexagon,globe,true
+alert,Alert,#E92B4C,star,alert-triangle,true
+threat_indicator,Threat Indicator,#B22B2B,triangle,skull,true
+application,Application,#7D2BE9,round-rectangle,grid,true
+dashboard,Dashboard,#9B9B9B,round-rectangle,dashboard,true
+savedsearch,Saved Search,#9B9B9B,ellipse,search,true
+macro,Macro,#9B9B9B,ellipse,code,true
+lookup,Lookup,#9B9B9B,ellipse,table,true
+data_model,Data Model,#9B9B9B,round-rectangle,layers,true
+sourcetype,Sourcetype,#6B6B6B,tag,tag,true
+index,Index,#4B4B4B,tag,database,true
+business_system,Business System,#2B4CE9,round-rectangle,briefcase,true
+technology,Technology,#2B8AE9,round-rectangle,cpu,true
+log_source,Log Source,#2BA0E9,ellipse,file-text,true
+event_type,Event Type,#2BB6C4,ellipse,list,true
+required_field,Required Field,#8C8C8C,ellipse,check-square,true
+detection_use_case,Detection Use Case,#E9542B,round-rectangle,shield,true
+mitre_technique,MITRE ATT&CK Technique,#E92B7D,round-rectangle,target,true
+business_service,Business Service,#2B4CE9,round-rectangle,briefcase,true
+server,Server,#2B7DE9,round-rectangle,server,true
+database,Database,#2B9BE9,cylinder,database,true
+api,API,#2BC4E9,round-rectangle,plug,true
+identity_provider,Identity Provider,#5A2BE2,round-rectangle,key,true
+cloud_subscription,Cloud Subscription,#2BE9C4,round-rectangle,cloud,true
+group,Group,#5A2BE2,ellipse,users,true
+role,Role,#5A2BE2,ellipse,id-badge,true
+privilege,Privilege,#E9B62B,ellipse,lock,true

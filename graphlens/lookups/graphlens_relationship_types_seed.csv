@@ -1,0 +1,28 @@
+relationship_type,display_label,color,directed,enabled
+AUTHENTICATED_TO,Authenticated to,#5A2BE2,true,true
+MEMBER_OF,Member of,#2B7DE9,true,true
+HAS_ROLE,Has role,#2B7DE9,true,true
+GRANTS,Grants,#E9B62B,true,true
+RAN_PROCESS,Ran process,#E97D2B,true,true
+SPAWNED,Spawned,#E97D2B,true,true
+CONNECTED_TO,Connected to,#2BB6E9,true,true
+RESOLVED_TO,Resolved to,#2BE9A0,true,true
+COMMUNICATED_WITH,Communicated with,#2BB6E9,false,true
+TRIGGERED,Triggered,#E92B4C,true,true
+ASSOCIATED_WITH_INDICATOR,Associated with indicator,#B22B2B,true,true
+DEPENDS_ON,Depends on,#2B4CE9,true,true
+HOSTED_ON,Hosted on,#2B7DE9,true,true
+USES_DATABASE,Uses database,#2B9BE9,true,true
+EXPOSES_API,Exposes API,#2BC4E9,true,true
+AUTHENTICATES_VIA,Authenticates via,#5A2BE2,true,true
+DEPLOYED_IN,Deployed in,#2BE9C4,true,true
+REFERENCES,References,#9B9B9B,true,true
+USES_MACRO,Uses macro,#9B9B9B,true,true
+USES_LOOKUP,Uses lookup,#9B9B9B,true,true
+BUILT_FROM,Built from,#9B9B9B,true,true
+WRITES_TO_SOURCETYPE,Writes to sourcetype,#6B6B6B,true,true
+STORED_IN_INDEX,Stored in index,#4B4B4B,true,true
+GENERATES_LOG,Generates log,#2BA0E9,true,true
+SUPPORTS_DETECTION,Supports detection,#E9542B,true,true
+MAPS_TO_TECHNIQUE,Maps to technique,#E92B7D,true,true
+OWNS,Owns,#2B4CE9,true,true

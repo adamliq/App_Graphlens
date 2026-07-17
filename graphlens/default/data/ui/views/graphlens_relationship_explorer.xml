@@ -1,0 +1,1 @@
+<view template="graphlens:/templates/RelationshipExplorer.html" type="html" isVisible="true" label="Relationship Explorer" />

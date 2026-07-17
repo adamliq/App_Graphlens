@@ -1,0 +1,9 @@
+node_modules/
+graphlens/appserver/static/build/
+graphlens/coverage/
+*.log
+.DS_Store
+dist/
+*.tgz
+/build/
+graphlens-*.spl.sha256

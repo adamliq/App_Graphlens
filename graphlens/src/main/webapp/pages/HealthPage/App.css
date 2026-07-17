@@ -1,0 +1,8 @@
+dl dt {
+  font-weight: 600;
+  margin-top: 8px;
+}
+
+dl dd {
+  margin: 0;
+}

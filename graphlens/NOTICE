@@ -1,0 +1,20 @@
+GraphLens
+Copyright (c) 2026 Adam Liquorish
+
+GraphLens is an independent, third-party Splunk application. It is not a
+Splunk Inc. product, is not developed or endorsed by Splunk Inc., and does
+not require, embed, or connect to Neo4j or any other external graph
+database. "Splunk" and "Splunk Cloud Platform" are trademarks of Splunk
+Inc.; "Neo4j" is a trademark of Neo4j, Inc. Both are used in this notice
+solely to describe compatibility and to disclaim affiliation.
+
+This product includes third-party open-source software. See THIRDPARTY.md
+for the full dependency inventory, exact versions, and licence texts.
+
+Notable bundled components:
+  - Cytoscape.js (MIT License) - graph visualisation rendering.
+  - React and React DOM (MIT License) - UI framework.
+  - @splunk/react-ui (Apache License 2.0) - Splunk UI Toolkit components.
+
+No warranty is made regarding third-party components; each remains subject
+to its own licence, reproduced in THIRDPARTY.md.

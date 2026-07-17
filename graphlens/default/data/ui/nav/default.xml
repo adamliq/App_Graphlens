@@ -1,0 +1,5 @@
+<nav search_view="search" color="#5A2BE2">
+    <view name="graphlens_relationship_explorer" default="true" />
+    <view name="graphlens_health" />
+    <view name="graphlens_configuration" />
+</nav>
