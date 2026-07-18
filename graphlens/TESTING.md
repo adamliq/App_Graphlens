@@ -33,6 +33,26 @@ standard XSS payload set (`<script>`, `<img onerror>`, `<svg onload>`,
 graph element, or exported value. See SECURITY.md for the corresponding
 narrative description of each control.
 
+### Spinning up a local Splunk instance
+
+`scripts/run_splunk_podman.sh` runs a disposable Splunk Enterprise
+container via [podman](https://podman.io/) for exactly this purpose: it
+starts the container, creates the `graphlens_relationships` index, loads
+`sample_data/*.csv`, packages and installs the app, and provisions
+`test_graphlens_viewer` / `test_graphlens_analyst` / `test_graphlens_admin`
+users against the three roles in `authorize.conf`.
+
+```
+scripts/run_splunk_podman.sh all      # start + index + sample data + app + test users
+scripts/run_splunk_podman.sh status   # container + splunkd health
+scripts/run_splunk_podman.sh logs     # tail splunkd.log
+scripts/run_splunk_podman.sh clean    # tear everything down
+```
+
+Run `scripts/run_splunk_podman.sh` with no arguments for the full command
+list. Requires `podman`, `npm`, and `curl` on the machine you run it from,
+and outbound access to Docker Hub to pull `splunk/splunk`.
+
 Two categories in the design brief require a **live Splunk instance** and
 are not automatable as Jest unit tests in this repository:
 

@@ -7,3 +7,4 @@ dist/
 *.tgz
 /build/
 graphlens-*.spl.sha256
+graphlens/scripts/.splunk_admin_password
