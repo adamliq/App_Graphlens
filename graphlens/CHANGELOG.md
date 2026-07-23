@@ -2,6 +2,20 @@
 
 All notable changes to GraphLens are documented in this file.
 
+## [1.0.1] - 2026-07-18
+
+### Fixed
+
+- **Fixed HTTP 500 opening the app.** The Relationship Explorer, Health
+  and Configuration view templates used `${make_url(...)}` to build their
+  CSS/JS asset URLs, assuming Splunk's Mako rendering environment provides
+  `make_url` as a bare template global. It does not, and the resulting
+  `NameError` caused every view to fail to render. The templates now use a
+  hardcoded absolute static path (`/static/app/graphlens/...`) instead,
+  which requires no Mako-provided helper at all. See DEVELOPMENT.md item 1
+  and APPINSPECT.md for the full detail, including the residual edge case
+  for deployments behind a custom `MRSPARKLE_ROOT_PATH`.
+
 ## [1.0.0] - 2026-07-17
 
 Initial release.

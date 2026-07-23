@@ -54,14 +54,20 @@ AppInspect surfaced six warnings that were fixed, not suppressed:
    three custom Mako views under `appserver/templates/` originally
    contained a `<%! import splunk.appserver.mrsparkle.lib.util as util %>`
    module-level Python code block. Fixed by removing the import block
-   entirely and calling `${make_url(...)}` directly (a Mako *expression*,
-   not a *code block* - AppInspect's check specifically inspects the
-   parsed Mako AST for `Code` nodes, which `<%!%>`/`<%%>` blocks produce
-   and `${}` expressions/`<%tag>` directives do not - verified by reading
-   `splunk_appinspect/check_routine/__init__.py:is_mako_template` and
-   `mako/parsetree.py`'s `Code`/`Expression`/`Tag` class hierarchy
-   directly from the installed packages). See DEVELOPMENT.md item 1 for
-   the runtime-verification caveat this introduces.
+   entirely (AppInspect's check specifically inspects the parsed Mako AST
+   for `Code` nodes, which only `<%!%>`/`<%%>` blocks produce - verified by
+   reading `splunk_appinspect/check_routine/__init__.py:is_mako_template`
+   and `mako/parsetree.py`'s `Code`/`Expression`/`Tag` class hierarchy
+   directly from the installed packages). An intermediate version replaced
+   the import with a bare `${make_url(...)}` expression, which is not a
+   `Code` node either and stayed AppInspect-clean, but turned out to be
+   **wrong at runtime** - `make_url` was not actually available as a
+   global in Splunk's Mako namespace, and a live install threw an HTTP
+   500 (`NameError`) opening the app. The templates now use a hardcoded
+   absolute static path (`/static/app/graphlens/...`) with no Mako
+   expressions or code blocks at all - see DEVELOPMENT.md item 1 for the
+   full story and the one residual edge case (custom `MRSPARKLE_ROOT_PATH`
+   deployments) this doesn't cover.
 2. **`check_version_is_valid_semver`** / **`check_for_valid_package_id`**
    - `app.conf` had no `[id]` stanza. Fixed by adding
    `[id] name = graphlens` / `version = 1.0.0`.

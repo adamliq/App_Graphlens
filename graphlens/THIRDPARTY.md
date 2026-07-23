@@ -53,7 +53,9 @@ transitive tree and consult each package's own LICENSE for full text.
 ## Vulnerability status
 
 `npm audit` reported **0 known vulnerabilities** against this dependency
-set as of the versions pinned above (checked 2026-07-17). Re-run `npm
+set as of the versions pinned above (checked 2026-07-18; a transitive
+`fast-uri` advisory disclosed after the 1.0.0 check was picked up and
+resolved via `npm audit fix` for 1.0.1). Re-run `npm
 audit` as part of every release (see the `package` script in
 `package.json` / the build pipeline in DEVELOPMENT.md) and update this
 section with the date and result of the most recent check.

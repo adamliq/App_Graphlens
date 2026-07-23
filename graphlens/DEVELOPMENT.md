@@ -55,22 +55,25 @@ Splunk's supported APIs and packaging conventions change over time:
    `check_for_existence_of_python_code_block_in_mako_template` check flags
    any custom Mako template containing a `<% %>`/`<%! %>` Python code
    block as a critical risk with the remediation "Remove custom Mako
-   templates." GraphLens's templates avoid this by using `${make_url(...)}`
-   directly (relying on Splunk's Mako environment providing `make_url` as
-   a template global, which is not a `Code` node and is not flagged) with
-   **no** `<%! import ... %>` block. This was verified against a real,
-   locally-installed `splunk-appinspect==4.2.1` run (see APPINSPECT.md) -
-   it passes without a warning. It has **not** been verified against a
-   live Splunk Web render, i.e. we have not confirmed `make_url` actually
-   resolves as expected at runtime versus needing a different bare name or
-   an alternate mechanism. Before first deployment: install the built
-   package on a real Splunk instance and open each of the three views
-   (`graphlens_relationship_explorer`, `graphlens_health`,
-   `graphlens_configuration`); if the CSS/JS fail to load (404, or a Mako
-   `NameError` for `make_url`), consult the current Splunk Web developer
-   documentation for the supported way to build a static-asset URL from a
-   custom Mako view without introducing a `<% %>`/`<%! %>` code block, and
-   update the three template files accordingly.
+   templates." An earlier version of these templates used
+   `${make_url('/static/app/graphlens/...')}`, assuming Splunk's Mako
+   environment provides `make_url` as a bare template global. **That
+   assumption was wrong** - it caused a live HTTP 500 when a user actually
+   opened the app, because `make_url` was not defined in that Mako
+   namespace and the expression raised a `NameError` at render time. The
+   templates now use a plain, hardcoded absolute path
+   (`/static/app/graphlens/build/pages/<Page>/App.js`) with **no Mako
+   expressions or code blocks at all** - only `<%page>`/`<%inherit>`/`<%block>`
+   tag directives, none of which are `Code` nodes, so this remains
+   AppInspect-clean while removing the runtime dependency entirely. This
+   is the standard, widely-documented way Splunk apps reference their own
+   static assets. The one remaining edge case: if a deployment mounts
+   Splunk Web behind a non-default root path
+   (a custom `MRSPARKLE_ROOT_PATH`, e.g. a path-based reverse proxy), a
+   hardcoded absolute `/static/...` path could need that prefix too -
+   verify this against your specific deployment if you use such a setup;
+   this is uncommon enough that it was judged an acceptable trade-off
+   against the confirmed failure of the dynamic alternative.
 2. **`@splunk/react-ui` component API**. Import paths (e.g.
    `@splunk/react-ui/Button`) and prop names used throughout
    `src/main/webapp/pages/**` were verified against the installed

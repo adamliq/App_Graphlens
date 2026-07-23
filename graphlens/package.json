@@ -1,6 +1,6 @@
 {
   "name": "graphlens",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "GraphLens - interactive relationship graph exploration for Splunk. Independent third-party application; does not require Neo4j.",
   "private": true,
   "license": "SEE LICENSE IN LICENSE",
