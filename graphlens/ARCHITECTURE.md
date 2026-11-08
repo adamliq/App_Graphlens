@@ -47,36 +47,58 @@ Three storage modes, chosen per use case (see DATA_MODEL.md):
 - **KV Store** holds low-volume, curated data: node/edge metadata
   curation, node/relationship type display configuration, saved graph
   views, annotations, and the audit log.
-- **Hybrid**: `graphlens_node_details` and `graphlens_expand_node` join
-  indexed relationship data with curated KV Store metadata via `| lookup`
-  (see `default/savedsearches.conf` and `default/transforms.conf`), so the
-  graph the user sees is a merge of observed and curated data without the
+- **Hybrid**: the `buildNodeDetailsSpl` template (see
+  `shared/services/splTemplates.js`) joins indexed relationship data with
+  curated KV Store metadata via `| lookup` (see `default/transforms.conf`),
+  so the graph the user sees is a merge of observed and curated data without the
   browser needing to know which source contributed which field.
 
 ## How searches retrieve relationships
 
-Every search the browser can trigger is a named, pre-defined saved search
-in `default/savedsearches.conf`, dispatched with validated
-`args.<token>=<value>` substitutions - never raw SPL. See SECURITY.md for
-the full injection-prevention discussion. The searches are:
+Two dispatch paths are used, chosen per search (see SECURITY.md for the
+full injection-prevention discussion):
 
-| Saved search | Purpose |
+- **Named saved searches** (`default/savedsearches.conf`), for the two
+  searches with no per-request dynamic value: `graphlens_graph_statistics`
+  and `graphlens_health`.
+- **Ad-hoc dispatch** of a complete SPL string built from a fixed template
+  in `shared/services/splTemplates.js`, using already-validated/escaped
+  values, for every search that needs a per-request value. An earlier
+  design tried to parameterise named saved searches via `$token$`
+  placeholders substituted through `args.<token>` on the dispatch REST
+  call; confirmed against a live Splunk instance, that does not work -
+  the dispatched job still contains the literal, unresolved `$token$`
+  text. See splTemplates.js's doc comment and CHANGELOG.md for the full
+  story.
+
+| Template (in splTemplates.js) | Purpose |
 |---|---|
-| `graphlens_initial_entity_search` | Locate candidate entities for the entity search box |
-| `graphlens_expand_node` | One-hop expansion of a single node |
-| `graphlens_node_details` | Aggregated node properties + curated metadata |
-| `graphlens_edge_details` | Aggregated edge properties |
-| `graphlens_evidence_search` | Bounded supporting-event retrieval for a node or edge |
-| `graphlens_graph_statistics` | Aggregate counts for limit/health reporting |
-| `graphlens_cluster_expand` | Optional bounded expansion of a collapsed cluster/group node |
-| `graphlens_health` | Recent audited actions, for the Health page |
+| `buildInitialEntitySearchSpl` | Locate candidate entities for the entity search box |
+| `buildExpandNodeSpl` | One-hop expansion of a single node |
+| `buildNodeDetailsSpl` | Aggregated node properties + curated metadata (not currently wired to the UI - see KNOWN_LIMITATIONS.md) |
+| `buildEdgeDetailsSpl` | Aggregated edge properties (not currently wired to the UI) |
+| `buildEvidenceSpl` | Bounded supporting-event retrieval for a node or edge |
+| `buildClusterExpandSpl` | Optional bounded expansion of a collapsed cluster/group node (not currently wired to the UI) |
+| `graphlens_graph_statistics` (saved search) | Aggregate counts for limit/health reporting |
+| `graphlens_health` (saved search) | Recent audited actions, for the Health page |
 
-`searchService.js` dispatches these via Splunk's documented
-`services/saved/searches/<name>/dispatch` REST endpoint, polls
-`services/search/jobs/<sid>` until `dispatchState=DONE` (with exponential
-backoff and a configurable timeout), reads results from
-`services/search/jobs/<sid>/results`, and can cancel an in-flight or
-abandoned job via `services/search/jobs/<sid>/control`.
+`searchService.js` exposes `dispatchSavedSearch` (named saved search,
+`services/saved/searches/<name>/dispatch`) and `dispatchAdHocSearch`
+(complete SPL string, `services/search/jobs`). Both share the same
+poll/cancel/timeout machinery: polling `services/search/jobs/<sid>` until
+`dispatchState=DONE` (with exponential backoff and a configurable
+timeout), reading results from `services/search/jobs/<sid>/results`, and
+cancelling an in-flight or abandoned job via
+`services/search/jobs/<sid>/control`.
+
+Every value spliced into an ad-hoc template is still validated/escaped by
+`utilities/splSafety.js` first (identifiers via `assertValidId`/`isValidId`,
+free text via `sanitizeSearchTerm`, limits via `clampInteger` returning a
+plain number) - nothing user-controlled reaches SPL unvalidated. Identifiers
+also get a second, independent server-side check: each template that takes
+one embeds `` | where match("<id>", `graphlens_id_pattern`) `` using a
+macro holding the same regex, so a bug in the client-side check alone
+cannot let an invalid identifier through.
 
 ## How SUIT renders the interface
 
@@ -112,7 +134,7 @@ Graph state is a plain, framework-agnostic reducer
 expansion:
 
 - **Expand**: validate the node id, no-op if already expanded, dispatch
-  `graphlens_expand_node`, transform the result rows into Cytoscape
+  the `buildExpandNodeSpl` ad-hoc search, transform the result rows into Cytoscape
   elements (`graphTransformer.js`, which also deduplicates and enforces
   `maxVisibleNodes`/`maxVisibleEdges`), then `mergeExpansion` records a
   parent -> child link for every neighbour introduced (a neighbour that

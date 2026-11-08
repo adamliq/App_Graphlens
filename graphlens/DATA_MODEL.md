@@ -117,7 +117,7 @@ Defined in `default/collections.conf`, exposed as SPL lookups in
 
 | Collection | Purpose | Write access |
 |---|---|---|
-| `graphlens_nodes` | Curated node metadata merged into `graphlens_node_details` | `graphlens_admin` |
+| `graphlens_nodes` | Curated node metadata merged in by the `buildNodeDetailsSpl` template | `graphlens_admin` |
 | `graphlens_edges` | Curated, static (non-time-series) relationships | `graphlens_admin` |
 | `graphlens_node_types` | Display config: colour, shape, icon, enabled | `graphlens_admin` |
 | `graphlens_relationship_types` | Display config: colour, directed, enabled | `graphlens_admin` |
@@ -147,8 +147,8 @@ GraphLens never stores raw SPL in a relationship record. Instead,
   `src_user`, `host` -> `dest_host`) matched against the node's own label,
   again scoped to the node's `source_index`/`source_sourcetype`.
 
-This is dispatched through the single `graphlens_evidence_search` saved
-search - see ARCHITECTURE.md and SECURITY.md.
+This is dispatched as an ad-hoc search built by the single
+`buildEvidenceSpl` template - see ARCHITECTURE.md and SECURITY.md.
 
 ## Clusters (optional grouping)
 
@@ -165,6 +165,6 @@ search - see ARCHITECTURE.md and SECURITY.md.
 
 Cluster/group nodes are produced by grouping visible nodes on a field
 (node type, `source_index`, `node_group`, etc.) client-side, or expanded
-via the optional `graphlens_cluster_expand` saved search, which is bounded
-by `safe_cluster_limit` the same way `graphlens_expand_node` is bounded by
-`safe_expansion_limit`.
+via the optional `buildClusterExpandSpl` ad-hoc template (not currently
+wired to the UI - see KNOWN_LIMITATIONS.md), bounded the same way
+`buildExpandNodeSpl` is bounded.

@@ -1,5 +1,23 @@
 # Known limitations
 
+## Forward-looking risk (read this first)
+
+- **GraphLens's three views are built on custom Mako templates
+  (`appserver/templates/*.html`), which Splunk has stated it will stop
+  supporting in a future platform version.** `splunk-appinspect`'s
+  `check_for_custom_mako_templates` check (added in a release newer than
+  the one used for 1.0.0) reports: "deprecated in Splunk Enterprise 10.4.
+  Future Splunk platform versions will no longer support custom Mako
+  templates." The templates are confirmed working today against a live
+  Splunk Enterprise 10.6.1 (build 1) instance, and this is only a
+  `warning`, not a failure - but it means the Relationship Explorer,
+  Health and Configuration pages will eventually stop loading on some
+  future Splunk release unless GraphLens migrates to whatever Splunk's
+  then-current supported mechanism is for serving a custom page without a
+  Mako view. See APPINSPECT.md's `check_for_custom_mako_templates` section
+  for why this document deliberately does not guess at that replacement
+  mechanism, and what to check before the next release.
+
 ## Security / access control
 
 - **KV Store access control is collection-level, not row-level.** A role
@@ -17,19 +35,19 @@
 
 - **Node details do not re-query on every selection.** The details panel
   shows data already returned by the search that introduced the node
-  (initial search or expansion), rather than re-dispatching
-  `graphlens_node_details` on every click, to avoid running a search on
-  every pointer interaction. The `graphlens_node_details` saved search
-  exists and is available for a future "refresh details" action.
+  (initial search or expansion), rather than re-dispatching the
+  `buildNodeDetailsSpl` template on every click, to avoid running a search
+  on every pointer interaction. That template exists and is available for
+  a future "refresh details" action.
 - **Path finder is client-side only** and limited to the graph currently
   loaded in the browser, bounded by `max_path_depth`. It is not a
   substitute for a full graph-database traversal - see USER_GUIDE.md for
   the exact wording shown to users so this is never overstated.
 - **Clustering/grouping is basic in 1.0.0.** Nodes can be grouped
-  client-side by a field, and `graphlens_cluster_expand` exists for bounded
-  server-side cluster expansion, but there is no dedicated "collapsed
-  aggregate node" UI affordance yet (section 13 of the original design
-  brief) - this is a candidate for a future release.
+  client-side by a field, and the `buildClusterExpandSpl` template exists
+  for bounded server-side cluster expansion, but there is no dedicated
+  "collapsed aggregate node" UI affordance yet (section 13 of the original
+  design brief) - this is a candidate for a future release.
 - **No dedicated component/browser test suite** ships in 1.0.0 (unit
   tests for the logic layer only) - see TESTING.md, "Component/browser
   tests" for what to add before a broader rollout.
