@@ -27,7 +27,7 @@ import ExportDialog from './components/ExportDialog';
 import ErrorNotification from './components/ErrorNotification';
 import EmptyState from './components/EmptyState';
 
-const APP_VERSION = '1.0.1';
+const APP_VERSION = '1.1.0';
 
 function downloadBlob(blob, filename) {
   const url = URL.createObjectURL(blob);

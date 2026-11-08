@@ -26,3 +26,5 @@ GENERATES_LOG,Generates log,#2BA0E9,true,true
 SUPPORTS_DETECTION,Supports detection,#E9542B,true,true
 MAPS_TO_TECHNIQUE,Maps to technique,#E92B7D,true,true
 OWNS,Owns,#2B4CE9,true,true
+CAN_SEARCH,Can search,#4B4B4B,true,true
+INHERITS_FROM,Inherits from,#5A2BE2,true,true

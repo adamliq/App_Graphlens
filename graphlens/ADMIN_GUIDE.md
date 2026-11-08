@@ -27,6 +27,15 @@ identity-provider-driven role mapping on Splunk Cloud), and ensure the
 role also has the app itself in its allowed app list so GraphLens appears
 in their app switcher.
 
+## RBAC model
+
+GraphLens can optionally collect and visualise this instance's own
+access-control structure (roles, capabilities, index access, role
+inheritance, and SAML/LDAP group mappings) as another explorable graph.
+This is disabled by default because the data it produces is itself
+sensitive. See RBAC_MODEL.md for setup, and SECURITY.md's "RBAC model
+collector" section before enabling it.
+
 ## Tuning graph limits
 
 See CONFIGURATION.md for the full settings table. Recommended starting

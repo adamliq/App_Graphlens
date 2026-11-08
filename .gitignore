@@ -1,4 +1,6 @@
 node_modules/
+__pycache__/
+*.pyc
 graphlens/appserver/static/build/
 graphlens/coverage/
 *.log

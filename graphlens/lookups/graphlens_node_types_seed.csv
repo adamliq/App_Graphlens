@@ -30,3 +30,5 @@ cloud_subscription,Cloud Subscription,#2BE9C4,round-rectangle,cloud,true
 group,Group,#5A2BE2,ellipse,users,true
 role,Role,#5A2BE2,ellipse,id-badge,true
 privilege,Privilege,#E9B62B,ellipse,lock,true
+saml_group,SAML Group,#2B4CE9,ellipse,users,true
+ldap_group,LDAP Group,#2B7DE9,ellipse,users,true
