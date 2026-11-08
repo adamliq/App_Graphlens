@@ -26,6 +26,14 @@ second run (for the 1.0.1 patch) happened in a fresh environment that
   (`check_for_custom_mako_templates`, see below), which is exactly why
   re-running AppInspect with whatever is current, not pinning an old
   version, matters.
+- **1.1.0 validation**: `splunk-appinspect==4.4.0` (2026-11-08, same
+  pip-installed release as 1.0.1's) - run again specifically because 1.1.0
+  added the app's first scripted input (`bin/graphlens_rbac_collector.py`
+  / `default/inputs.conf`), a category of file the 1.0.1 run never
+  exercised. This caught two real, previously-unknown requirements (both
+  fixed, see "Remediation notes") before they were ever a problem on a
+  live instance - `python.version` and `python.required` on the scripted
+  input stanza.
 
 AppInspect's own trusted-library metadata update failed in the sandboxed
 build environment used for both validation runs (no outbound access to
@@ -37,32 +45,36 @@ final submission**, since that service can surface additional,
 environment-dependent findings (e.g. newly disclosed vulnerable
 third-party libraries) that a fully offline run cannot.
 
-## Result summary (1.0.1 validation run, splunk-appinspect 4.4.0)
+## Result summary (1.1.0 validation run, splunk-appinspect 4.4.0)
 
 ```
 error:          0
 failure:        0
 future_failure:  0
 skipped:        0
-not_applicable: 120
-warning:        3
-success:        131
+not_applicable: 103
+warning:        7
+success:        144
 -------------------
 Total:          254
 ```
 
-**Zero errors, zero failures.** Three warnings remain, all reviewed and
-accepted with justification below (per the requirement not to suppress
-findings without written justification): two (`check_for_updates_disabled`,
-`check_collections_conf`) carried over unchanged from 1.0.0, and one
-(`check_for_custom_mako_templates`) is a substantive new finding from a
-newer `splunk-appinspect` release than 1.0.0 was validated against. A
-fourth finding seen partway through the 1.0.1 pass - a Splunk version
-number written as `10.6.1.1` in several comments, which the IP/hostname
-scanner flagged as a private-IP-shaped literal - was an actual false
-positive and was fixed (reworded), not accepted; it no longer appears in
-the final count below.
-discussed in its own section below.
+**Zero errors, zero failures.** Seven warnings remain, all reviewed and
+accepted with justification below: the three carried over unchanged from
+1.0.1 (`check_for_updates_disabled`, `check_collections_conf`,
+`check_for_custom_mako_templates`), plus four new ones introduced purely
+by 1.1.0 adding the app's first scripted input
+(`check_scripted_inputs_cmd_path_pattern`, `check_for_indexer_synced_configs`,
+`check_for_python_script_existence`, `check_for_scripted_inputs`) - three
+of those four say "No action required" or are purely informational in
+their own check message. Two *failures* the same run initially surfaced
+(missing `python.version`/`python.required` on the scripted input stanza)
+were fixed, not accepted - see "Remediation notes" below.
+
+A Splunk version number written as `10.6.1.1` in several 1.0.1-era
+comments, which the IP/hostname scanner flagged as a private-IP-shaped
+literal, was an actual false positive and was fixed (reworded) during the
+1.0.1 pass, not accepted; it does not appear in the count above.
 
 ## Remediation notes (fixed during development)
 
@@ -113,6 +125,19 @@ warnings that were fixed, not suppressed:
 7. **`check_for_custom_mako_templates`** (introduced in a later
    `splunk-appinspect` release than 1.0.0 was validated against) - see its
    own section below; not fixed, accepted with justification.
+8. **`check_scripted_inputs_python_version`** /
+   **`check_scripted_inputs_python_required`** (1.1.0) - the new
+   `[script://./bin/graphlens_rbac_collector.py]` stanza initially
+   defined neither option, which is a `FAILURE` for a Python scripted
+   input (not just a warning). Fixed by reading
+   `splunk_appinspect/checks_lib_utils/check_python_required.py` and
+   `splunk_appinspect/constants.py` directly from the installed package to
+   get the exact accepted values rather than guessing from the check
+   message text, and adding `python.version = python3` and
+   `python.required = 3.13,3.14` to the stanza - the latter must include
+   at least one of `3.13`/`3.14` (the two values AppInspect currently
+   treats as current; `3.9` is accepted but flagged outdated) per that
+   same source.
 
 ## Warnings accepted with justification (not suppressed, not "fixed")
 
@@ -133,6 +158,36 @@ warnings that were fixed, not suppressed:
    says no action is required); it exists to prompt a manual reviewer to
    look at collections.conf, not to flag a problem. No action taken.
 3. **`check_for_custom_mako_templates`** - see below.
+4. **`check_for_scripted_inputs`** (1.1.0) - "App contains a scripted
+   input script://./bin/graphlens_rbac_collector.py. No action required."
+   Informational-only, same pattern as `check_collections_conf` above; it
+   exists to prompt manual review of what a scripted input does, which
+   SECURITY.md's "RBAC model collector" section and RBAC_MODEL.md already
+   provide. No action taken.
+5. **`check_for_python_script_existence`** (1.1.0) - "1 Python files
+   found. Update these Python scripts to be cross-compatible with Python 2
+   and 3... If you've finished your update, please disregard this
+   message." `bin/graphlens_rbac_collector.py` is Python 3 only by
+   design (`python.required = 3.13,3.14` declares this explicitly) and
+   uses no Python 2/3-ambiguous constructs; Python 2 compatibility is not
+   a goal. Disregarded per the check's own message.
+6. **`check_scripted_inputs_cmd_path_pattern`** (1.1.0) - recommends the
+   scripted input's path follow the pattern
+   `$SPLUNK_HOME/etc/apps/<AppName>/bin/`. The stanza name
+   `script://./bin/graphlens_rbac_collector.py` already is that pattern
+   (a path relative to the app root, resolving to exactly
+   `$SPLUNK_HOME/etc/apps/graphlens/bin/graphlens_rbac_collector.py` once
+   installed) - this appears to be an informational confirmation rather
+   than a deviation; no change made.
+7. **`check_for_indexer_synced_configs`** (1.1.0) - "default/inputs.conf
+   will not be synced to indexers in Victoria. If this file is necessary
+   on indexers, configure the settings in the Splunk UI or via Admin
+   Config Service." This scripted input calls splunkd's own management
+   REST API (`/services/authorization/roles`,
+   `/servicesNS/-/-/configs/conf-authentication`) to introspect the
+   instance's own access-control configuration, which is a search-head
+   concept - it has no reason to run on an indexer and was never intended
+   to. Not applicable to this input; no action taken.
 
 ### `check_for_custom_mako_templates`: Mako templates are being deprecated
 
@@ -198,12 +253,22 @@ AppInspect's automated checks cannot verify:
   by the 1.0.1 live-instance pass.
 - Whether/when custom Mako templates actually stop working on a future
   Splunk release - see `check_for_custom_mako_templates` above.
+- Whether `bin/graphlens_rbac_collector.py` correctly reports SAML/LDAP
+  group-to-role mappings - AppInspect has no way to check this, and
+  neither does this app's own test environment (no SAML/LDAP provider
+  configured). See RBAC_MODEL.md, "Identity provider support," and
+  KNOWN_LIMITATIONS.md. The elevated-privilege (`passAuth =
+  splunk-system-user`) design of that collector is a manual security
+  review item in its own right - see SECURITY.md, "RBAC model collector,"
+  for the tradeoffs and why it was accepted.
 
 ## Cloud-vetting readiness statement
 
-Based on the 1.0.1 validation run, GraphLens has **zero AppInspect errors
-or failures** and three reviewed, justified warnings (one of them a
-forward-looking deprecation risk, not a current defect). This is a strong
+Based on the 1.1.0 validation run, GraphLens has **zero AppInspect errors
+or failures** and seven reviewed, justified warnings (one a forward-looking
+deprecation risk, not a current defect; three purely informational
+"no action required" notices about the new scripted input added in 1.1.0).
+This is a strong
 signal of Splunk Cloud vetting readiness, but it is **not** a
 certification of AppInspect success by Splunk, nor a guarantee of
 Splunkbase or Splunk Cloud vetting approval - re-run AppInspect (ideally

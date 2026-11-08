@@ -2,6 +2,32 @@
 
 All notable changes to GraphLens are documented in this file.
 
+## [1.1.0] - 2026-11-08
+
+### Added
+
+- **RBAC model collector** (`bin/graphlens_rbac_collector.py`, disabled by
+  default). A new scripted input that snapshots this Splunk instance's own
+  roles, capabilities, per-role index access, role inheritance, and - where
+  SAML or LDAP is configured - which identity-provider groups map to which
+  roles, and feeds it into the Relationship Explorer as ordinary graph
+  data. New node types `saml_group`/`ldap_group` and relationship types
+  `CAN_SEARCH`/`INHERITS_FROM` (the `role`/`privilege`/`index`/
+  `identity_provider` node types and `GRANTS`/`HAS_ROLE`/
+  `AUTHENTICATES_VIA` relationship types already existed). See
+  RBAC_MODEL.md for the data model and setup, and SECURITY.md's "RBAC
+  model collector" section for why this is off by default and what to
+  consider before enabling it - this is the app's first and only piece of
+  server-side code and its only component that runs with elevated,
+  system-level privilege rather than the requesting user's own session.
+  The role/capability/index REST calls this relies on were verified
+  against a live Splunk Enterprise 10.6.1 (build 1) instance; the
+  SAML/LDAP group-mapping path was not (no SAML/LDAP provider was
+  available to test against) - see KNOWN_LIMITATIONS.md.
+- `DATA_INGESTION.md`: a guide for loading your own relationship data into
+  GraphLens (index schema, ingestion paths, KV Store type registration,
+  evidence wiring).
+
 ## [1.0.1] - 2026-11-08
 
 Fixes found and verified by installing the built package into a real

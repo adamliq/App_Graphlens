@@ -20,6 +20,17 @@
 
 ## Security / access control
 
+- **The RBAC model collector's SAML/LDAP group mapping is unverified
+  against a live instance.** `bin/graphlens_rbac_collector.py` (disabled
+  by default - see RBAC_MODEL.md and SECURITY.md) derives SAML/LDAP
+  group-to-role mappings from `authentication.conf`'s `roleMap_<strategy>`
+  stanzas, which is documented Splunk convention but, unlike the rest of
+  this app's REST-API assumptions, was not checked against a live
+  SAML- or LDAP-configured Splunk instance before release (this
+  repository's test environment has neither configured). The
+  role/capability/index portion of the collector *was* verified live. See
+  RBAC_MODEL.md, "Identity provider support," before relying on the
+  group/role edges it produces.
 - **KV Store access control is collection-level, not row-level.** A role
   with write access to `graphlens_annotations` or `graphlens_saved_views`
   can technically write/delete any document in that collection via the

@@ -31,22 +31,29 @@ cp -R "$APP_DIR/default" "$STAGE_DIR/"
 cp -R "$APP_DIR/metadata" "$STAGE_DIR/"
 cp -R "$APP_DIR/static" "$STAGE_DIR/"
 cp -R "$APP_DIR/lookups" "$STAGE_DIR/"
+if [ -d "$APP_DIR/bin" ]; then
+  cp -R "$APP_DIR/bin" "$STAGE_DIR/"
+  chmod +x "$STAGE_DIR/bin/"*.py 2>/dev/null || true
+fi
 mkdir -p "$STAGE_DIR/appserver/static/build" "$STAGE_DIR/appserver/templates"
 cp -R "$APP_DIR/appserver/static/build/." "$STAGE_DIR/appserver/static/build/"
 cp -R "$APP_DIR/appserver/templates/." "$STAGE_DIR/appserver/templates/"
 
 for doc in README.md LICENSE NOTICE THIRDPARTY.md CHANGELOG.md SUPPORT.md SECURITY.md \
            INSTALL.md CONFIGURATION.md USER_GUIDE.md ADMIN_GUIDE.md ARCHITECTURE.md \
-           DATA_MODEL.md PRIVACY.md; do
+           DATA_MODEL.md DATA_INGESTION.md RBAC_MODEL.md PRIVACY.md KNOWN_LIMITATIONS.md; do
   if [ -f "$APP_DIR/$doc" ]; then
     cp "$APP_DIR/$doc" "$STAGE_DIR/$doc"
   fi
 done
 
-# Strip any editor/OS junk that may have been copied in.
+# Strip any editor/OS junk, or Python bytecode cache from running the
+# bin/ scripts locally, that may have been copied in.
 find "$STAGE_DIR" -name ".DS_Store" -delete
 find "$STAGE_DIR" -name "Thumbs.db" -delete
 find "$STAGE_DIR" -name "*.map" -delete
+find "$STAGE_DIR" -name "__pycache__" -type d -prune -exec rm -rf {} +
+find "$STAGE_DIR" -name "*.pyc" -delete
 
 mkdir -p "$DIST_DIR"
 tar -czf "$DIST_DIR/$ARCHIVE_NAME" -C "$DIST_DIR" graphlens

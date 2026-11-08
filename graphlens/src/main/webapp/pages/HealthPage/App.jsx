@@ -6,7 +6,7 @@ import { dispatchSavedSearch, toUserFacingError } from '../../shared/services/se
 import { getSettings } from '../../shared/services/configService';
 import { hasCapability, CAPABILITIES } from '../../shared/services/capabilityService';
 
-const APP_VERSION = '1.0.1';
+const APP_VERSION = '1.1.0';
 
 export default function App() {
   const [canView, setCanView] = useState(null);

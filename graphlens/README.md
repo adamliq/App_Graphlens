@@ -60,6 +60,8 @@ and assign roles. Full steps: [INSTALL.md](INSTALL.md).
 |---|---|
 | [ARCHITECTURE.md](ARCHITECTURE.md) | How the pieces fit together |
 | [DATA_MODEL.md](DATA_MODEL.md) | Node/edge schema, identifiers, KV Store collections |
+| [DATA_INGESTION.md](DATA_INGESTION.md) | Loading your own relationship data into GraphLens |
+| [RBAC_MODEL.md](RBAC_MODEL.md) | Visualising this instance's own roles/capabilities/RBAC structure |
 | [INSTALL.md](INSTALL.md) | Installation, index creation, sample data, roles |
 | [CONFIGURATION.md](CONFIGURATION.md) | `graphlens_settings.conf` reference, upgrade/rollback |
 | [USER_GUIDE.md](USER_GUIDE.md) | How to use the Relationship Explorer |

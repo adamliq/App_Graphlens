@@ -2,12 +2,15 @@
 
 GraphLens is designed secure-by-default: Splunk remains the sole
 authentication, authorisation, search-execution, and data-storage
-boundary. GraphLens adds no external credential store, no external
-network dependency, and no server-side code of its own (no custom Python
-REST handlers, no custom search commands) - every backend interaction goes
-through Splunk's own, already-audited REST APIs (`services/search/jobs`,
+boundary. GraphLens adds no external credential store and no external
+network dependency - every backend interaction goes through Splunk's own,
+already-audited REST APIs (`services/search/jobs`,
 `services/storage/collections/data/*`, `services/properties/*`,
-`services/authentication/current-context`).
+`services/authentication/current-context`). The one piece of server-side
+code GraphLens ships is the optional, disabled-by-default RBAC model
+collector (`bin/graphlens_rbac_collector.py`) - see "RBAC model collector"
+below, which is also the app's only component that runs with elevated
+(system-user) privilege rather than the requesting user's own session.
 
 ## Reporting a vulnerability
 
@@ -141,6 +144,60 @@ UI-organisation feature. This is called out explicitly in
 `tests/security/injection.test.js`'s sibling security-boundary tests (see
 TESTING.md for the manual REST-level test procedure, which requires a live
 Splunk instance and is not automatable in this repository's unit tests).
+
+## RBAC model collector
+
+`bin/graphlens_rbac_collector.py`, wired up (disabled by default) in
+`default/inputs.conf`, is a scripted input that snapshots this Splunk
+instance's own access-control structure - roles, capabilities, the indexes
+each role can search, role inheritance, and (where SAML or LDAP is
+configured) which identity-provider groups map to which roles - and writes
+it as ordinary `graphlens_relationships` events, so it can be explored in
+the Relationship Explorer like any other data. See RBAC_MODEL.md for the
+full data model and setup.
+
+This is a deliberate exception to the rest of GraphLens's design, and is
+called out here for that reason:
+
+- **It is the app's only server-side code.** Everything else in GraphLens
+  is static frontend assets plus Splunk-native configuration; this is a
+  Python scripted input that runs on the Splunk server itself.
+- **It runs with elevated privilege, not the requesting user's session.**
+  It authenticates via `passAuth = splunk-system-user`, which gives it a
+  session key with full administrative read access for the duration of
+  each run - not scoped to any particular GraphLens user or role. This is
+  necessary because enumerating *all* roles' capabilities and index access
+  (not just the running user's own role) is inherently an admin-level
+  operation in Splunk; there is no lesser capability that grants it.
+- **The data it produces is itself sensitive.** A full role -> capability
+  -> index map, plus which SAML/LDAP groups grant which roles, is
+  effectively a blueprint of this instance's privilege structure and
+  identity-provider group naming (which can itself leak organisational
+  structure, e.g. `cn=domain-admins,ou=...`). Treat read access to wherever
+  this data lands the same way you would treat read access to
+  `authorize.conf`/`authentication.conf` themselves.
+- **It is disabled by default** (`disabled = true` in `default/inputs.conf`)
+  and writes to `graphlens_relationships` only if an administrator enables
+  it and chooses to leave that setting as-is. Before enabling it, decide
+  whether the analysts who already have `srchIndexesAllowed` access to
+  `graphlens_relationships` should also see this data; if not, point
+  `index =` at a separate index with its own, more restrictive
+  `srchIndexesAllowed` scoping on the relevant roles - GraphLens has no
+  in-app mechanism to filter index data below Splunk's own index-level
+  access control, so index placement is the actual security boundary here,
+  the same as for every other index GraphLens reads from.
+- **It never stores credentials.** The session key is read once per
+  invocation from stdin (supplied by splunkd itself, per Splunk's own
+  `passAuth` mechanism) and is never written to disk, logged, or reused
+  across runs.
+- The SAML/LDAP group-to-role mapping this script relies on
+  (`roleMap_<strategy>` stanzas in `authentication.conf`) is documented
+  Splunk behaviour but was not checked against a live SAML/LDAP-configured
+  instance before release - see RBAC_MODEL.md and KNOWN_LIMITATIONS.md.
+  Verify it reports your actual group mappings correctly before relying on
+  it, the same way every other previously-unverified Splunk-internals
+  assumption in this app needed live verification before being trusted
+  (see DEVELOPMENT.md).
 
 ## Secrets
 

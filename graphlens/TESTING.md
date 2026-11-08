@@ -10,6 +10,23 @@ npm run test:watch    # watch mode
 As of this release: **11 suites, 252 tests, all passing**, 0 known
 dependency vulnerabilities (`npm audit`).
 
+`bin/graphlens_rbac_collector.py`'s pure logic (identifier sanitisation,
+deterministic edge-id derivation, authentication.conf parsing) has its own
+Python test file, run separately since it isn't JS:
+
+```
+python3 tests/python/test_rbac_collector.py -v
+```
+
+18 tests, all passing. This Python script's Splunk-REST-calling code path
+is not covered by this test (there is nothing meaningful to mock - see the
+file's own docstring) and was instead exercised directly against a live
+Splunk Enterprise 10.6.1 (build 1) instance during development, the same
+way the rest of this app's Splunk-REST assumptions are verified (see
+DEVELOPMENT.md). The one part of that collector not checked live is the
+SAML/LDAP group-mapping path, since this project's test environment has
+neither configured - see RBAC_MODEL.md and KNOWN_LIMITATIONS.md.
+
 ## Live-instance verification (1.0.1)
 
 Unlike the automated suite above, this was a manual pass against a real
