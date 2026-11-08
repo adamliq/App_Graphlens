@@ -59,6 +59,15 @@ export async function splunkFetch(path, init = {}, deps = {}) {
     credentials: 'same-origin',
     ...init,
     headers: {
+      // Splunk Web's CSRF check (splunk.appserver.mrsparkle.lib.util.is_xhr)
+      // only reads the CSRF token from the X-Splunk-Form-Key header when the
+      // request also carries X-Requested-With: XMLHttpRequest. Without it,
+      // Splunk treats the request as a plain form POST and looks for the
+      // token as a `splunk_form_key` body parameter instead - which we never
+      // send - and every state-changing call is rejected with "CSRF
+      // validation failed", confirmed against a live Splunk Enterprise
+      // 10.6.1.1 container (see DEVELOPMENT.md).
+      'X-Requested-With': 'XMLHttpRequest',
       ...(csrfToken ? { 'X-Splunk-Form-Key': csrfToken } : {}),
       ...init.headers,
     },

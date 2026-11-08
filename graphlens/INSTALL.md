@@ -62,9 +62,10 @@ Splunk Cloud admin process).
 
 If you only intend to use GraphLens against curated KV Store data (no
 time-series observed relationships), you can skip index creation, but the
-`graphlens_expand_node`/`graphlens_initial_entity_search` searches will
-then return no results until you index at least some relationship events
-or otherwise adapt those saved searches to your own data source.
+expand-node and entity-search features (`shared/services/splTemplates.js`'s
+`buildExpandNodeSpl`/`buildInitialEntitySearchSpl`) will then return no
+results until you index at least some relationship events or otherwise
+adapt those templates to your own data source.
 
 ## 4. Load sample/starting data (optional, recommended for evaluation)
 

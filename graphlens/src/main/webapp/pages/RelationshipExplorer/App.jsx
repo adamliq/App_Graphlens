@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useState, useRef } from 'react';
 
 import { useGraphState } from '../../shared/hooks/useGraphState';
-import { dispatchSavedSearch, toUserFacingError } from '../../shared/services/searchService';
+import { dispatchAdHocSearch, toUserFacingError } from '../../shared/services/searchService';
 import { transformRowsToGraph } from '../../shared/services/graphTransformer';
 import { getSettings } from '../../shared/services/configService';
 import { loadNodeTypeConfig, loadRelationshipTypeConfig, deriveNodeTypeList, deriveRelationshipTypeList } from '../../shared/services/typeConfigService';
@@ -9,7 +9,8 @@ import { recordAuditEvent, AUDIT_ACTIONS } from '../../shared/services/auditServ
 import { findShortestPath } from '../../shared/services/pathFinder';
 import { buildExportBlob } from '../../shared/services/exportService';
 import { buildEvidenceTokensForEdge, buildEvidenceTokensForNode } from '../../shared/services/evidenceQueryBuilder';
-import { sanitizeSearchTerm, clampInteger, isValidId } from '../../shared/utilities/splSafety';
+import { buildInitialEntitySearchSpl, buildExpandNodeSpl, buildEvidenceSpl } from '../../shared/services/splTemplates';
+import { sanitizeSearchTerm, isValidId } from '../../shared/utilities/splSafety';
 
 import GraphToolbar from './components/GraphToolbar';
 import GraphCanvas, { fitGraph, centerOnNode } from './components/GraphCanvas';
@@ -26,7 +27,7 @@ import ExportDialog from './components/ExportDialog';
 import ErrorNotification from './components/ErrorNotification';
 import EmptyState from './components/EmptyState';
 
-const APP_VERSION = '1.0.0';
+const APP_VERSION = '1.0.1';
 
 function downloadBlob(blob, filename) {
   const url = URL.createObjectURL(blob);
@@ -108,9 +109,9 @@ export default function App() {
     setError(null);
     try {
       const { splSafe } = sanitizeSearchTerm(rawTerm);
-      const job = dispatchSavedSearch(
-        'graphlens_initial_entity_search',
-        { safe_term: splSafe, safe_result_limit: clampInteger(20, { min: 1, max: 100, fallback: 20 }) },
+      const spl = buildInitialEntitySearchSpl(splSafe, 20);
+      const job = dispatchAdHocSearch(
+        spl,
         { earliest: timeRange.earliest, latest: timeRange.latest, maxWaitMs: settings.searchDispatchMaxTimeSeconds * 1000 },
       );
       currentSearchRef.current = job;
@@ -141,9 +142,9 @@ export default function App() {
     }
     setError(null);
     try {
-      const job = dispatchSavedSearch(
-        'graphlens_expand_node',
-        { safe_node_id: nodeId, safe_expansion_limit: clampInteger(settings.maxExpansionNeighbours, { min: 1, max: 5000, fallback: 100 }) },
+      const spl = buildExpandNodeSpl(nodeId, settings.maxExpansionNeighbours);
+      const job = dispatchAdHocSearch(
+        spl,
         { earliest: timeRange.earliest, latest: timeRange.latest, maxWaitMs: settings.searchDispatchMaxTimeSeconds * 1000 },
       );
       const { rows } = await job.waitForResults({ count: settings.maxSearchResultRows });
@@ -180,9 +181,9 @@ export default function App() {
         setEvidence((prev) => ({ ...prev, isLoading: false, rows: [], fieldOrder: [] }));
         return;
       }
-      const job = dispatchSavedSearch(
-        'graphlens_evidence_search',
-        { ...tokens, safe_evidence_limit: clampInteger(100, { min: 1, max: 1000, fallback: 100 }) },
+      const spl = buildEvidenceSpl(tokens, 100);
+      const job = dispatchAdHocSearch(
+        spl,
         { earliest: timeRange.earliest, latest: timeRange.latest, maxWaitMs: settings.searchDispatchMaxTimeSeconds * 1000 },
       );
       const { rows, fieldOrder } = await job.waitForResults({ count: 100 });

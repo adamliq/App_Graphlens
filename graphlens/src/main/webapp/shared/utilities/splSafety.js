@@ -5,8 +5,9 @@
  * input directly into SPL without first passing it through here.
  *
  * Defence in depth: the same identifier grammar is enforced again inside
- * the saved-search macros (see default/macros.conf, graphlens_valid_id and
- * graphlens_valid_type_token) so a bug in this file is not the only thing
+ * the search templates (see default/macros.conf's graphlens_id_pattern,
+ * applied via `match(<literal>, \`graphlens_id_pattern\`)` in
+ * services/splTemplates.js) so a bug in this file is not the only thing
  * standing between user input and a search.
  */
 

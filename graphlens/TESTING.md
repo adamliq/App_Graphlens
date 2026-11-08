@@ -7,8 +7,27 @@ npm test              # all suites (unit + security + performance)
 npm run test:watch    # watch mode
 ```
 
-As of this release: **10 suites, 239 tests, all passing**, 0 known
+As of this release: **11 suites, 252 tests, all passing**, 0 known
 dependency vulnerabilities (`npm audit`).
+
+## Live-instance verification (1.0.1)
+
+Unlike the automated suite above, this was a manual pass against a real
+Splunk Enterprise 10.6.1 (build 1) Docker container (`splunk/splunk:latest`) with
+the actual built package installed, not mocks: login, all three views
+(Relationship Explorer, Health, Configuration) loading without console
+errors, the bundled sample data indexed and KV-Store-seeded per
+INSTALL.md's own documented steps, entity search, node expansion with
+real results rendered on the Cytoscape canvas, and the audit log
+confirmed recording real actions. It found and led to fixing three defects
+that no amount of mocked unit testing would have caught, because they are
+all about exactly how Splunk's own server treats a request (see
+CHANGELOG.md 1.0.1 and DEVELOPMENT.md's "Verified against a live Splunk
+instance" for the details): a Mako template `NameError`, a missing CSRF
+header, and saved-search token substitution silently not doing anything.
+Repeat this kind of pass - not just `npm test` - before every release that
+touches `appserver/templates/`, `utilities/restClient.js`, or
+`shared/services/splTemplates.js`/`default/macros.conf`.
 
 ## Unit tests (`tests/unit/`)
 
@@ -20,6 +39,7 @@ dependency vulnerabilities (`npm audit`).
 | `pathFinder.test.js` | Shortest-path BFS over the visible graph: multi-hop, shortcut preference, no-path case, missing-endpoint case, `maxDepth` enforcement, self-path, undirected traversal |
 | `exportService.test.js` | JSON export metadata/content, CSV formula-injection defanging, CSV quoting, unsupported-format rejection |
 | `evidenceQueryBuilder.test.js` | Token construction for node/edge evidence queries, per-type key-field heuristic, unsafe-index/sourcetype fallback, malicious-reference rejection |
+| `splTemplates.test.js` | Every ad-hoc SPL template starts with `search`, identifier validation/rejection, the server-side `graphlens_id_pattern` guard is embedded, limits are always bare validated numbers |
 | `searchService.test.js` | Dispatch -> poll -> results flow (mocked `fetch`), search-failure error propagation, permission-error normalisation, cancellation |
 
 ## Security tests (`tests/security/`)
