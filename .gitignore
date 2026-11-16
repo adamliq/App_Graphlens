@@ -9,3 +9,4 @@ dist/
 *.tgz
 /build/
 graphlens-*.spl.sha256
+!/releases/*.spl.sha256
