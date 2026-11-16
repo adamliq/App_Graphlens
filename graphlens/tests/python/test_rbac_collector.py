@@ -14,6 +14,7 @@ Not part of `npm test` (this is Python, not Jest) - run directly:
 
     python3 tests/python/test_rbac_collector.py
 """
+import io
 import os
 import re
 import sys
@@ -124,6 +125,40 @@ class ParseIdentityProviderTests(unittest.TestCase):
         ]
         _, role_maps = collector.parse_identity_provider(entries)
         self.assertEqual(role_maps, {})
+
+
+class ReadSessionKeyTests(unittest.TestCase):
+    """Regression coverage for the exact bug a live instance caught: an
+    earlier version of read_session_key() expected a "sessionKey=<key>\\n"
+    line, but splunkd actually writes the raw key with no prefix and no
+    trailing newline (confirmed by probing real stdin bytes against a live
+    Splunk Enterprise 10.6.1 (build 1) instance - see CHANGELOG.md 1.1.1
+    and RBAC_MODEL.md)."""
+
+    def _read(self, stdin_text):
+        original = sys.stdin
+        sys.stdin = io.StringIO(stdin_text)
+        try:
+            return collector.read_session_key()
+        finally:
+            sys.stdin = original
+
+    def test_raw_key_with_no_prefix_or_newline(self):
+        self.assertEqual(self._read("abc123XYZ"), "abc123XYZ")
+
+    def test_trailing_newline_is_stripped(self):
+        self.assertEqual(self._read("abc123XYZ\n"), "abc123XYZ")
+
+    def test_old_sessionkey_prefix_format_is_not_specially_handled(self):
+        # Documents that this is deliberate: splunkd never sends this
+        # format, so there is nothing to strip it for.
+        self.assertEqual(self._read("sessionKey=abc123"), "sessionKey=abc123")
+
+    def test_empty_stdin_returns_none(self):
+        self.assertIsNone(self._read(""))
+
+    def test_whitespace_only_stdin_returns_none(self):
+        self.assertIsNone(self._read("   \n"))
 
 
 class GroupNodeTypeTests(unittest.TestCase):

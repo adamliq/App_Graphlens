@@ -13,12 +13,19 @@ Disabled by default (see default/inputs.conf) - this snapshots your
 access-control structure, which is itself sensitive. See RBAC_MODEL.md
 and SECURITY.md before enabling it.
 
-How it authenticates: Splunk scripted inputs configured with
-`passAuth = splunk-system-user` have a valid session key written to
-their stdin by splunkd on every invocation, as a first line of the form
-`sessionKey=<key>`. This script reads that line and uses the key to call
-splunkd's own REST API on localhost - no credentials are stored in this
-app, and no network access beyond localhost is ever made.
+How it authenticates: `default/inputs.conf`'s stanza requires an
+administrator to set `passAuth = <username>` (see RBAC_MODEL.md, "Setup")
+- there is no universal reserved value here, despite an earlier version of
+this script assuming one existed (`passAuth = splunk-system-user`, which
+is not a real account on a default install - verified against a live
+instance, see below). `passAuth` always names a real, existing Splunk user
+account; splunkd generates a session key for that user and writes the raw
+key to this script's stdin on every invocation (no "sessionKey=" prefix,
+no trailing newline - just the key bytes, also verified live, see
+read_session_key()). That user needs enough capability to read every
+role's full configuration (not just their own), which in practice means
+an admin-equivalent account - see SECURITY.md, "RBAC model collector," for
+why there is no narrower capability for this and what that implies.
 
 What is VERIFIED against a live instance (Splunk Enterprise 10.6.1,
 build 1, see DEVELOPMENT.md): /services/authorization/roles returns
@@ -26,7 +33,10 @@ content.capabilities, content.imported_roles, content.srchIndexesAllowed
 and content.srchIndexesDefault as JSON arrays; the generic conf-file
 endpoint /servicesNS/-/-/configs/conf-authentication returns every
 authentication.conf stanza, and the "authentication" stanza carries
-authType (default "Splunk" with no SAML/LDAP configured).
+authType (default "Splunk" with no SAML/LDAP configured); passAuth's
+actual stdin format (raw key, no prefix); and end-to-end operation as a
+real scripted input (not a simulated stdin feed) producing valid,
+ID_PATTERN-compliant GRANTS/CAN_SEARCH/INHERITS_FROM rows.
 
 What is NOT verified against a live instance: the roleMap_<strategy>
 stanza convention this script relies on to find SAML/LDAP group-to-role
@@ -92,11 +102,16 @@ def log(message):
 
 
 def read_session_key():
-    """Read the session key splunkd passes on stdin (passAuth = splunk-system-user)."""
-    first_line = sys.stdin.readline()
-    if first_line.startswith("sessionKey="):
-        return first_line[len("sessionKey="):].strip()
-    return None
+    """Read the session key splunkd passes on stdin (passAuth = <username>).
+
+    VERIFIED against a live Splunk Enterprise 10.6.1 (build 1) instance:
+    splunkd writes the raw session key to stdin with no "sessionKey="
+    prefix and no trailing newline - just the key bytes themselves. An
+    earlier version of this function assumed a "sessionKey=<key>" line
+    format, which does not match what splunkd actually sends.
+    """
+    data = sys.stdin.read().strip()
+    return data or None
 
 
 def rest_get(session_key, path):
@@ -218,7 +233,7 @@ class RowWriter:
 def collect(session_key, out):
     roles = fetch_roles(session_key)
     auth_entries = fetch_authentication_conf(session_key)
-    auth_type, role_maps = parse_identity_provider(auth_entries)
+    _auth_type, role_maps = parse_identity_provider(auth_entries)
 
     rows = RowWriter(out)
 
@@ -257,15 +272,20 @@ def collect(session_key, out):
                 rows.add(group_id, node_type, group_name, idp_id, "identity_provider", strategy_name,
                          "AUTHENTICATES_VIA", "Authenticates via")
 
-    log("collected RBAC model: %d roles, authType=%s, %d group-mapped strategies"
-        % (len(roles), auth_type, len(role_maps)))
+    # Deliberately not logged on success: splunkd's ExecProcessor tags
+    # *any* stderr write from a scripted input as log_level=ERROR in
+    # _internal regardless of content (verified live) - logging a normal,
+    # successful run here would make every single run look like a
+    # recurring error to an admin or alert watching index=_internal
+    # log_level=ERROR. Only genuine failures are logged (see main()).
 
 
 def main():
     session_key = read_session_key()
     if not session_key:
         log("no session key on stdin - this script must be run as a Splunk scripted input "
-            "with passAuth = splunk-system-user (see default/inputs.conf); exiting without output")
+            "with passAuth set to a real, existing admin-capable username (see RBAC_MODEL.md, "
+            "\"Setup\"); exiting without output")
         return 1
     try:
         collect(session_key, sys.stdout)

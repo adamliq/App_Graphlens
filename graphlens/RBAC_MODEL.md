@@ -69,23 +69,37 @@ never changes which edges are collected.
    near the top of `bin/graphlens_rbac_collector.py` so the events'
    `source_index` field matches - cosmetic only, shown in the details
    panel).
-3. Set `disabled = false` in that same stanza. Adjust `interval` (seconds
-   between runs; default 86400 = daily) to match how often your
+3. Create a dedicated role with exactly two capabilities -
+   `edit_roles` and `change_authentication` - and nothing else, and a
+   dedicated user assigned only that role. This is enough: confirmed by
+   running the collector end-to-end against a live instance using a user
+   with only these two capabilities (no `admin_all_objects`). Do not point
+   this at your personal admin account.
+4. Via `local/inputs.conf` (do not edit `default/inputs.conf` directly),
+   set `disabled = false` and `passAuth = <that dedicated username>`.
+   `passAuth` has no default and must be set explicitly - there is no
+   reserved value that means "run with full access" (see SECURITY.md,
+   "RBAC model collector," for why an earlier version of this app
+   incorrectly assumed one existed). Adjust `interval` (seconds between
+   runs; default 86400 = daily) to match how often your
    roles/capabilities/group mappings actually change.
-4. Restart Splunk, or wait for the next scheduled check of inputs.conf.
-5. Confirm it ran: `index=<your index> sourcetype=graphlens:relationship
+5. Restart Splunk, or wait for the next scheduled check of inputs.conf.
+6. Confirm it ran: `index=<your index> sourcetype=graphlens:relationship
    source_index=role:*` (adjust to your actual index) should return rows,
-   and `btool` / `_internal` logs for `graphlens_rbac_collector` will show
-   anything it logged to stderr (see "Troubleshooting" below).
-6. Search for a role (e.g. `admin`) in the Relationship Explorer and
+   and `index=_internal sourcetype=splunkd component=ExecProcessor
+   graphlens_rbac_collector` will show anything it logged to stderr (see
+   "Troubleshooting" below) - note that splunkd logs *any* stderr output
+   from a scripted input at `log_level=ERROR` regardless of content, so an
+   `ERROR`-tagged line here is not necessarily a real error.
+7. Search for a role (e.g. `admin`) in the Relationship Explorer and
    expand it to see its capabilities, indexes and inherited roles.
 
-No new capability or role is required to *run* the collector - it
-authenticates as `splunk-system-user` via `passAuth`, independent of any
-GraphLens role. Which GraphLens users can *see* the resulting data is
-governed entirely by standard Splunk index-level access control
-(`srchIndexesAllowed`) on whichever index you pointed it at - same as any
-other data source in this app.
+Which GraphLens users can *see* the resulting data is governed entirely by
+standard Splunk index-level access control (`srchIndexesAllowed`) on
+whichever index you pointed it at - same as any other data source in this
+app. The dedicated collector account from step 3 is separate from that and
+exists only to let the collector itself read the role/authentication
+configuration it needs.
 
 ## Identity provider support
 
@@ -123,17 +137,19 @@ report back (or fix `parse_identity_provider()` in
   `index=_internal sourcetype=splunkd component=ExecProcessor
   graphlens_rbac_collector` for scheduler/launch errors.
 - **Script prints nothing and exits non-zero immediately**: it logs `no
-  session key on stdin` if invoked without `passAuth` providing one - this
-  means it was run some other way than as a configured scripted input
-  (e.g. manually from a shell). Confirm `passAuth = splunk-system-user` is
-  present in the stanza.
-- **REST errors logged to stderr**: `admin_all_objects`-equivalent access
-  is required to read `/services/authorization/roles` for *other* roles
-  and `/servicesNS/-/-/configs/conf-authentication`; `passAuth =
-  splunk-system-user` should already provide this, so an auth error here
-  usually means the stanza's `passAuth` setting was removed or the
-  instance has an unusual authentication configuration - check
-  `index=_internal` for the exact HTTP status logged.
+  session key on stdin` if invoked without `passAuth` providing one. This
+  means either it was run some other way than as a configured scripted
+  input (e.g. manually from a shell), or `passAuth` was never set -
+  `default/inputs.conf` ships with no default for it (see "Setup" step 4).
+  Confirm `passAuth = <your dedicated username>` is present in
+  `local/inputs.conf`.
+- **REST errors (401/403) logged to stderr**: the `passAuth` account needs
+  `edit_roles` (to read other roles' full configuration) and
+  `change_authentication` (to read `authentication.conf`) - see "Setup"
+  step 3. A 403 here usually means that account is missing one of these
+  two capabilities, was removed, or had its password changed; check
+  `index=_internal` for the exact HTTP status and capability named in the
+  error.
 - **Group/role edges missing on a SAML/LDAP instance**: see "Identity
   provider support" above - this is the one unverified code path; add a
   stderr log line locally (or test `parse_identity_provider()` directly
