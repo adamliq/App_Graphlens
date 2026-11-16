@@ -62,6 +62,16 @@ export function buildExpandNodeSpl(nodeId, expansionLimit) {
     `search \`graphlens_relationship_index\` (source_id="${nodeId}" OR target_id="${nodeId}")`,
     `| where match("${nodeId}", \`graphlens_id_pattern\`)`,
     '| `graphlens_edge_fields`',
+    // evidence_reference is optional (DATA_MODEL.md) - a data source that
+    // never sets it (e.g. the RBAC model collector) leaves it not merely
+    // empty but entirely ABSENT from these indexed events, because
+    // INDEXED_EXTRACTIONS=csv never creates a field for an empty CSV
+    // cell. `stats ... by` over a field that is absent from every
+    // matching event returns zero rows, not rows grouped under an empty
+    // value - confirmed against a live instance, this silently broke
+    // every expand of an evidence-less node before this fillnull was
+    // added. See CHANGELOG.md.
+    '| fillnull value="" evidence_reference',
     '| stats sum(event_count) as event_count min(first_seen) as first_seen max(last_seen) as last_seen max(risk_score) as risk_score by edge_id source_id source_type source_label target_id target_type target_label relationship_type relationship_label source_index source_sourcetype evidence_reference',
     '| sort 0 - risk_score - event_count',
     `| head ${limit}`,
@@ -88,6 +98,10 @@ export function buildEdgeDetailsSpl(edgeId) {
     `search \`graphlens_relationship_index\` edge_id="${edgeId}"`,
     `| where match("${edgeId}", \`graphlens_id_pattern\`)`,
     '| `graphlens_edge_fields`',
+    // See the matching comment in buildExpandNodeSpl above - evidence_reference
+    // can be entirely absent (not just empty) from indexed events, which
+    // makes `stats ... by` over it return zero rows unless fillnull'd first.
+    '| fillnull value="" evidence_reference',
     '| stats sum(event_count) as event_count min(first_seen) as first_seen max(last_seen) as last_seen max(risk_score) as risk_score by edge_id source_id source_type source_label target_id target_type target_label relationship_type relationship_label source_index source_sourcetype evidence_reference',
     '| head 1',
   ].join('\n');
