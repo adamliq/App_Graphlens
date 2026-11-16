@@ -18,7 +18,7 @@ Python test file, run separately since it isn't JS:
 python3 tests/python/test_rbac_collector.py -v
 ```
 
-18 tests, all passing. This Python script's Splunk-REST-calling code path
+23 tests, all passing. This Python script's Splunk-REST-calling code path
 is not covered by this test (there is nothing meaningful to mock - see the
 file's own docstring) and was instead exercised directly against a live
 Splunk Enterprise 10.6.1 (build 1) instance during development, the same

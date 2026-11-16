@@ -2,6 +2,51 @@
 
 All notable changes to GraphLens are documented in this file.
 
+## [1.1.1] - 2026-11-16
+
+Fixes found by actually installing 1.1.0 into a live Splunk Enterprise
+10.6.1 (build 1) Docker container and enabling the RBAC model collector
+as a real scripted input - not just unit tests or a simulated stdin feed
+(see DEVELOPMENT.md). Two real bugs would have made the collector
+silently produce no data on every real installation; both are fixed here,
+and the live check also led to a more precise, least-privilege setup
+recommendation.
+
+### Fixed
+
+- **`passAuth = splunk-system-user` is not a real account.** 1.1.0
+  shipped this as the collector's authentication mechanism, assuming it
+  was a universal reserved value. It is not - Splunk's own
+  `inputs.conf.spec` says `passAuth` names a real, existing user account,
+  and no such account exists on a default install. The scripted input ran
+  (confirmed in `_internal`) but every single invocation failed with "no
+  session key on stdin." Fixed by removing the default entirely - there is
+  no safe universal value - and requiring an administrator to set
+  `passAuth` explicitly via `local/inputs.conf` when enabling the input
+  (see RBAC_MODEL.md, "Setup").
+- **Session key stdin format was wrong.** `read_session_key()` assumed
+  splunkd writes `sessionKey=<key>` as a line to the script's stdin. A
+  live probe of the actual bytes splunkd sends showed this is wrong too -
+  it is the raw session key with no prefix and no trailing newline. Fixed
+  to read stdin directly.
+- **Successful runs were indistinguishable from errors in `_internal`.**
+  The collector logged a "collected RBAC model: ..." summary to stderr on
+  every successful run; splunkd's `ExecProcessor` tags *any* stderr output
+  from a scripted input as `log_level=ERROR`, regardless of content, so
+  every normal, successful daily run looked like a recurring error to
+  anyone watching `index=_internal log_level=ERROR`. Fixed by only logging
+  genuine failures.
+
+### Changed
+
+- **More precise, least-privilege `passAuth` guidance.** 1.1.0's
+  documentation said the collector needs "admin-equivalent" access.
+  Tested against a live instance: a dedicated account holding only
+  `edit_roles` and `change_authentication` - not `admin_all_objects` - is
+  sufficient for the collector to run end-to-end. RBAC_MODEL.md and
+  SECURITY.md now recommend creating exactly that dedicated role/account
+  instead of pointing `passAuth` at an actual administrator's own login.
+
 ## [1.1.0] - 2026-11-08
 
 ### Added

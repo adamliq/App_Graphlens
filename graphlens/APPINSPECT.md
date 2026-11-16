@@ -257,10 +257,12 @@ AppInspect's automated checks cannot verify:
   group-to-role mappings - AppInspect has no way to check this, and
   neither does this app's own test environment (no SAML/LDAP provider
   configured). See RBAC_MODEL.md, "Identity provider support," and
-  KNOWN_LIMITATIONS.md. The elevated-privilege (`passAuth =
-  splunk-system-user`) design of that collector is a manual security
-  review item in its own right - see SECURITY.md, "RBAC model collector,"
-  for the tradeoffs and why it was accepted.
+  KNOWN_LIMITATIONS.md. That collector's `passAuth` design - a dedicated
+  account holding only `edit_roles` and `change_authentication` - is a
+  manual security review item in its own right; see SECURITY.md, "RBAC
+  model collector," for the tradeoffs, and for why an earlier version of
+  this app incorrectly assumed `passAuth = splunk-system-user` was a
+  universal reserved value (it is not).
 
 ## Cloud-vetting readiness statement
 

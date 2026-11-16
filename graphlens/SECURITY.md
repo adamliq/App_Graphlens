@@ -162,13 +162,30 @@ called out here for that reason:
 - **It is the app's only server-side code.** Everything else in GraphLens
   is static frontend assets plus Splunk-native configuration; this is a
   Python scripted input that runs on the Splunk server itself.
-- **It runs with elevated privilege, not the requesting user's session.**
-  It authenticates via `passAuth = splunk-system-user`, which gives it a
-  session key with full administrative read access for the duration of
-  each run - not scoped to any particular GraphLens user or role. This is
-  necessary because enumerating *all* roles' capabilities and index access
-  (not just the running user's own role) is inherently an admin-level
-  operation in Splunk; there is no lesser capability that grants it.
+- **It runs as a specific named account, not the requesting user's
+  session, and that account needs real capability - there is no reserved
+  "run as system" value.** `passAuth` (Splunk's own mechanism for giving a
+  scripted input a session key) always names a real, existing user
+  account; splunkd generates that user's session key and writes it to the
+  script's stdin on every invocation. An earlier version of this app
+  assumed `passAuth = splunk-system-user` worked as a universal
+  reserved literal - **verified wrong against a live instance**: no such
+  account exists on a default install, and the input silently produced no
+  data. There is no default value in `default/inputs.conf` for this
+  reason; an administrator must set `passAuth` to a real account when
+  enabling it (see RBAC_MODEL.md, "Setup").
+- **That account needs more than the requesting GraphLens user's own
+  role could ever grant, but less than full admin.** Enumerating *all*
+  roles' capabilities (not just your own role's) requires `edit_roles`;
+  reading `authentication.conf` (for SAML/LDAP group mappings) requires
+  `change_authentication`. Both were confirmed by testing against a live
+  instance with a dedicated role holding only those two capabilities (no
+  `admin_all_objects`) - the collector ran successfully end-to-end. Create
+  a dedicated role/user with exactly `edit_roles` and
+  `change_authentication` and nothing else, rather than pointing
+  `passAuth` at your actual admin account - this is meaningfully less
+  exposure than "admin-equivalent" if that account's session key were ever
+  somehow captured.
 - **The data it produces is itself sensitive.** A full role -> capability
   -> index map, plus which SAML/LDAP groups grant which roles, is
   effectively a blueprint of this instance's privilege structure and
