@@ -44,15 +44,19 @@ five.
 
 ## Quick start
 
+A pre-built `.spl` for the current version is committed at
+[`../releases/`](../releases/) - download it directly if you don't need
+to build from source. To build it yourself instead:
+
 ```
 npm install
 npm run build
-npm run package        # produces dist/graphlens-1.0.0.tar.gz
+npm run package        # produces dist/graphlens-<version>.tar.gz
 ```
 
-Install the resulting archive into Splunk, create the
-`graphlens_relationships` index, optionally load the bundled sample data,
-and assign roles. Full steps: [INSTALL.md](INSTALL.md).
+Install the resulting archive (or the one from `releases/`) into Splunk,
+create the `graphlens_relationships` index, optionally load the bundled
+sample data, and assign roles. Full steps: [INSTALL.md](INSTALL.md).
 
 ## Documentation index
 
