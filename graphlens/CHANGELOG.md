@@ -2,6 +2,38 @@
 
 All notable changes to GraphLens are documented in this file.
 
+## [1.1.2] - 2026-11-16
+
+Found by actually opening the Relationship Explorer against the live
+1.1.1 RBAC data (not just confirming it existed in the index, as 1.1.1's
+own verification did) - searching for a role and clicking Expand silently
+did nothing. The underlying expand search was dispatching and "succeeding"
+(confirmed in the audit log), but returning zero rows.
+
+### Fixed
+
+- **Expanding or viewing details on any node/edge with no
+  `evidence_reference` returned zero results**, not just for the RBAC
+  model collector's own data but for any current or future data source
+  that leaves this optional field unset. Root cause: `evidence_reference`
+  with an empty-string value is not merely empty in an indexed CSV event
+  (`INDEXED_EXTRACTIONS = csv`) - the field does not exist on the event at
+  all, because Splunk's CSV field extraction never creates a field for an
+  empty cell. `stats ... by` grouping on a field that is entirely absent
+  from every matching event returns zero result rows (confirmed against a
+  live instance), not rows grouped under an empty value. This was latent
+  in `buildExpandNodeSpl`/`buildEdgeDetailsSpl`
+  (`shared/services/splTemplates.js`) since 1.0.1 - it never fired before
+  because the only prior data producer (`scripts/generate_sample_data.py`)
+  always populated `evidence_reference` with at least the edge's own id.
+  1.1.0's RBAC model collector was the first real data source to leave it
+  genuinely unset (correctly, since RBAC edges have no underlying raw
+  event to drill into), which is what exposed the bug. Fixed by adding
+  `| fillnull value="" evidence_reference` immediately before the `stats`
+  in both templates, so the field always exists for grouping purposes
+  regardless of what any data source does or doesn't set. Two regression
+  tests pin the fillnull's presence and ordering.
+
 ## [1.1.1] - 2026-11-16
 
 Fixes found by actually installing 1.1.0 into a live Splunk Enterprise

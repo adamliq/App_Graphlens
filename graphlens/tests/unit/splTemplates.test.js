@@ -49,6 +49,29 @@ describe('splTemplates - identifier validation', () => {
   });
 });
 
+describe('splTemplates - evidence_reference is fillnull-ed before grouping by it', () => {
+  // evidence_reference is optional (DATA_MODEL.md). A data source that
+  // never sets it (e.g. the RBAC model collector, see CHANGELOG.md) omits
+  // it entirely from indexed events, not just leaves it empty -
+  // INDEXED_EXTRACTIONS=csv creates no field at all for an empty CSV
+  // cell. `stats ... by` grouping on a field absent from every matching
+  // event returns zero result rows, confirmed against a live instance -
+  // this silently broke expand/edge-details for any evidence-less node
+  // until a `fillnull` was added ahead of the stats in both templates.
+  // These tests pin that the fillnull stays present and stays ordered
+  // before the stats that groups by evidence_reference.
+  test.each([
+    ['buildExpandNodeSpl', buildExpandNodeSpl('user:jsmith', 50)],
+    ['buildEdgeDetailsSpl', buildEdgeDetailsSpl('edge:abc123')],
+  ])('%s fillnulls evidence_reference before the stats that groups by it', (_name, spl) => {
+    const fillnullIndex = spl.indexOf('fillnull value="" evidence_reference');
+    const statsIndex = spl.indexOf('stats sum(event_count)');
+    expect(fillnullIndex).toBeGreaterThan(-1);
+    expect(statsIndex).toBeGreaterThan(-1);
+    expect(fillnullIndex).toBeLessThan(statsIndex);
+  });
+});
+
 describe('splTemplates - limits are always bare, validated numbers', () => {
   test('buildExpandNodeSpl clamps an out-of-range limit', () => {
     const spl = buildExpandNodeSpl('user:jsmith', 999999);
