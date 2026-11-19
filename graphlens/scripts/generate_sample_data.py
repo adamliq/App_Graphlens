@@ -162,6 +162,48 @@ add("user:jsmith", "user", "J Smith",
     "host:srv-app01.example.com", "host", "srv-app01.example.com",
     "OWNS", "Owns", 1, 20, "graphlens_relationships", "graphlens:relationship")
 
+# 6. RBAC model (roles, capabilities, index access, role inheritance, and
+# SAML/LDAP group-to-role mapping) - the same shape the RBAC model
+# collector (bin/graphlens_rbac_collector.py, see RBAC_MODEL.md) produces
+# from a live instance's own authorization/authentication configuration,
+# so the feature has something to look at without enabling that scripted
+# input. Builds on role:finance_admin_role from section 5 above - a SAML
+# group and an LDAP group both map to it, which is a realistic shape (a
+# role assigned both through a local Splunk group and through one or more
+# identity-provider group mappings).
+add("role:finance_admin_role", "role", "Finance Admin Role",
+    "index:finance_transactions", "index", "finance_transactions",
+    "CAN_SEARCH", "Can search", 1, 20, "graphlens_relationships", "graphlens:relationship")
+add("role:finance_admin_role", "role", "Finance Admin Role",
+    "role:analyst_role", "role", "Analyst Role",
+    "INHERITS_FROM", "Inherits from", 1, 20, "graphlens_relationships", "graphlens:relationship")
+add("role:analyst_role", "role", "Analyst Role",
+    "privilege:view_reports", "privilege", "View Reports",
+    "GRANTS", "Grants", 1, 20, "graphlens_relationships", "graphlens:relationship")
+add("role:analyst_role", "role", "Analyst Role",
+    "index:finance_reports", "index", "finance_reports",
+    "CAN_SEARCH", "Can search", 1, 20, "graphlens_relationships", "graphlens:relationship")
+# SAML group -> role, via the identity provider already introduced in
+# section 4 (identity_provider:corp_sso).
+add("saml_group:finance-admins-sso", "saml_group", "finance-admins-sso",
+    "role:finance_admin_role", "role", "Finance Admin Role",
+    "HAS_ROLE", "Has role", 1, 40, "graphlens_relationships", "graphlens:relationship")
+add("saml_group:finance-admins-sso", "saml_group", "finance-admins-sso",
+    "identity_provider:corp_sso", "identity_provider", "Corporate SSO",
+    "AUTHENTICATES_VIA", "Authenticates via", 1, 15, "graphlens_relationships", "graphlens:relationship")
+# LDAP group -> role, via a separate corporate LDAP provider. node_label
+# shows a realistic DN-shaped display name; node_id stays within
+# ID_PATTERN (the RBAC model collector's own safe_id() sanitiser - see
+# RBAC_MODEL.md - is what turns a raw DN into an id like this one for
+# real collected data; this hand-authored sample picks an already-safe id
+# directly rather than reimplementing that sanitiser here).
+add("ldap_group:cn-finance-ops-ou-groups", "ldap_group", "cn=finance-ops,ou=groups,dc=example,dc=com",
+    "role:analyst_role", "role", "Analyst Role",
+    "HAS_ROLE", "Has role", 1, 40, "graphlens_relationships", "graphlens:relationship")
+add("ldap_group:cn-finance-ops-ou-groups", "ldap_group", "cn=finance-ops,ou=groups,dc=example,dc=com",
+    "identity_provider:corp_ldap", "identity_provider", "Corporate LDAP",
+    "AUTHENTICATES_VIA", "Authenticates via", 1, 15, "graphlens_relationships", "graphlens:relationship")
+
 # A second, unrelated user/host pair so the sample graph is not a single
 # connected component (exercises empty-state / search behaviour).
 add("user:bjones", "user", "B Jones",
