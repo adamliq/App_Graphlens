@@ -1,8 +1,9 @@
 .graphlens-app {
   display: grid;
-  grid-template-rows: auto 1fr auto;
+  grid-template-rows: auto auto 1fr auto;
   grid-template-columns: 260px 1fr 320px;
   grid-template-areas:
+    "pagenav pagenav pagenav"
     "toolbar toolbar toolbar"
     "filters canvas details"
     "evidence evidence evidence";
@@ -15,6 +16,12 @@
 
 .graphlens-app * {
   box-sizing: border-box;
+}
+
+.graphlens-pagenav {
+  grid-area: pagenav;
+  background: var(--graphlens-surface, #fff);
+  padding: 0 12px;
 }
 
 .graphlens-toolbar {

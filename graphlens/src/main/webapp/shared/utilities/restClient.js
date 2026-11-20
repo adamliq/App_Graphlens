@@ -44,6 +44,27 @@ export function getCurrentApp() {
 }
 
 /**
+ * Builds a same-origin URL to one of this app's other views
+ * ("graphlens_relationship_explorer", "graphlens_health",
+ * "graphlens_configuration"). GraphLens's three pages are registered as
+ * Splunk `type="html"` custom views, which Splunk serves through its
+ * "bypass module system" fast path (confirmed by reading
+ * appserver/mrsparkle/controllers/view.py in a live Splunk Enterprise
+ * 10.6.1 install) - unlike SimpleXML dashboards, that path never renders
+ * Splunk's own app-switcher/nav chrome around the page, by design, no
+ * matter what the view's own Mako template does. With no Splunk-provided
+ * way to move between this app's pages, GraphLens provides its own (see
+ * PageNav.jsx) - this is what builds the links it uses.
+ */
+export function getAppViewUrl(viewId) {
+  const config = typeof window !== 'undefined' ? window.$C : undefined;
+  const root = (config && config.MRSPARKLE_ROOT_PATH) || '';
+  const locale = (config && config.LOCALE) || 'en-US';
+  const app = getCurrentApp();
+  return `${root}/${locale}/app/${app}/${viewId}`.replace(/\/{2,}/g, '/');
+}
+
+/**
  * @param {string} path - path under splunkd, e.g. "/services/search/jobs".
  * @param {RequestInit} init
  * @param {{fetchImpl?: typeof fetch}} [deps]

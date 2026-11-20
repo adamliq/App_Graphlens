@@ -10,6 +10,7 @@ import { getSettings, updateSettingsStanza } from '../../shared/services/configS
 import { hasCapability, CAPABILITIES } from '../../shared/services/capabilityService';
 import { recordAuditEvent, AUDIT_ACTIONS } from '../../shared/services/auditService';
 import { toUserFacingError } from '../../shared/utilities/restClient';
+import PageNav from '../../shared/components/PageNav';
 
 export default function App() {
   const [settings, setSettings] = useState(null);
@@ -45,11 +46,17 @@ export default function App() {
   }, [reload]);
 
   if (!settings) {
-    return <div style={{ padding: 24 }}><WaitSpinner size="medium" /></div>;
+    return (
+      <div style={{ padding: 24 }}>
+        <PageNav activeTabId="graphlens_configuration" />
+        <WaitSpinner size="medium" />
+      </div>
+    );
   }
 
   return (
     <div style={{ padding: 24, maxWidth: 720 }}>
+      <PageNav activeTabId="graphlens_configuration" />
       <h1>GraphLens configuration</h1>
       {!canManage && (
         <div className="graphlens-error-banner" role="status">

@@ -5,8 +5,9 @@ import Button from '@splunk/react-ui/Button';
 import { dispatchSavedSearch, toUserFacingError } from '../../shared/services/searchService';
 import { getSettings } from '../../shared/services/configService';
 import { hasCapability, CAPABILITIES } from '../../shared/services/capabilityService';
+import PageNav from '../../shared/components/PageNav';
 
-const APP_VERSION = '1.1.2';
+const APP_VERSION = '1.1.4';
 
 export default function App() {
   const [canView, setCanView] = useState(null);
@@ -46,6 +47,7 @@ export default function App() {
   if (canView === false) {
     return (
       <div style={{ padding: 24 }}>
+        <PageNav activeTabId="graphlens_health" />
         <h1>GraphLens health</h1>
         <p>You do not hold the graphlens_view_health capability required to view this page.</p>
       </div>
@@ -54,6 +56,7 @@ export default function App() {
 
   return (
     <div style={{ padding: 24 }}>
+      <PageNav activeTabId="graphlens_health" />
       <h1>GraphLens health</h1>
       <dl style={{ fontSize: 13 }}>
         <dt>Application version</dt>

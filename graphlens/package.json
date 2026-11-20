@@ -1,6 +1,6 @@
 {
   "name": "graphlens",
-  "version": "1.1.2",
+  "version": "1.1.4",
   "description": "GraphLens - interactive relationship graph exploration for Splunk. Independent third-party application; does not require Neo4j.",
   "private": true,
   "license": "SEE LICENSE IN LICENSE",
@@ -22,6 +22,7 @@
   },
   "dependencies": {
     "@splunk/react-ui": "5.12.0",
+    "@splunk/themes": "1.9.0",
     "cytoscape": "3.34.0",
     "prop-types": "15.8.1",
     "react": "18.2.0",
