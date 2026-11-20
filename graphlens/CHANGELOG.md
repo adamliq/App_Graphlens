@@ -2,6 +2,39 @@
 
 All notable changes to GraphLens are documented in this file.
 
+## [1.1.3] - 2026-11-20
+
+Found by checking what a user actually sees above GraphLens's own
+content: there is no Splunk Web chrome (no app switcher, no header, no
+nav) around any of the three pages, and - because GraphLens had no
+navigation of its own either - no way to move between Relationship
+Explorer, Health and Configuration at all once you had landed on one of
+them, other than editing the URL by hand. This has been true since 1.0.0.
+
+### Root cause (not a regression, a platform characteristic)
+
+Confirmed by reading Splunk's own
+`appserver/mrsparkle/controllers/view.py` on a live Splunk Enterprise
+10.6.1 (build 1) instance: a `type="html"` custom view (what all three of
+GraphLens's views are, in `default/data/ui/views/*.xml`) is
+*unconditionally* served through `bypass_module_system()`'s fast path,
+which never renders Splunk's own app-switcher/nav chrome around the page
+- regardless of what the view's own Mako template inherits from. Changing
+the templates to inherit from `//layout/view.html` instead of
+`//layout/base.html` would not fix this; it would break rendering outright,
+since that template requires `VIEW`/`APP`/`modules` context the fast path
+never supplies. There is no way to get Splunk's own chrome for a
+`type="html"` view; see KNOWN_LIMITATIONS.md.
+
+### Added
+
+- GraphLens now provides its own in-app navigation
+  (`shared/components/PageNav.jsx`, a `@splunk/react-ui` `TabBar`) at the
+  top of all three pages, linking to the other two. `getAppViewUrl()`
+  (`shared/utilities/restClient.js`) builds each link from `window.$C`
+  (Splunk's own injected runtime config), the same pattern already used
+  for `getSplunkdPath()`.
+
 ## [1.1.2] - 2026-11-16
 
 Found by actually opening the Relationship Explorer against the live

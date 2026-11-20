@@ -18,6 +18,27 @@
   for why this document deliberately does not guess at that replacement
   mechanism, and what to check before the next release.
 
+## No Splunk Web chrome around `type="html"` views
+
+GraphLens's three pages render with no Splunk Web app-switcher/nav chrome
+around them at all - confirmed as a Splunk platform characteristic, not a
+GraphLens defect, by reading `appserver/mrsparkle/controllers/view.py` on
+a live Splunk Enterprise 10.6.1 (build 1) instance: a `type="html"`
+custom view (what `default/data/ui/views/*.xml` declares all three of
+GraphLens's views as) is unconditionally routed through
+`bypass_module_system()`'s fast path, which never builds the `VIEW`/
+`modules` structure Splunk's own chrome-rendering template
+(`//layout/view.html`) needs - this is true no matter what the view's own
+Mako template inherits from, and there is no setting that changes it.
+
+Since 1.1.3, GraphLens provides its own in-app navigation
+(`shared/components/PageNav.jsx`) to work around the resulting "no way to
+reach the other two pages" problem - see CHANGELOG.md. What this does not
+restore: the standard Splunk header (Activity/Settings/username menu, app
+switcher). There is no in-app substitute for those; use your browser
+back/forward or Splunk's own app list (`/en-US/app/launcher/home`, or your
+instance's configured home) to switch away from GraphLens entirely.
+
 ## Security / access control
 
 - **The RBAC model collector's SAML/LDAP group mapping is unverified

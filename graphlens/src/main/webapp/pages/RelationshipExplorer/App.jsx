@@ -26,8 +26,9 @@ import PathFinderPanel from './components/PathFinderPanel';
 import ExportDialog from './components/ExportDialog';
 import ErrorNotification from './components/ErrorNotification';
 import EmptyState from './components/EmptyState';
+import PageNav from '../../shared/components/PageNav';
 
-const APP_VERSION = '1.1.2';
+const APP_VERSION = '1.1.3';
 
 function downloadBlob(blob, filename) {
   const url = URL.createObjectURL(blob);
@@ -257,6 +258,10 @@ export default function App() {
 
   return (
     <div className="graphlens-app">
+      <div className="graphlens-pagenav">
+        <PageNav activeTabId="graphlens_relationship_explorer" />
+      </div>
+
       <GraphToolbar
         isSearching={isSearching}
         searchResults={searchResults}

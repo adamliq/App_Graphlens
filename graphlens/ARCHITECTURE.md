@@ -180,6 +180,8 @@ graphlens/
 │   │   │                     evidenceQueryBuilder, typeConfigService
 │   │   ├── hooks/             useGraphState
 │   │   ├── models/            graphModel (state shape, constants)
+│   │   ├── components/        PageNav (in-app nav - see KNOWN_LIMITATIONS.md,
+│   │   │                     "No Splunk Web chrome around type=html views")
 │   │   └── utilities/         splSafety, restClient
 │   └── pages/
 │       ├── RelationshipExplorer/   Main graph explorer page
