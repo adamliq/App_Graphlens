@@ -2,6 +2,48 @@
 
 All notable changes to GraphLens are documented in this file.
 
+## [1.1.4] - 2026-11-20
+
+Fixes a genuine readability bug flagged directly: the toolbar (search box,
+time range, layout, "Recalculate layout"/"Fit to screen"/"Centre
+selected"/"Export" buttons) was very hard to read - all of those controls
+rendered with near-white text (`rgb(250, 250, 250)`) and a faint
+semi-transparent white border on GraphLens's own white page background.
+
+### Root cause
+
+GraphLens never wrapped its React tree in `@splunk/themes`'
+`SplunkThemeProvider`. Confirmed directly from that package's own type
+declarations: "`SplunkThemeProvider` defaults to `prisma` `dark`
+`compact`, unless the properties have already been set" - so every
+`@splunk/react-ui` component was rendering against that library's dark
+theme defaults while sitting on GraphLens's hardcoded light/white CSS.
+Verified by reading the actual theme tokens (`@splunk/themes/getTheme`):
+the faint white border was `interactiveColorBorder`'s dark-theme value,
+not a bug in any individual component.
+
+### Fixed
+
+- All three pages now wrap their root component in
+  `<SplunkThemeProvider family="enterprise" colorScheme="light"
+  density="comfortable">`, matching the classic Splunk Enterprise light
+  theme GraphLens's own CSS already assumes. `@splunk/themes` is now an
+  explicit direct dependency (it was previously only a transitive one
+  pulled in by `@splunk/react-ui`) - see THIRDPARTY.md.
+- Verified against a live instance, before/after: every previously
+  near-invisible toolbar control (`Last 24 hours`, `Layout`/`cose`,
+  `Recalculate layout`, `Fit to screen`, `Centre selected`, `Export`) now
+  renders with dark text (`#3c444d`) and a visible border (`#818d99`) on
+  white, matching the enterprise/light theme's actual design tokens. The
+  "Search" button's own pale-green appearance in an early check turned
+  out to be its correctly-styled *disabled* state (empty search box, not
+  a bug) - confirmed it renders solid `#1a8929` with white text, good
+  contrast, once a search term is typed.
+
+Version bumped to 1.1.4. Full npm test (254 tests) and lint (0
+warnings) pass; AppInspect re-run clean (0 errors/failures, 7 warnings,
+same as 1.1.3).
+
 ## [1.1.3] - 2026-11-20
 
 Found by checking what a user actually sees above GraphLens's own

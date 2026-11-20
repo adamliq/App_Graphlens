@@ -18,12 +18,13 @@ updates").
 | react | 18.2.0 | MIT | UI framework |
 | react-dom | 18.2.0 | MIT | React DOM renderer |
 | @splunk/react-ui | 5.12.0 | Apache-2.0 | Splunk UI Toolkit components (buttons, inputs, modals, selects, notifications) |
+| @splunk/themes | 1.9.0 | Apache-2.0 | `SplunkThemeProvider` - supplies the enterprise/light theme context `@splunk/react-ui` components render against (see ARCHITECTURE.md; without it, components fall back to this library's own default theme, `prisma`/`dark`) |
 | styled-components | 5.3.11 | MIT | Peer dependency of @splunk/react-ui, used internally by its components |
 | cytoscape | 3.34.0 | MIT | Graph visualisation and layout engine |
 | prop-types | 15.8.1 | MIT | Runtime React prop validation |
 
 @splunk/react-ui also pulls in a small number of its own runtime
-dependencies (`@splunk/react-icons`, `@splunk/themes`, `@splunk/ui-utils`,
+dependencies (`@splunk/react-icons`, `@splunk/ui-utils`,
 `@dnd-kit/*`, `@react-spring/web`, `decimal.js-light`, `intl-tel-input`,
 `lodash`, `moment`, `react-markdown`, `remark-gfm`, `use-sync-external-store`,
 `use-typed-event-listener`), each under a permissive OSS licence (MIT or

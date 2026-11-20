@@ -1,4 +1,5 @@
 import React from 'react';
+import PropTypes from 'prop-types';
 import TabBar from '@splunk/react-ui/TabBar';
 
 import { getAppViewUrl } from '../utilities/restClient';
@@ -26,3 +27,7 @@ export default function PageNav({ activeTabId }) {
     </TabBar>
   );
 }
+
+PageNav.propTypes = {
+  activeTabId: PropTypes.string.isRequired,
+};
