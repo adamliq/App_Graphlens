@@ -5,6 +5,26 @@ import cytoscape from 'cytoscape';
 const DEFAULT_NODE_COLOR = '#5A2BE2';
 const DEFAULT_EDGE_COLOR = '#9B9B9B';
 
+/**
+ * Fixed meanings, independent of a node/edge's own type colour - also
+ * kept out of typeConfigService.js's FALLBACK_PALETTE so a type can never
+ * coincidentally look like one of these states. Risk lives on its own
+ * `overlay-*` channel (a halo, not the border) specifically so it stays
+ * visible regardless of pinned/selected/path-highlight state - confirmed
+ * live that the previous design (risk sharing `border-color` with
+ * pinned/selected) made the risk indicator disappear the moment a
+ * high-risk node was clicked or pinned, which is exactly when a risk cue
+ * matters most.
+ */
+const STATUS_COLORS = {
+  risk: '#d93f3f',
+  pinned: '#2b7de9',
+  selected: '#e97d2b',
+  pathHighlight: '#1f9e54',
+};
+
+const HIGH_RISK_THRESHOLD = 70;
+
 const STYLESHEET = [
   {
     selector: 'node',
@@ -20,21 +40,29 @@ const STYLESHEET = [
       'text-max-width': '90px',
       width: (ele) => 24 + Math.min(30, (ele.data('riskScore') || 0) / 3),
       height: (ele) => 24 + Math.min(30, (ele.data('riskScore') || 0) / 3),
-      'border-width': (ele) => ((ele.data('riskScore') || 0) >= 70 ? 3 : 1),
-      'border-color': (ele) => ((ele.data('riskScore') || 0) >= 70 ? '#d93f3f' : '#3a3a3a'),
+      'border-width': 1,
+      'border-color': '#3a3a3a',
+      'overlay-shape': 'ellipse',
+      'overlay-padding': 6,
+      'overlay-color': STATUS_COLORS.risk,
+      'overlay-opacity': (ele) => ((ele.data('riskScore') || 0) >= HIGH_RISK_THRESHOLD ? 0.35 : 0),
     },
   },
   {
     selector: 'node[?pinned]',
-    style: { 'border-style': 'double', 'border-width': 4, 'border-color': '#2b7de9' },
+    style: { 'border-style': 'double', 'border-width': 4, 'border-color': STATUS_COLORS.pinned },
   },
   {
     selector: 'node:selected',
-    style: { 'border-color': '#e97d2b', 'border-width': 4 },
+    style: { 'border-color': STATUS_COLORS.selected, 'border-width': 4 },
   },
   {
+    // Border/style only, never background-color - a highlighted path must
+    // never hide which type a node is (confirmed live: overwriting the
+    // fill made every path-highlighted node the same colour, losing the
+    // legend's type-colour meaning for exactly the nodes being inspected).
     selector: 'node.graphlens-path-highlight',
-    style: { 'background-color': '#e97d2b' },
+    style: { 'border-color': STATUS_COLORS.pathHighlight, 'border-width': 4, 'border-style': 'dashed' },
   },
   {
     selector: 'edge',
@@ -52,11 +80,11 @@ const STYLESHEET = [
   },
   {
     selector: 'edge:selected',
-    style: { 'line-color': '#e97d2b', 'target-arrow-color': '#e97d2b', width: 4 },
+    style: { 'line-color': STATUS_COLORS.selected, 'target-arrow-color': STATUS_COLORS.selected, width: 4 },
   },
   {
     selector: 'edge.graphlens-path-highlight',
-    style: { 'line-color': '#e97d2b', 'target-arrow-color': '#e97d2b', width: 4 },
+    style: { 'line-color': STATUS_COLORS.pathHighlight, 'target-arrow-color': STATUS_COLORS.pathHighlight, width: 4 },
   },
 ];
 
@@ -207,3 +235,4 @@ export function centerOnNode(cy, nodeId) {
 }
 
 export const CYTOSCAPE_LAYOUTS = Object.keys(LAYOUT_OPTIONS);
+export { STATUS_COLORS, HIGH_RISK_THRESHOLD };

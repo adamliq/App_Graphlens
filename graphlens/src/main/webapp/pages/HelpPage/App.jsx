@@ -1,7 +1,7 @@
 import React from 'react';
 import PageNav from '../../shared/components/PageNav';
 
-const APP_VERSION = '1.5.0';
+const APP_VERSION = '1.6.0';
 
 /**
  * Static, no-dependency reference page - unlike the other three pages,
@@ -67,7 +67,14 @@ export default function App() {
           The left-hand panel lets you hide specific node/relationship types
           (data stays loaded, only the display is filtered), set a minimum/
           maximum risk score and minimum event count, and shows a colour
-          legend for every type currently present in your graph. The toolbar&apos;s
+          legend for every type currently present in your graph - guaranteed
+          distinct for whatever types are on screen at once. An
+          <strong> Indicators</strong> section below it explains the
+          canvas&apos;s other colour cues, which are independent of type
+          colour and never hide each other: a red halo for risk score 70+
+          (stays visible regardless of selection/pin state), a blue double
+          border for pinned, an orange border for selected, and a dashed
+          green border for a node on a highlighted path. The toolbar&apos;s
           time range dropdown changes the window used by subsequent searches
           (it does not retroactively re-run past expansions).
         </p>

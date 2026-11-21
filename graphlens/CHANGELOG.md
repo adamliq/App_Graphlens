@@ -2,6 +2,67 @@
 
 All notable changes to GraphLens are documented in this file.
 
+## [1.6.0] - 2026-11-21
+
+### Fixed
+
+- **Uncurated node/relationship types never actually rendered with
+  per-type colours on the canvas at all** - every node/edge rendered the
+  single flat default colour (`#5A2BE2`/`#9B9B9B`) regardless of type,
+  confirmed live by sampling rendered pixel colours directly: four
+  different sample-data node types (user, alert, host, group) all came
+  back as the exact same `#5A2BE2`. Root cause: `graphTransformer.js` only
+  ever set a node/edge's `color` field from curated KV Store config
+  (`typeConfig.color`), never falling back to `colorForType()` the way the
+  legend/filter swatches already did - so an uncurated install's legend
+  promised per-type colours the canvas was not actually drawing. Fixed by
+  computing collision-resolved `{type: color}` maps in
+  `RelationshipExplorer/App.jsx` (from the same `deriveNodeTypeList`/
+  `deriveRelationshipTypeList` the legend uses) and applying them to every
+  node/edge passed to `GraphCanvas` - the legend and the canvas are now
+  guaranteed to agree, by construction.
+- **`colorForType()`'s 10-colour palette collided constantly** - computed
+  directly: `user`, `group`, `ip`, `AUTHENTICATED_TO` and `OWNS` all hashed
+  to the identical colour; `alert`, `host` and `MEMBER_OF` to another.
+  Expanded to a 19-colour palette (`typeConfigService.js`) and added
+  `resolveDistinctColors()`, a second deterministic pass
+  `deriveNodeTypeList`/`deriveRelationshipTypeList` now run over whatever
+  types are actually visible at once, reassigning any duplicate to the
+  next unused palette colour - the set on screen right now is guaranteed
+  collision-free up to 19 distinct types, not just unlikely to collide.
+- **Selecting or pinning a high-risk node silently hid its risk
+  indicator** - risk (red border, risk score ≥ 70), pinned (blue double
+  border) and selected (orange border) all fought over the single
+  `border-color` style property in `GraphCanvas.jsx`'s Cytoscape
+  stylesheet; whichever selector was declared later won outright,
+  confirmed live: pinning or selecting a risk-78 sample node made its red
+  border vanish completely. Fixed by moving risk onto Cytoscape's
+  independent `overlay-*` style channel (a halo around the node, core
+  Cytoscape.js functionality, not an extension) so it now stays visible
+  regardless of pinned/selected state - pin/select keep using
+  `border-color` as before, now uncontested.
+- **Path-highlighting overwrote a node's fill colour**, losing its
+  type-colour identity for exactly the nodes being inspected, and reused
+  the same orange as node selection (`node:selected`'s border), so a
+  selected node on a highlighted path showed an invisible border against
+  its own now-identically-orange fill. Fixed: path-highlight now uses its
+  own colour (`#1f9e54`, a green not used anywhere else) and a dashed
+  border/style only, never `background-color`.
+
+### Added
+
+- Legend gained an "Indicators" section explaining what the risk halo,
+  pinned border, selected border and path-highlight border mean - none of
+  this was documented anywhere in the UI before.
+- The four status colours are centralised as `STATUS_COLORS` in
+  `GraphCanvas.jsx` and deliberately excluded from
+  `typeConfigService.js`'s type-colour palette, so a type's own colour can
+  never coincidentally look like one of these states.
+
+Version bumped to 1.6.0 (multiple real bugs fixed, not a patch). Full npm
+test (300 tests, up from 291 - new `tests/unit/typeConfigService.test.js`)
+and lint (0 warnings) pass.
+
 ## [1.5.0] - 2026-11-21
 
 ### Added

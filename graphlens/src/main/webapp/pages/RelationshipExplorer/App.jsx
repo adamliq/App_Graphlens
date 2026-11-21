@@ -29,7 +29,7 @@ import ErrorNotification from './components/ErrorNotification';
 import EmptyState from './components/EmptyState';
 import PageNav from '../../shared/components/PageNav';
 
-const APP_VERSION = '1.5.0';
+const APP_VERSION = '1.6.0';
 
 function downloadBlob(blob, filename) {
   const url = URL.createObjectURL(blob);
@@ -99,6 +99,17 @@ export default function App() {
 
   const nodeTypeList = useMemo(() => deriveNodeTypeList(Object.values(state.visibleNodes), nodeTypeConfig), [state.visibleNodes, nodeTypeConfig]);
   const relationshipTypeList = useMemo(() => deriveRelationshipTypeList(Object.values(state.visibleEdges), relationshipTypeConfig), [state.visibleEdges, relationshipTypeConfig]);
+
+  // The legend/filter swatches above and the canvas itself must always
+  // agree on "what colour is this type" - confirmed live that they did
+  // not: with no curated KV Store config, every node rendered the single
+  // flat default colour on canvas regardless of type (graphTransformer
+  // only sets a node/edge's own `color` field from curated config, never
+  // from the colorForType fallback the legend already used), while the
+  // legend showed per-type colours it was never actually rendering. These
+  // maps are the single source of truth for both; see nodes/edges below.
+  const nodeColorByType = useMemo(() => Object.fromEntries(nodeTypeList.map((nt) => [nt.node_type, nt.color])), [nodeTypeList]);
+  const relationshipColorByType = useMemo(() => Object.fromEntries(relationshipTypeList.map((rt) => [rt.relationship_type, rt.color])), [relationshipTypeList]);
 
   const handleApiError = useCallback((err) => {
     const normalized = toUserFacingError(err);
@@ -356,8 +367,8 @@ export default function App() {
       <div className="graphlens-canvas-wrapper">
         {!hasGraph && <EmptyState />}
         <GraphCanvas
-          nodes={renderable.nodes.map((n) => ({ data: n }))}
-          edges={renderable.edges.map((e) => ({ data: e }))}
+          nodes={renderable.nodes.map((n) => ({ data: { ...n, color: nodeColorByType[n.type] || n.color } }))}
+          edges={renderable.edges.map((e) => ({ data: { ...e, color: relationshipColorByType[e.relationship] || e.color } }))}
           layoutName={state.currentLayout}
           layoutToken={layoutToken}
           pinnedNodeIds={state.pinnedNodeIds}
