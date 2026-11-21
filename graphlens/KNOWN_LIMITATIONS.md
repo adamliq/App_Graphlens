@@ -103,6 +103,42 @@ instance's configured home) to switch away from GraphLens entirely.
   edges exports are flat tables and do not round-trip the structure JSON
   does) or to merge an imported file into the graph already on screen.
   Import a file first, then expand further, if you want to combine them.
+- **The query language (`graphQueryLanguage.js`) supports a deliberately
+  small, fixed grammar** - one document, one root field always named
+  `node`, no fragments, variables, aliases or directives. Concretely:
+  - A root `node(...)` needs either a `search` or an `id` argument (an
+    optional `type` argument and `limit` further filter/bound the
+    result); `id` takes precedence if both are given.
+  - An **`id`-rooted query resolves the node via its own one-hop
+    expansion** (there is no standalone "fetch a node's own metadata"
+    search wired into the app - see `buildNodeDetailsSpl`'s comment in
+    `splTemplates.js`), so a node with zero relationships cannot be
+    resolved by `id`, even if it exists.
+  - A field with no nested selection set must be one of the fixed scalar
+    names (`id`, `label`, `type`, `group`, `description`, `riskScore`,
+    `eventCount`, `firstSeen`, `lastSeen`, `sourceIndex`,
+    `sourceSourcetype`); any other such field is a syntax/validation
+    error, not an alias for something else.
+  - A field with a nested selection set is a relationship traversal,
+    matched case-insensitively against `relationship_type` (or an
+    explicit `type` argument, letting the field itself be named anything);
+    it takes optional `direction` (`OUTGOING`/`INCOMING`/`BOTH`, default
+    `BOTH`) and `limit` arguments.
+  - Nesting depth is capped by `settings.max_expansion_depth` (the same
+    limit node-by-node expansion is implicitly bounded by elsewhere), and
+    total search dispatches by a hard `MAX_QUERY_EXPANSIONS` ceiling
+    (`graphQueryExecutor.js`) - a large or heavily-nested query can come
+    back truncated (`diagnostics.truncated`) rather than exhaustive.
+  - A relationship field that loops back to an ancestor node on its own
+    branch is included in the result but not recursed into further
+    (`cycleTruncated: true` in the returned tree) - this is cycle
+    *detection*, not cycle *traversal*; it will never return every path
+    through a cyclic graph.
+  - There is no way to filter nodes/edges by anything other than identity,
+    type and relationship traversal from this query panel - risk score,
+    event count and time-range filtering remain the separate Risk filter/
+    time range controls, applied to whatever the query loads onto the
+    canvas.
 
 ## Packaging / environment
 

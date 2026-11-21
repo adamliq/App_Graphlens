@@ -76,6 +76,12 @@ enable_saved_views = <true|false>
 enable_clustering = <true|false>
 enable_path_finder = <true|false>
 
+enable_graph_query = <true|false>
+* Enables the Relationship Explorer's text-based query panel (a
+  restricted, GraphQL-like syntax compiled client-side into the same
+  bounded SPL templates used elsewhere in the app - see SECURITY.md).
+* Default: true
+
 [allowlist]
 allowed_node_types = <comma-separated list, or empty>
 * When empty, allowed node types are governed entirely by the enabled flag

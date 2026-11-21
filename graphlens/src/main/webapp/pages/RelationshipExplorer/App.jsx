@@ -11,6 +11,8 @@ import { buildExportBlob } from '../../shared/services/exportService';
 import { parseImportedGraphJson } from '../../shared/services/importService';
 import { buildEvidenceTokensForEdge, buildEvidenceTokensForNode } from '../../shared/services/evidenceQueryBuilder';
 import { buildInitialEntitySearchSpl, buildExpandNodeSpl, buildEvidenceSpl } from '../../shared/services/splTemplates';
+import { parseGraphQuery } from '../../shared/services/graphQueryLanguage';
+import { executeGraphQuery } from '../../shared/services/graphQueryExecutor';
 import { sanitizeSearchTerm, isValidId, GraphLensValidationError } from '../../shared/utilities/splSafety';
 
 import GraphToolbar from './components/GraphToolbar';
@@ -24,12 +26,13 @@ import NodeDetailsPanel from './components/NodeDetailsPanel';
 import EdgeDetailsPanel from './components/EdgeDetailsPanel';
 import EvidencePanel from './components/EvidencePanel';
 import PathFinderPanel from './components/PathFinderPanel';
+import GraphQueryPanel from './components/GraphQueryPanel';
 import ExportDialog from './components/ExportDialog';
 import ErrorNotification from './components/ErrorNotification';
 import EmptyState from './components/EmptyState';
 import PageNav from '../../shared/components/PageNav';
 
-const APP_VERSION = '1.6.5';
+const APP_VERSION = '1.7.0';
 
 function downloadBlob(blob, filename) {
   const url = URL.createObjectURL(blob);
@@ -54,6 +57,7 @@ export default function App() {
   const [evidence, setEvidence] = useState({ isLoading: false, error: null, rows: [], fieldOrder: [], targetLabel: null });
   const [pathEndpoints, setPathEndpoints] = useState({ startNodeId: null, endNodeId: null });
   const [path, setPath] = useState(null);
+  const [queryState, setQueryState] = useState({ isRunning: false, error: null, result: null });
   const cyRef = useRef(null);
   const currentSearchRef = useRef(null);
   const importInputRef = useRef(null);
@@ -232,6 +236,7 @@ export default function App() {
     setPath(null);
     setPathEndpoints({ startNodeId: null, endNodeId: null });
     setEvidence({ isLoading: false, error: null, rows: [], fieldOrder: [], targetLabel: null });
+    setQueryState({ isRunning: false, error: null, result: null });
     setError(null);
     setLayoutToken((t) => t + 1);
   }, [actions]);
@@ -291,6 +296,46 @@ export default function App() {
     };
     reader.readAsText(file);
   }, [settings, actions, nodeTypeConfig, relationshipTypeConfig]);
+
+  const handleRunGraphQuery = useCallback(async (queryText) => {
+    if (!settings) return;
+    setQueryState({ isRunning: true, error: null, result: null });
+    try {
+      const ast = parseGraphQuery(queryText);
+      // The executor never builds its own SPL text - it only dispatches the
+      // same two pre-reviewed templates handleSearch/handleExpandNode above
+      // already use, through this same dispatchAdHocSearch call shape.
+      const dispatch = async (spl) => {
+        const job = dispatchAdHocSearch(
+          spl,
+          { earliest: timeRange.earliest, latest: timeRange.latest, maxWaitMs: settings.searchDispatchMaxTimeSeconds * 1000 },
+        );
+        return job.waitForResults({ count: settings.maxSearchResultRows });
+      };
+      const result = await executeGraphQuery(ast, { settings, nodeTypeConfig, relationshipTypeConfig, dispatch });
+      setQueryState({ isRunning: false, error: null, result });
+      recordAuditEvent(AUDIT_ACTIONS.RUN_GRAPH_QUERY, { detail: `${result.nodes.length} nodes, ${result.edges.length} edges${result.diagnostics.truncated ? ' (truncated)' : ''}` });
+    } catch (err) {
+      // A GraphLensValidationError (a syntax error, or a rejected depth/
+      // argument) carries a specific, user-actionable message - unlike
+      // toUserFacingError's generic fallback for unrecognised error types,
+      // which would otherwise mask exactly the detail someone fixing their
+      // query needs. Mirrors handleImportFile's same distinction above.
+      const message = err instanceof GraphLensValidationError ? err.message : toUserFacingError(err).message;
+      setQueryState({ isRunning: false, error: { message }, result: null });
+      recordAuditEvent(AUDIT_ACTIONS.RUN_GRAPH_QUERY, { outcome: 'failure', detail: String((err && err.code) || (err && err.name) || 'error') });
+    }
+  }, [settings, nodeTypeConfig, relationshipTypeConfig, timeRange.earliest, timeRange.latest]);
+
+  const handleLoadQueryResultOntoCanvas = useCallback(() => {
+    if (!settings || !queryState.result) return;
+    actions.loadSnapshot({ nodes: queryState.result.nodes, edges: queryState.result.edges }, settings);
+    setSearchResults([]);
+    setPath(null);
+    setPathEndpoints({ startNodeId: null, endNodeId: null });
+    setEvidence({ isLoading: false, error: null, rows: [], fieldOrder: [], targetLabel: null });
+    setLayoutToken((t) => t + 1);
+  }, [settings, queryState.result, actions]);
 
   const handleTimeRangeChange = useCallback((preset) => {
     actions.setActiveFilters({ timeEarliest: preset.earliest, timeLatest: preset.latest });
@@ -360,6 +405,15 @@ export default function App() {
             onFindPath={handleFindPath}
             onClearPath={handleClearPath}
             path={path}
+          />
+        )}
+        {settings.enableGraphQuery && (
+          <GraphQueryPanel
+            isRunning={queryState.isRunning}
+            error={queryState.error}
+            result={queryState.result}
+            onRunQuery={handleRunGraphQuery}
+            onLoadOntoCanvas={handleLoadQueryResultOntoCanvas}
           />
         )}
       </div>

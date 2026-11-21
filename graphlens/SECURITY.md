@@ -78,6 +78,43 @@ Nothing in GraphLens ever concatenates untrusted input directly into an
 SPL string outside of these validated/escaped token substitutions, and no
 component accepts arbitrary user-supplied SPL.
 
+## The query language introduces no new SPL injection surface
+
+The Relationship Explorer's text query panel
+(`graphQueryLanguage.js`/`graphQueryExecutor.js`, see ARCHITECTURE.md) is a
+GraphQL-like syntax a user can type free text into, which makes it worth
+stating explicitly: **nothing in it ever builds a new SPL string from
+query input.** The executor resolves every query exclusively through the
+same two templates and the same validated argument pipeline described
+above:
+
+- A query's `search` argument is passed through `sanitizeSearchTerm` and
+  `buildInitialEntitySearchSpl` - the identical function and validation
+  the entity search box itself calls.
+- A query's `id` argument is passed through `isValidId` and
+  `buildExpandNodeSpl` - the identical function and validation node
+  expansion itself calls.
+- A relationship field's name, its optional `type` argument, and its
+  `direction` argument are never spliced into SPL at all. They are matched
+  client-side (string comparison) against the `relationship_type`,
+  `source_id` and `target_id` fields of rows one of the two searches above
+  already returned - the same technique the existing
+  `hiddenRelationshipTypes` filter uses elsewhere in the app.
+- A relationship field's `limit` argument only ever flows into
+  `clampInteger`, the same numeric-coercion helper used for every other
+  limit in the app (see above) - never into string interpolation.
+
+Put differently: parsing a query can reject it (a syntax error, an unknown
+field, an invalid `direction`, nesting deeper than
+`settings.maxExpansionDepth`), but nothing a query's text contains is ever
+capable of changing *which* SPL template runs or *how* it is built - only
+*how many times* `buildExpandNodeSpl` is dispatched (bounded by
+`MAX_QUERY_EXPANSIONS` and ancestor-path cycle detection; see
+ARCHITECTURE.md) and which already-fetched rows are kept client-side.
+`tests/unit/graphQueryExecutor.test.js` includes a dedicated case
+confirming a crafted `id` argument is rejected by the existing identifier
+validator without ever reaching `dispatch`.
+
 ## Cross-site scripting (XSS) prevention
 
 - React's default JSX text rendering HTML-escapes all dynamic text
@@ -289,11 +326,15 @@ GraphLens is compatible with Splunk Cloud's CSP defaults:
 ## Audit logging
 
 Every tracked user action (search dispatch, expansion, collapse, evidence
-view, export, annotation/view CRUD, configuration change, graph-limit
-event, client error) is recorded in the `graphlens_audit_log` KV Store
-collection by `services/auditService.js`, with the actor, action, target
-identifiers and outcome only - never credentials, tokens, or raw event
-content. See ARCHITECTURE.md and ADMIN_GUIDE.md for how to review it.
+view, export, import, graph query, annotation/view CRUD, configuration
+change, graph-limit event, client error) is recorded in the
+`graphlens_audit_log` KV Store collection by `services/auditService.js`,
+with the actor, action, target identifiers and outcome only - never
+credentials, tokens, or raw event content. A graph query's audit record
+likewise only ever carries a node/edge count and a truncation flag, the
+same as the entity search box's own audit record never carries the raw
+search term typed into it - never the query text itself. See
+ARCHITECTURE.md and ADMIN_GUIDE.md for how to review it.
 
 ## Third-party dependency security
 

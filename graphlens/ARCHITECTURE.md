@@ -198,6 +198,62 @@ browser's `FileReader` API and never uploaded anywhere; import is a
 convenience for resuming or sharing a graph snapshot, not a path for
 bringing Splunk data into GraphLens (see DATA_INGESTION.md for that).
 
+## How the query language compiles to existing searches
+
+`shared/services/graphQueryLanguage.js` and `graphQueryExecutor.js`
+implement the Relationship Explorer's text query panel - a restricted,
+GraphQL-like syntax for selecting a starting node and which of its
+relationships to follow, so a user can describe several hops of expansion
+in one request instead of clicking Expand repeatedly.
+
+- **`graphQueryLanguage.js`** is a hand-rolled tokenizer and
+  recursive-descent parser (not the `graphql` npm package - the supported
+  grammar is a small, fixed subset with no fragments, variables, aliases
+  or directives, and adding a general-purpose parsing dependency would
+  grow the audited surface for no benefit, matching this project's
+  existing practice of hand-writing its own narrow parsers/validators
+  rather than importing one; see `splSafety.js`). It only turns query text
+  into a plain-object AST and throws `GraphLensValidationError` on syntax
+  errors - it has no knowledge of Splunk, SPL, or settings-driven limits.
+- **`graphQueryExecutor.js`**'s `executeGraphQuery(ast, context)` walks
+  that AST and resolves it entirely by reusing the same two
+  already-reviewed templates every other part of the app already
+  dispatches: `buildInitialEntitySearchSpl` (for the root field's
+  `search`/`id` arguments, through the same `sanitizeSearchTerm`/
+  `isValidId` validation the entity search box uses) and
+  `buildExpandNodeSpl` - dispatched **at most once per distinct node**,
+  however many relationship fields reference it - for every relationship
+  field under it. **No new SPL shape is ever constructed from query
+  input**: a relationship field's name/`type`/`direction` arguments are
+  matched client-side against `relationship_type`/`source_id`/`target_id`
+  on rows those two templates already returned, exactly like the existing
+  `hiddenRelationshipTypes` filter elsewhere in the app. See SECURITY.md
+  for why this introduces no new injection surface.
+- `context.dispatch` is an injected `function(spl)` so the executor can be
+  unit-tested without a live Splunk instance
+  (`tests/unit/graphQueryExecutor.test.js` mocks it); in the app,
+  `RelationshipExplorer/App.jsx` supplies the same `dispatchAdHocSearch` +
+  `waitForResults` call shape `handleSearch`/`handleExpandNode` use.
+- Execution is bounded four ways, independent of each template's own
+  internal clamping: a static check (before any search runs) that the
+  query's relationship nesting does not exceed
+  `settings.maxExpansionDepth`; `MAX_QUERY_EXPANSIONS`, a hard ceiling on
+  total `buildExpandNodeSpl` dispatches per execution; ancestor-path cycle
+  detection, so a branch never recurses back into a node already on its
+  own path to the root; and each relationship field's own `limit`
+  argument, clamped against `settings.maxExpansionNeighbours`.
+- The result (`{ tree, nodes, edges, diagnostics }`) carries a nested
+  `tree` for display and flat, already-deduplicated Cytoscape-shaped
+  `nodes`/`edges` that feed straight into `loadGraphSnapshot` via the
+  "Load onto canvas" action - the same reducer action the Import feature
+  uses (see above), so a query result is loaded exactly like an imported
+  snapshot: it replaces the graph and carries no expansion parent/child
+  link.
+- Gated by the `enable_graph_query` setting (`[features]` stanza, same
+  capability/permission boundary as the templates it calls - see
+  CONFIGURATION.md). See KNOWN_LIMITATIONS.md for the grammar's
+  restrictions.
+
 ## How permissions are enforced
 
 See SECURITY.md, "Access control". In summary: Splunk's own role-based

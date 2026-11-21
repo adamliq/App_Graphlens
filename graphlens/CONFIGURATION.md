@@ -14,7 +14,7 @@ through Splunk's standard `configs/conf-*` REST endpoint.
 | `[limits]` | `max_visible_nodes` | 1000 | Hard cap on rendered nodes |
 | | `max_visible_edges` | 2500 | Hard cap on rendered edges |
 | | `max_expansion_neighbours` | 100 | Max neighbours returned by one expansion |
-| | `max_expansion_depth` | 3 | Tracked for expansion-chain bookkeeping |
+| | `max_expansion_depth` | 3 | Tracked for expansion-chain bookkeeping; also the hard cap on a graph query's relationship nesting (see "Query language" below) |
 | | `max_path_depth` | 5 | Max hops considered by the path finder |
 | | `max_search_result_rows` | 500 | Upper bound on every controlled search's `\| head` |
 | | `search_dispatch_max_time_seconds` | 30 | Client-side search timeout |
@@ -23,7 +23,7 @@ through Splunk's standard `configs/conf-*` REST endpoint.
 | | `relationship_lookup` | `graphlens_relationships_lookup` | **Lookup definition** name (not a raw CSV filename) read via `\| inputlookup` when `relationship_source_type = lookup` - see DATA_INGESTION.md |
 | | `evidence_default_index` | `*` | Fallback index for evidence search |
 | | `default_earliest` / `default_latest` | `-24h` / `now` | Default time range |
-| `[features]` | `enable_export` / `enable_annotations` / `enable_saved_views` / `enable_clustering` / `enable_path_finder` | all `true` | Feature toggles |
+| `[features]` | `enable_export` / `enable_annotations` / `enable_saved_views` / `enable_clustering` / `enable_path_finder` / `enable_graph_query` | all `true` | Feature toggles |
 | `[allowlist]` | `allowed_node_types` / `allowed_relationship_types` | empty (governed by KV Store `enabled` flags instead) | Optional hard allowlist |
 | | `allowed_layouts` | `cose,concentric,breadthfirst,circle,grid` | Layouts offered in the UI |
 | | `allowed_export_formats` | `json,csv,png` | Export formats offered in the UI |
@@ -42,6 +42,18 @@ bundled CSVs as described in INSTALL.md step 4. A type with no curated
 entry still renders, using a deterministic colour derived from its type
 name (`typeConfigService.colorForType`) so the graph is never left
 uncoloured while an administrator catches up on curation.
+
+## Query language
+
+The Relationship Explorer's text query panel (`enable_graph_query`, above)
+compiles a restricted, GraphQL-like syntax into the same bounded SPL
+templates the rest of the app uses - see ARCHITECTURE.md ("How the query
+language compiles to existing searches"), SECURITY.md ("The query
+language introduces no new SPL injection surface") and
+KNOWN_LIMITATIONS.md for the grammar's restrictions. Turning the feature
+off removes the panel from the UI; it adds no capability or permission of
+its own, since every search it can run is one a user's existing
+permissions already allow them to run by hand.
 
 ## Roles and capabilities
 
