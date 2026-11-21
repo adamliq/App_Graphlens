@@ -193,3 +193,29 @@ test('requires a dispatch function', async () => {
   const ast = parseQuery('{ node(search: "alice") { id } }');
   await expect(executeGraphQuery(ast, { settings })).rejects.toThrow(GraphLensValidationError);
 });
+
+test('an "id"-rooted query reuses its own root expansion for a relationship field instead of dispatching it twice', async () => {
+  const ast = parseQuery('{ node(id: "user:alice") { id FRIEND_OF { id } } }');
+  const dispatch = makeDispatch({ 'user:alice': ALICE_EDGE_ROWS });
+  const result = await executeGraphQuery(ast, { settings, dispatch });
+
+  expect(result.tree).toEqual([{ id: 'user:alice', FRIEND_OF: [{ id: 'user:bob' }] }]);
+  // A single expansion resolves both the root itself and its FRIEND_OF
+  // field - not one dispatch to resolve the root and a second, identical
+  // one when the relationship field is processed.
+  expect(dispatch).toHaveBeenCalledTimes(1);
+  expect(result.diagnostics.totalExpansions).toBe(1);
+});
+
+test('diagnostics.truncated reflects rows dropped by the configured graph-size limits, not only the query-expansion budget', async () => {
+  const ast = parseQuery('{ node(search: "alice") { id FRIEND_OF { id } } }');
+  const dispatch = makeDispatch({ 'user:alice': ALICE_EDGE_ROWS });
+  // ALICE_EDGE_ROWS has two edges; capping maxVisibleEdges at 1 forces
+  // transformRowsToGraph to drop the second (FRIEND_OF) during alice's
+  // expansion.
+  const tightSettings = { ...settings, maxVisibleEdges: 1 };
+  const result = await executeGraphQuery(ast, { settings: tightSettings, dispatch });
+
+  expect(result.tree).toEqual([{ id: 'user:alice', FRIEND_OF: [] }]);
+  expect(result.diagnostics.truncated).toBe(true);
+});

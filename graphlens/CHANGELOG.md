@@ -2,6 +2,37 @@
 
 All notable changes to GraphLens are documented in this file.
 
+## [1.7.1] - 2026-11-21
+
+### Fixed
+
+- **An `id`-rooted graph query dispatched the same expansion search
+  twice.** `graphQueryExecutor.js`'s root resolver dispatched
+  `buildExpandNodeSpl` directly to resolve a `node(id: "...")` root, but
+  never recorded that expansion in the per-execution cache - so a query
+  that also followed any relationship field from that same root
+  (`node(id: "...") { ... someRelationship { ... } }`) triggered a
+  second, identical dispatch for the exact same node when that field was
+  processed, wasting a search and a slot of the query's expansion
+  budget. The root resolver now routes through the same
+  once-per-node `expandNodeOnce` cache every relationship field already
+  used, so the root's own expansion is reused rather than repeated.
+- **Hitting a configured graph-size limit during a query didn't mark
+  the result as truncated.** `transformRowsToGraph`'s own diagnostics
+  (set when a search returns more nodes/edges than `max_visible_nodes`/
+  `max_visible_edges` allow) were discarded at every call site in the
+  executor - only exceeding the query-wide expansion budget
+  (`MAX_QUERY_EXPANSIONS`) set `diagnostics.truncated`. A query that
+  silently dropped nodes/edges because it hit a graph-size limit
+  therefore reported no truncation at all. Now folded into the same
+  `diagnostics.truncated` flag the panel already surfaces.
+- 2 new unit tests covering both (335 total).
+
+Version bumped to 1.7.1 (bug fixes to 1.7.0's query language, found in
+a self-review immediately after that release). Full npm test (335
+tests) and lint (0 warnings) pass; AppInspect re-run clean (0
+errors/failures, same 7-warning profile as prior releases).
+
 ## [1.7.0] - 2026-11-21
 
 ### Added
