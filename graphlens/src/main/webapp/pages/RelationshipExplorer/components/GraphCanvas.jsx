@@ -100,7 +100,15 @@ const LAYOUT_OPTIONS = {
   cose: {
     name: 'cose', animate: false, nodeRepulsion: 8000, idealEdgeLength: 90, fit: true, nodeDimensionsIncludeLabels: true,
   },
-  concentric: { name: 'concentric', animate: false, fit: true, nodeDimensionsIncludeLabels: true },
+  // minNodeSpacing's 10px default is a flat ring-to-ring cushion on top of
+  // nodeDimensionsIncludeLabels's own sizing - confirmed live that with a
+  // small, low-degree-variance graph (concentric's rings collapse close
+  // together in that case) 10px still left an edge label crowding the
+  // node label directly below it. 28px gives real breathing room without
+  // visibly changing well-spaced, larger graphs.
+  concentric: {
+    name: 'concentric', animate: false, fit: true, nodeDimensionsIncludeLabels: true, minNodeSpacing: 28,
+  },
   breadthfirst: {
     name: 'breadthfirst', animate: false, fit: true, directed: true, nodeDimensionsIncludeLabels: true,
   },
