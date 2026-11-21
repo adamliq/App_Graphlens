@@ -1,7 +1,7 @@
 import React from 'react';
 import PageNav from '../../shared/components/PageNav';
 
-const APP_VERSION = '1.6.4';
+const APP_VERSION = '1.6.5';
 
 /**
  * Static, no-dependency reference page - unlike the other three pages,
