@@ -38,7 +38,7 @@ import ErrorNotification from './components/ErrorNotification';
 import EmptyState from './components/EmptyState';
 import PageNav from '../../shared/components/PageNav';
 
-const APP_VERSION = '1.8.0';
+const APP_VERSION = '1.9.0';
 
 function downloadBlob(blob, filename) {
   const url = URL.createObjectURL(blob);
@@ -662,6 +662,8 @@ export default function App() {
             isRunning={queryState.isRunning}
             error={queryState.error}
             result={queryState.result}
+            nodeColorByType={nodeColorByType}
+            relationshipColorByType={relationshipColorByType}
             onRunQuery={handleRunGraphQuery}
             onLoadOntoCanvas={handleLoadQueryResultOntoCanvas}
           />

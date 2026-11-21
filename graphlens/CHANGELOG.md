@@ -2,6 +2,26 @@
 
 All notable changes to GraphLens are documented in this file.
 
+## [1.9.0] - 2026-11-21
+
+### Added
+
+- **Diagram/Text toggle for graph query results**, inspired by Neo4j
+  Bloom's result-view tabs. The query panel's result now defaults to a
+  small **Diagram** preview - a read-only, independent Cytoscape
+  instance rendered right there in the panel, styled identically to the
+  main canvas (same stylesheet, layout, and per-type colours) - with a
+  **Text** tab for the same result as JSON (the panel's previous, only
+  view). Neither tab touches the main canvas; **Load onto canvas**
+  remains the only way a query result replaces what it shows.
+- New `shared/.../QueryResultPreview.jsx`; `GraphCanvas.jsx` now exports
+  its `STYLESHEET`/`LAYOUT_OPTIONS` constants so the preview can reuse
+  them directly rather than duplicating styling.
+
+Version bumped to 1.9.0. Full npm test (355 tests) and lint (0
+warnings) pass; AppInspect re-run clean (0 errors/failures, same
+7-warning profile as prior releases).
+
 ## [1.8.0] - 2026-11-21
 
 ### Added

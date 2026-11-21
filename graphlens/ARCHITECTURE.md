@@ -266,7 +266,17 @@ in one request instead of clicking Expand repeatedly.
   "Load onto canvas" action - the same reducer action the Import feature
   uses (see above), so a query result is loaded exactly like an imported
   snapshot: it replaces the graph and carries no expansion parent/child
-  link.
+  link. The same `nodes`/`edges` also feed `QueryResultPreview.jsx`, a
+  small read-only Cytoscape instance rendered inline in the query panel's
+  **Diagram** tab (the default; **Text** shows the same result as the
+  `tree`'s JSON instead) - independent of, and never written to, the main
+  canvas. It reuses the main canvas's own stylesheet/layout constants
+  (`GraphCanvas.jsx`'s exported `STYLESHEET`/`LAYOUT_OPTIONS`) so a node
+  or edge looks identical in both places, and colours each element the
+  same way the main canvas/legend do (`nodeColorByType`/
+  `relationshipColorByType`, computed once in `App.jsx`) before handing
+  it to the preview - cosmetic only, never written back into the result
+  object itself.
 - Gated by the `enable_graph_query` setting (`[features]` stanza, same
   capability/permission boundary as the templates it calls - see
   CONFIGURATION.md). See KNOWN_LIMITATIONS.md for the grammar's

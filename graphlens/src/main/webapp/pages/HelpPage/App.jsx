@@ -1,7 +1,7 @@
 import React from 'react';
 import PageNav from '../../shared/components/PageNav';
 
-const APP_VERSION = '1.8.0';
+const APP_VERSION = '1.9.0';
 
 /**
  * Static, no-dependency reference page - unlike the other three pages,
@@ -133,7 +133,9 @@ export default function App() {
           describe a starting node and which of its relationships to follow
           in one GraphQL-like request, e.g.{' '}
           <code>{'{ node(search: "alice") { id FRIEND_OF(direction: OUTGOING) { id } } }'}</code>.
-          Click <strong>Run query</strong>, then <strong>Load onto
+          Click <strong>Run query</strong> to see it as a small
+          <strong> Diagram</strong> preview right there (or switch to
+          <strong> Text</strong> for JSON), then <strong>Load onto
           canvas</strong> to replace the current graph with the result - the
           same way importing a file does. It is not an unrestricted
           graph-database query console: every query compiles down to the

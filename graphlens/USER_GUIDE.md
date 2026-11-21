@@ -152,9 +152,11 @@ A few things worth knowing:
   relationship field controls which end of the relationship the current
   node must be on. `limit` bounds how many of that relationship it
   follows.
-- Click **Run query** to execute it, then **Load onto canvas** to replace
-  the current graph with the result - the same way importing a file does.
-  The panel also shows a JSON preview of what was found.
+- Click **Run query** to execute it. The result shows as a small
+  **Diagram** preview right there in the panel by default - its own
+  independent view, separate from the main canvas - or switch to **Text**
+  for the same result as JSON. Click **Load onto canvas** to replace the
+  current graph with the result - the same way importing a file does.
 - This is not an unrestricted graph-database query console: it compiles
   down to the same bounded, pre-approved searches every other action in
   GraphLens uses, within your own Splunk search permissions (see
