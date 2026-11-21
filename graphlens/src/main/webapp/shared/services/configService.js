@@ -37,7 +37,9 @@ const DEFAULTS = Object.freeze({
   maxPathDepth: 5,
   maxSearchResultRows: 500,
   searchDispatchMaxTimeSeconds: 30,
+  relationshipSourceType: 'index',
   relationshipIndex: 'graphlens_relationships',
+  relationshipLookup: 'graphlens_relationships_lookup',
   evidenceDefaultIndex: '*',
   defaultEarliest: '-24h',
   defaultLatest: 'now',
@@ -77,7 +79,9 @@ export async function getSettings({ fetchImpl } = {}) {
       maxPathDepth: clampInteger(limits.max_path_depth, { min: 1, max: 20, fallback: DEFAULTS.maxPathDepth }),
       maxSearchResultRows: clampInteger(limits.max_search_result_rows, { min: 1, max: 50000, fallback: DEFAULTS.maxSearchResultRows }),
       searchDispatchMaxTimeSeconds: clampInteger(limits.search_dispatch_max_time_seconds, { min: 1, max: 600, fallback: DEFAULTS.searchDispatchMaxTimeSeconds }),
+      relationshipSourceType: search.relationship_source_type === 'lookup' ? 'lookup' : DEFAULTS.relationshipSourceType,
       relationshipIndex: search.relationship_index || DEFAULTS.relationshipIndex,
+      relationshipLookup: search.relationship_lookup || DEFAULTS.relationshipLookup,
       evidenceDefaultIndex: search.evidence_default_index || DEFAULTS.evidenceDefaultIndex,
       defaultEarliest: search.default_earliest || DEFAULTS.defaultEarliest,
       defaultLatest: search.default_latest || DEFAULTS.defaultLatest,
@@ -97,6 +101,20 @@ export async function getSettings({ fetchImpl } = {}) {
     // retrieval fails for any reason.
     return { ...DEFAULTS };
   }
+}
+
+/**
+ * Builds the `source` argument splTemplates.js's relationship-reading
+ * functions take, from settings returned by getSettings() - the one
+ * place that translates the Configuration page's "Relationship data
+ * source" choice into what actually gets embedded in SPL.
+ */
+export function relationshipSourceFromSettings(settings) {
+  return {
+    type: settings.relationshipSourceType === 'lookup' ? 'lookup' : 'index',
+    index: settings.relationshipIndex,
+    lookupName: settings.relationshipLookup,
+  };
 }
 
 /** Requires graphlens_manage_config (enforced by Splunk's admin_all_objects gate on the underlying endpoint - see module doc comment). */

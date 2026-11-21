@@ -102,6 +102,44 @@ The index itself is not created automatically - create it first (see
 INSTALL.md section 3) with a name matching whatever you set in the
 Configuration page's **Relationship index** field.
 
+**D. No index at all - read directly from a lookup.** If your
+relationship data is better maintained as a lookup table (a CMDB export, a
+curated CSV, anything that is not naturally time-series) than as indexed
+events, you can skip indexing entirely:
+
+1. Create or upload a CSV lookup table file with the same columns as the
+   index schema above (`source_id`, `target_id`, `relationship_type`, etc.
+   - `edge_id`/`event_count`/`first_seen`/`last_seen` can be omitted or
+   left blank; see DATA_MODEL.md). Splunk Web's **Lookup table files**
+   page, or `| makeresults | ... | outputlookup <name>.csv`, both work.
+2. **Give it a lookup definition** (Settings > Lookups > **Lookup table
+   definitions** > New, type "File-based"), pointing at that file, with a
+   name of your choosing (no `.csv` extension or dots - the same identifier
+   grammar as an index name). This step is easy to miss and is required:
+   confirmed against a live instance, `| inputlookup <name>` (no extension)
+   fails with "requires a .csv or KV store lookup definition" unless a
+   lookup *definition* with that exact name exists - the raw uploaded
+   file's name alone is not enough, and GraphLens's own validation
+   (`LOOKUP_NAME_PATTERN`, see SECURITY.md) rejects a name containing a dot
+   in the Configuration page anyway, which makes a bare `.csv` filename
+   impossible to configure here even if Splunk would otherwise accept it.
+3. In the Configuration page, set **Relationship data source** to
+   **Lookup (static table)** and **Relationship lookup** to that
+   definition's name (not the uploaded file's name, if they differ).
+4. That's it - no index, no scheduled search, no HEC. GraphLens reads it
+   with `| inputlookup <name>` the same way it reads an index with
+   `search index=<name>`, for every entity search and expansion.
+
+This is the lightest-weight way to try GraphLens against your own data: no
+ingestion pipeline, no scheduled search to maintain, just a table you edit
+directly. The tradeoff is that a lookup is a plain snapshot, not a
+time-series - `first_seen`/`last_seen`/`event_count` only reflect whatever
+values you put in the table yourself, and the toolbar's time range
+selector has no effect on which rows are returned (a lookup has no event
+time to filter by unless you give it one). Switch to index mode (option A)
+once you want genuinely time-bounded, continuously-updated relationship
+data.
+
 ## 3. Register your types
 
 Node/relationship type colours, icons, shapes, and enabled flags live in

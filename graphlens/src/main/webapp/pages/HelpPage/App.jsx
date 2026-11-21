@@ -1,7 +1,7 @@
 import React from 'react';
 import PageNav from '../../shared/components/PageNav';
 
-const APP_VERSION = '1.2.0';
+const APP_VERSION = '1.3.0';
 
 /**
  * Static, no-dependency reference page - unlike the other three pages,
@@ -101,6 +101,23 @@ export default function App() {
           Toolbar <strong>Export</strong> button: JSON (full graph data plus
           metadata), CSV (nodes or edges), or PNG (canvas snapshot). Exports
           only ever include what is currently visible to you.
+        </p>
+      </section>
+
+      <section className="graphlens-section">
+        <h2>Where the relationship data comes from</h2>
+        <p>
+          An administrator chooses, on the Configuration page, whether
+          searches and expansions read observed relationships from a Splunk
+          <strong> index</strong> (the normal, time-series choice, updated by
+          an ingestion pipeline or scheduled search) or directly from a
+          <strong> lookup table</strong> (a static, hand- or script-maintained
+          table - no ingestion pipeline required). This only changes where
+          the data comes from, not how you use GraphLens - searching,
+          expanding, filtering, and exporting all work the same either way.
+          One difference to know about: in lookup mode, the toolbar&apos;s time
+          range has no effect, since a lookup is a snapshot with no event
+          time to filter by.
         </p>
       </section>
 

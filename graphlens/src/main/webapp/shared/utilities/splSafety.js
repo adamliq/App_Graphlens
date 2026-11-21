@@ -37,6 +37,15 @@ export const TYPE_TOKEN_PATTERN = /^[A-Za-z][A-Za-z0-9_]{0,63}$/;
 export const INDEX_NAME_PATTERN = /^[A-Za-z0-9_-]{1,80}$/;
 export const SOURCETYPE_PATTERN = /^[A-Za-z0-9_:.-]{1,150}$/;
 
+// Lookup table name grammar (same shape as a Splunk transforms.conf
+// stanza / filename, before any extension) - as strict as INDEX_NAME_PATTERN
+// for the same reason: this is substituted unquoted into SPL
+// (`| inputlookup <name>`), via an admin-configured setting, not raw
+// end-user input, but validated anyway per this module's defence-in-depth
+// convention (see evidenceQueryBuilder.js's comment on the same point for
+// index/sourcetype).
+export const LOOKUP_NAME_PATTERN = /^[A-Za-z0-9_-]{1,80}$/;
+
 export const LAYOUT_ALLOWLIST = Object.freeze(['cose', 'concentric', 'breadthfirst', 'circle', 'grid']);
 export const EXPORT_FORMAT_ALLOWLIST = Object.freeze(['json', 'csv-nodes', 'csv-edges', 'png']);
 export const TARGET_KIND_ALLOWLIST = Object.freeze(['node', 'edge']);
@@ -179,6 +188,11 @@ export function safeIndexNameOrFallback(value, fallback = '*') {
 /** Returns `value` if it is a safe, bare (unquoted-context-safe) sourcetype name, otherwise `fallback`. */
 export function safeSourcetypeOrFallback(value, fallback = '*') {
   return typeof value === 'string' && SOURCETYPE_PATTERN.test(value) ? value : fallback;
+}
+
+/** Returns `value` if it is a safe, bare lookup table name, otherwise `fallback`. */
+export function safeLookupNameOrFallback(value, fallback) {
+  return typeof value === 'string' && LOOKUP_NAME_PATTERN.test(value) ? value : fallback;
 }
 
 /** Validate a Splunk relative or ISO-8601 time literal used for earliest/latest tokens. */

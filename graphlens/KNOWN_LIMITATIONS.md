@@ -65,6 +65,16 @@ instance's configured home) to switch away from GraphLens entirely.
 
 ## Functional scope
 
+- **`graphlens_graph_statistics` (default/savedsearches.conf) is not
+  dispatched from anywhere in the current UI** - it exists and is
+  documented, but nothing in `src/main/webapp` calls it. It also still
+  reads from the `graphlens_relationship_index` macro's hardcoded index
+  name regardless of the Configuration page's "Relationship data source"
+  setting (index vs. lookup, added in 1.2.0 - see CHANGELOG.md), since
+  converting it to respect that setting the way the UI-reachable searches
+  now do would mean rebuilding it as an ad-hoc template with no UI
+  consumer to verify it against. Wire it up (and convert it the same way)
+  before relying on it.
 - **Node details do not re-query on every selection.** The details panel
   shows data already returned by the search that introduced the node
   (initial search or expansion), rather than re-dispatching the

@@ -79,8 +79,24 @@ full injection-prevention discussion):
 | `buildEdgeDetailsSpl` | Aggregated edge properties (not currently wired to the UI) |
 | `buildEvidenceSpl` | Bounded supporting-event retrieval for a node or edge |
 | `buildClusterExpandSpl` | Optional bounded expansion of a collapsed cluster/group node (not currently wired to the UI) |
-| `graphlens_graph_statistics` (saved search) | Aggregate counts for limit/health reporting |
+| `graphlens_graph_statistics` (saved search) | Aggregate counts for limit/health reporting - not currently dispatched from the UI (see KNOWN_LIMITATIONS.md) |
 | `graphlens_health` (saved search) | Recent audited actions, for the Health page |
+
+All five relationship-reading templates (everything above except
+`buildEvidenceSpl`, which always reads raw evidence events from an index)
+take a `source` argument built by `configService.js`'s
+`relationshipSourceFromSettings()` from the Configuration page's
+"Relationship data source" setting: `{ type: 'index', index }` generates
+`search index="<index>" ...`; `{ type: 'lookup', lookupName }` generates
+`| inputlookup <lookup> | search ...` instead - confirmed against a live
+instance that `| inputlookup` works as the sole leading (generating)
+command for ad-hoc dispatch, the same way `search index=...` does, and
+that both the `| search` filter stage and a bracketed `append [ | inputlookup
+... ]` subsearch behave identically to their index-mode equivalents. See
+DATA_INGESTION.md for when to use a lookup instead of an index, and
+CHANGELOG.md 1.2.0 for why this replaced a static
+`graphlens_relationship_index` macro that the Configuration page's
+"Relationship index" field never actually fed into.
 
 `searchService.js` exposes `dispatchSavedSearch` (named saved search,
 `services/saved/searches/<name>/dispatch`) and `dispatchAdHocSearch`

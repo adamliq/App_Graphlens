@@ -2,6 +2,7 @@ import React, { useEffect, useState, useCallback } from 'react';
 import PropTypes from 'prop-types';
 import Button from '@splunk/react-ui/Button';
 import Number from '@splunk/react-ui/Number';
+import Select from '@splunk/react-ui/Select';
 import Switch from '@splunk/react-ui/Switch';
 import Text from '@splunk/react-ui/Text';
 import WaitSpinner from '@splunk/react-ui/WaitSpinner';
@@ -110,15 +111,40 @@ function LimitsForm({ settings, disabled, onSave }) {
 
 function SearchForm({ settings, disabled, onSave }) {
   const [values, setValues] = useState({
+    relationship_source_type: settings.relationshipSourceType,
     relationship_index: settings.relationshipIndex,
+    relationship_lookup: settings.relationshipLookup,
     evidence_default_index: settings.evidenceDefaultIndex,
   });
+  const isLookup = values.relationship_source_type === 'lookup';
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-      <label htmlFor="graphlens-cfg-index" style={{ fontSize: 12 }}>
-        Relationship index
-        <Text inputId="graphlens-cfg-index" value={values.relationship_index} disabled={disabled} onChange={(e, { value }) => setValues((s) => ({ ...s, relationship_index: value }))} />
+      <label htmlFor="graphlens-cfg-source-type" style={{ fontSize: 12 }}>
+        Relationship data source
+        <div>
+          <Select
+            inputId="graphlens-cfg-source-type"
+            value={values.relationship_source_type}
+            disabled={disabled}
+            onChange={(e, { value }) => setValues((s) => ({ ...s, relationship_source_type: value }))}
+          >
+            <Select.Option label="Index (time-series events)" value="index" />
+            <Select.Option label="Lookup (static table)" value="lookup" />
+          </Select>
+        </div>
       </label>
+      {!isLookup && (
+        <label htmlFor="graphlens-cfg-index" style={{ fontSize: 12 }}>
+          Relationship index
+          <Text inputId="graphlens-cfg-index" value={values.relationship_index} disabled={disabled} onChange={(e, { value }) => setValues((s) => ({ ...s, relationship_index: value }))} />
+        </label>
+      )}
+      {isLookup && (
+        <label htmlFor="graphlens-cfg-lookup" style={{ fontSize: 12 }}>
+          Relationship lookup (lookup definition name, not a .csv filename)
+          <Text inputId="graphlens-cfg-lookup" value={values.relationship_lookup} disabled={disabled} onChange={(e, { value }) => setValues((s) => ({ ...s, relationship_lookup: value }))} />
+        </label>
+      )}
       <label htmlFor="graphlens-cfg-evidence-index" style={{ fontSize: 12 }}>
         Default evidence index
         <Text inputId="graphlens-cfg-evidence-index" value={values.evidence_default_index} disabled={disabled} onChange={(e, { value }) => setValues((s) => ({ ...s, evidence_default_index: value }))} />
@@ -165,7 +191,9 @@ const settingsShape = PropTypes.shape({
   maxExpansionNeighbours: PropTypes.number,
   maxExpansionDepth: PropTypes.number,
   maxPathDepth: PropTypes.number,
+  relationshipSourceType: PropTypes.string,
   relationshipIndex: PropTypes.string,
+  relationshipLookup: PropTypes.string,
   evidenceDefaultIndex: PropTypes.string,
   enableExport: PropTypes.bool,
   enableAnnotations: PropTypes.bool,

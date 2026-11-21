@@ -3,7 +3,7 @@ import React, { useCallback, useEffect, useMemo, useState, useRef } from 'react'
 import { useGraphState } from '../../shared/hooks/useGraphState';
 import { dispatchAdHocSearch, toUserFacingError } from '../../shared/services/searchService';
 import { transformRowsToGraph } from '../../shared/services/graphTransformer';
-import { getSettings } from '../../shared/services/configService';
+import { getSettings, relationshipSourceFromSettings } from '../../shared/services/configService';
 import { loadNodeTypeConfig, loadRelationshipTypeConfig, deriveNodeTypeList, deriveRelationshipTypeList } from '../../shared/services/typeConfigService';
 import { recordAuditEvent, AUDIT_ACTIONS } from '../../shared/services/auditService';
 import { findShortestPath } from '../../shared/services/pathFinder';
@@ -28,7 +28,7 @@ import ErrorNotification from './components/ErrorNotification';
 import EmptyState from './components/EmptyState';
 import PageNav from '../../shared/components/PageNav';
 
-const APP_VERSION = '1.2.0';
+const APP_VERSION = '1.3.0';
 
 function downloadBlob(blob, filename) {
   const url = URL.createObjectURL(blob);
@@ -110,7 +110,7 @@ export default function App() {
     setError(null);
     try {
       const { splSafe } = sanitizeSearchTerm(rawTerm);
-      const spl = buildInitialEntitySearchSpl(splSafe, 20);
+      const spl = buildInitialEntitySearchSpl(splSafe, 20, relationshipSourceFromSettings(settings));
       const job = dispatchAdHocSearch(
         spl,
         { earliest: timeRange.earliest, latest: timeRange.latest, maxWaitMs: settings.searchDispatchMaxTimeSeconds * 1000 },
@@ -143,7 +143,7 @@ export default function App() {
     }
     setError(null);
     try {
-      const spl = buildExpandNodeSpl(nodeId, settings.maxExpansionNeighbours);
+      const spl = buildExpandNodeSpl(nodeId, settings.maxExpansionNeighbours, relationshipSourceFromSettings(settings));
       const job = dispatchAdHocSearch(
         spl,
         { earliest: timeRange.earliest, latest: timeRange.latest, maxWaitMs: settings.searchDispatchMaxTimeSeconds * 1000 },
