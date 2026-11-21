@@ -1,0 +1,18 @@
+.graphlens-section {
+  margin-bottom: 20px;
+}
+
+.graphlens-section h2 {
+  font-size: 14px;
+  margin: 0 0 8px 0;
+}
+
+.graphlens-section ul,
+.graphlens-section ol {
+  margin: 0;
+  padding-left: 20px;
+}
+
+.graphlens-section li {
+  margin-bottom: 6px;
+}

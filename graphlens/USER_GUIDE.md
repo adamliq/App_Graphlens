@@ -5,6 +5,10 @@ data already in Splunk. It is not a general-purpose graph database query
 tool - every action you take runs one of a small set of bounded, approved
 searches (see ARCHITECTURE.md) within your own Splunk permissions.
 
+A condensed version of this guide is also available in-app, on the
+**Help** page (reachable from any GraphLens page's nav tabs) - this
+document remains the fuller, authoritative version.
+
 ## Getting started
 
 1. Open the **Relationship Explorer** page.

@@ -2,6 +2,27 @@
 
 All notable changes to GraphLens are documented in this file.
 
+## [1.2.0] - 2026-11-21
+
+### Added
+
+- **A fourth page, Help** (`graphlens_help` view / `HelpPage`), reachable
+  from the nav tabs on every page. A static, no-search, no-capability
+  reference page condensing USER_GUIDE.md for in-app reading - searching,
+  expanding, filters, legend, evidence, path finder, export, graph limits,
+  resetting. Unlike the other three pages, it dispatches no searches and
+  checks no capability, since every user who can open the app at all
+  should be able to read it.
+- `shared/components/PageNav.jsx` and `default/data/ui/nav/default.xml`
+  updated to include it alongside Relationship Explorer, Health and
+  Configuration.
+
+Version bumped to 1.2.0 (new feature, not a patch). Full npm test (254
+tests) and lint (0 warnings) pass; AppInspect re-run against the packaged
+build - see its own section in APPINSPECT.md for the result, including
+whether `check_for_custom_mako_templates` now also flags the new
+template (expected, consistent with the other three).
+
 ## [1.1.4] - 2026-11-20
 
 Fixes a genuine readability bug flagged directly: the toolbar (search box,

@@ -102,16 +102,26 @@ cannot let an invalid identifier through.
 
 ## How SUIT renders the interface
 
-Each page (`RelationshipExplorer`, `ConfigurationPage`, `HealthPage`) is a
-small React application built with `@splunk/react-ui` components, entered
-through `src/main/webapp/pages/<Page>/index.jsx`, compiled by webpack into
+Each page (`RelationshipExplorer`, `ConfigurationPage`, `HealthPage`,
+`HelpPage`) is a small React application built with `@splunk/react-ui`
+components, entered through `src/main/webapp/pages/<Page>/index.jsx`
+(each wrapped in `@splunk/themes`' `SplunkThemeProvider` - see
+KNOWN_LIMITATIONS.md's theming note below), compiled by webpack into
 `appserver/static/build/pages/<Page>/App.js` + `App.css`. A thin Mako view
 (`default/data/ui/views/<name>.xml` -> `appserver/templates/<Page>.html`)
-provides the page shell inside Splunk Web's standard chrome (navigation,
-header) and loads the compiled bundle by `<script src="${make_url(...)}">`
-- the templates intentionally contain **no Mako Python code blocks**
-(`<% %>` / `<%! %>`), only `<%inherit>`/`<%block>` directives and `${}`
-expressions, because Splunk AppInspect's `check_for_existence_of_python_code_block_in_mako_template`
+provides the page shell and loads the compiled bundle from a hardcoded
+absolute static path (`/static/app/graphlens/build/pages/<Page>/App.js`
+- not `${make_url(...)}`, which turned out not to be defined in this
+namespace and caused a live HTTP 500; see CHANGELOG.md 1.0.1). **These
+views render with no Splunk Web chrome at all** (no app switcher, no
+header, no navigation) - confirmed as an unconditional platform
+characteristic of `type="html"` custom views, not something this app's
+templates control; GraphLens provides its own in-app navigation instead
+(`shared/components/PageNav.jsx`) - see KNOWN_LIMITATIONS.md, "No Splunk
+Web chrome around `type=\"html\"` views". The templates intentionally
+contain **no Mako Python code blocks** (`<% %>` / `<%! %>`), only
+`<%inherit>`/`<%block>` directives and `${}` expressions, because Splunk
+AppInspect's `check_for_existence_of_python_code_block_in_mako_template`
 check flags any custom Mako template containing an actual code block as a
 critical risk. See DEVELOPMENT.md for the verification note on this.
 
@@ -186,7 +196,8 @@ graphlens/
 │   └── pages/
 │       ├── RelationshipExplorer/   Main graph explorer page
 │       ├── ConfigurationPage/      Admin configuration page
-│       └── HealthPage/             Health/audit summary page
+│       ├── HealthPage/             Health/audit summary page
+│       └── HelpPage/               Static in-app user guide
 ├── sample_data/              Synthetic sample CSVs (see scripts/generate_sample_data.py)
 ├── scripts/                  Icon/sample-data generators, packaging script
 └── tests/                    unit/, security/, performance/

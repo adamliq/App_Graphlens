@@ -28,7 +28,7 @@ import ErrorNotification from './components/ErrorNotification';
 import EmptyState from './components/EmptyState';
 import PageNav from '../../shared/components/PageNav';
 
-const APP_VERSION = '1.1.4';
+const APP_VERSION = '1.2.0';
 
 function downloadBlob(blob, filename) {
   const url = URL.createObjectURL(blob);

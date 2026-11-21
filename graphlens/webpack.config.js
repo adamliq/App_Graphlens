@@ -1,7 +1,7 @@
 const path = require('path');
 const MiniCssExtractPlugin = require('mini-css-extract-plugin');
 
-const PAGES = ['RelationshipExplorer', 'ConfigurationPage', 'HealthPage'];
+const PAGES = ['RelationshipExplorer', 'ConfigurationPage', 'HealthPage', 'HelpPage'];
 
 module.exports = (env, argv) => {
   const isProduction = argv.mode === 'production';

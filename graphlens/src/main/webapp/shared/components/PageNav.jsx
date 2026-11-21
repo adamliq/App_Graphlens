@@ -5,17 +5,18 @@ import TabBar from '@splunk/react-ui/TabBar';
 import { getAppViewUrl } from '../utilities/restClient';
 
 /**
- * GraphLens's three pages are separate Splunk `type="html"` views, each a
- * full page load with no client-side router between them - Splunk never
+ * GraphLens's pages are separate Splunk `type="html"` views, each a full
+ * page load with no client-side router between them - Splunk never
  * renders its own nav chrome around a view like this (see restClient.js's
  * getAppViewUrl for why), so without this there is no way to move between
- * Relationship Explorer, Health and Configuration at all once you've
- * landed on one of them.
+ * Relationship Explorer, Health, Configuration and Help at all once
+ * you've landed on one of them.
  */
 const PAGES = [
   { tabId: 'graphlens_relationship_explorer', label: 'Relationship Explorer' },
   { tabId: 'graphlens_health', label: 'Health' },
   { tabId: 'graphlens_configuration', label: 'Configuration' },
+  { tabId: 'graphlens_help', label: 'Help' },
 ];
 
 export default function PageNav({ activeTabId }) {
