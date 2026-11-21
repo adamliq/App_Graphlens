@@ -53,6 +53,14 @@
   inset: 0;
 }
 
+.graphlens-canvas-table {
+  position: absolute;
+  inset: 0;
+  overflow: auto;
+  padding: 12px;
+  background: var(--graphlens-surface, #fff);
+}
+
 .graphlens-details {
   grid-area: details;
   overflow-y: auto;

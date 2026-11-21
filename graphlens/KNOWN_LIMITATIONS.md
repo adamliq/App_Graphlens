@@ -161,6 +161,14 @@ instance's configured home) to switch away from GraphLens entirely.
   relationship types, since the existing relationship-type filter
   (hide/show by type) already covers the one bulk action that would make
   sense for an edge.
+- **The toolbar's Text view is read-only and replaces the canvas rather
+  than sitting alongside it.** Switching to it unmounts the Cytoscape
+  canvas entirely (rather than only hiding it), so your current pan/zoom
+  position is not kept when you switch back to Diagram - the layout
+  simply re-runs, exactly as it would after any other full graph reload.
+  Selecting, expanding, pinning, and multi-select are all canvas-only;
+  Text is a different way to look at the identical, already-filtered
+  node/edge data, not a second way to act on it.
 - **The time slicer and session style overrides are both purely
   client-side and apply to the whole visible graph** - there is no way to
   slice or restyle only part of it, and neither is remembered anywhere
