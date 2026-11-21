@@ -43,19 +43,37 @@ const DIRECTION_VALUES = Object.freeze(['OUTGOING', 'INCOMING', 'BOTH']);
 // cannot fan out to an unbounded number of searches.
 export const MAX_QUERY_EXPANSIONS = 200;
 
+// Each of these returns undefined for an *absent* argument (callers apply
+// their own default), but throws for one that is *present* with the wrong
+// kind of value - e.g. `type: host` (a bare word) where a quoted string is
+// required - rather than silently falling back to a default the user never
+// asked for, which would otherwise look like the argument was accepted but
+// simply had no effect.
 function argString(args, name) {
   const v = args[name];
-  return typeof v === 'string' ? v : undefined;
+  if (v === undefined) return undefined;
+  if (typeof v !== 'string') {
+    throw new GraphLensValidationError(`The "${name}" argument must be a quoted string.`, name);
+  }
+  return v;
 }
 
 function argInt(args, name) {
   const v = args[name];
-  return typeof v === 'number' ? v : undefined;
+  if (v === undefined) return undefined;
+  if (typeof v !== 'number') {
+    throw new GraphLensValidationError(`The "${name}" argument must be an integer.`, name);
+  }
+  return v;
 }
 
 function argEnum(args, name) {
   const v = args[name];
-  return v && typeof v === 'object' && typeof v.enum === 'string' ? v.enum : undefined;
+  if (v === undefined) return undefined;
+  if (!(v && typeof v === 'object' && typeof v.enum === 'string')) {
+    throw new GraphLensValidationError(`The "${name}" argument must be a bare word (e.g. OUTGOING), not a quoted string or number.`, name);
+  }
+  return v.enum;
 }
 
 function scalarFields(selectionSet) {
@@ -66,9 +84,22 @@ function relationshipFields(selectionSet) {
   return selectionSet.filter((f) => !!f.selectionSet);
 }
 
+// Validates the whole query's shape and argument types up front, before
+// any search is dispatched - the same "fail before touching Splunk"
+// guarantee the depth check already gives, just extended to argument
+// correctness and relationship-field validity at every nesting level.
 function validateSelectionSet(selectionSet) {
   selectionSet.forEach((field) => {
     if (field.selectionSet) {
+      argString(field.arguments, 'type');
+      const direction = argEnum(field.arguments, 'direction');
+      if (direction !== undefined && !DIRECTION_VALUES.includes(direction)) {
+        throw new GraphLensValidationError(
+          `Invalid direction "${direction}" on field "${field.name}" - must be one of ${DIRECTION_VALUES.join(', ')}.`,
+          'direction',
+        );
+      }
+      argInt(field.arguments, 'limit');
       validateSelectionSet(field.selectionSet);
     } else if (!SCALAR_FIELDS.includes(field.name)) {
       throw new GraphLensValidationError(
@@ -77,6 +108,16 @@ function validateSelectionSet(selectionSet) {
       );
     }
   });
+}
+
+function validateRootArguments(args) {
+  const idArg = argString(args, 'id');
+  const searchArg = argString(args, 'search');
+  argString(args, 'type');
+  argInt(args, 'limit');
+  if (idArg === undefined && searchArg === undefined) {
+    throw new GraphLensValidationError('The "node" root field needs either a "search" or an "id" argument.', 'node');
+  }
 }
 
 function measureRelationshipDepth(selectionSet) {
@@ -154,73 +195,77 @@ async function resolveRootNodes(args, ctx) {
     return applyTypeFilter(match ? [match.data] : [], typeFilter);
   }
 
-  if (searchArg !== undefined) {
-    const { splSafe } = sanitizeSearchTerm(searchArg);
-    const source = relationshipSourceFromSettings(ctx.settings || {});
-    const spl = buildInitialEntitySearchSpl(splSafe, limit, source);
-    const { rows } = await ctx.dispatch(spl);
-    const { nodes, diagnostics } = transformRowsToGraph(rows, [], { maxNodes: limit, nodeTypeConfig: ctx.nodeTypeConfig });
-    noteTruncation(ctx, diagnostics);
-    return applyTypeFilter(nodes.map((n) => n.data), typeFilter).slice(0, limit);
-  }
+  // searchArg !== undefined is the only remaining case - validateRootArguments
+  // already guarantees one of id/search was given.
+  const { splSafe } = sanitizeSearchTerm(searchArg);
+  const source = relationshipSourceFromSettings(ctx.settings || {});
+  const spl = buildInitialEntitySearchSpl(splSafe, limit, source);
+  const { rows } = await ctx.dispatch(spl);
+  const { nodes, diagnostics } = transformRowsToGraph(rows, [], { maxNodes: limit, nodeTypeConfig: ctx.nodeTypeConfig });
+  noteTruncation(ctx, diagnostics);
+  return applyTypeFilter(nodes.map((n) => n.data), typeFilter).slice(0, limit);
+}
 
-  throw new GraphLensValidationError('The "node" root field needs either a "search" or an "id" argument.', 'node');
+// Resolves one relationship field's neighbours (expansion + filter + the
+// per-neighbour subtree). Independent of every other field on the same
+// node and every other neighbour within this field - callers run these
+// concurrently via Promise.all, which is safe because the only shared
+// mutable state (ctx.nodesById/edgesById/expandCache/budget) is only ever
+// touched synchronously between awaits (see expandNodeOnce's comment).
+async function buildRelationshipField(nodeData, field, ctx, ancestors) {
+  const relTypeFilter = (argString(field.arguments, 'type') || field.name).toLowerCase();
+  const direction = (argEnum(field.arguments, 'direction') || 'BOTH').toUpperCase();
+  const fieldLimit = clampInteger(argInt(field.arguments, 'limit'), {
+    min: 1,
+    max: ctx.settings ? ctx.settings.maxExpansionNeighbours : 5000,
+    fallback: ctx.settings ? ctx.settings.maxExpansionNeighbours : 20,
+  });
+
+  const { nodes: expandedNodes, edges: expandedEdges } = await expandNodeOnce(nodeData.id, ctx);
+  const neighbourDataById = new Map(expandedNodes.map((n) => [n.data.id, n.data]));
+
+  const matched = expandedEdges
+    .map((e) => e.data)
+    .filter((e) => e.relationship && e.relationship.toLowerCase() === relTypeFilter)
+    .filter((e) => {
+      if (direction === 'OUTGOING') return e.source === nodeData.id;
+      if (direction === 'INCOMING') return e.target === nodeData.id;
+      return e.source === nodeData.id || e.target === nodeData.id;
+    })
+    .slice(0, fieldLimit);
+
+  const neighbourEntries = await Promise.all(matched.map(async (edge) => {
+    const neighbourId = edge.source === nodeData.id ? edge.target : edge.source;
+    const neighbourData = neighbourDataById.get(neighbourId);
+    if (!neighbourData) return null;
+
+    ctx.edgesById.set(edge.id, edge);
+    if (!ctx.nodesById.has(neighbourId)) ctx.nodesById.set(neighbourId, neighbourData);
+
+    if (ancestors.has(neighbourId)) {
+      // Refuse to recurse into a node already on this branch's path back
+      // to the root - the edge/node are still included in the result,
+      // but the branch stops here instead of looping forever.
+      return { ...buildScalarEntry(neighbourData, field.selectionSet), cycleTruncated: true };
+    }
+    const nextAncestors = new Set(ancestors);
+    nextAncestors.add(neighbourId);
+    return buildTreeNode(neighbourData, field.selectionSet, ctx, nextAncestors); // eslint-disable-line no-use-before-define
+  }));
+
+  return neighbourEntries.filter((e) => e !== null);
 }
 
 async function buildTreeNode(nodeData, selectionSet, ctx, ancestors) {
   const entry = buildScalarEntry(nodeData, selectionSet);
 
-  for (const field of relationshipFields(selectionSet)) {
-    const relTypeFilter = (argString(field.arguments, 'type') || field.name).toLowerCase();
-    const direction = (argEnum(field.arguments, 'direction') || 'BOTH').toUpperCase();
-    if (!DIRECTION_VALUES.includes(direction)) {
-      throw new GraphLensValidationError(
-        `Invalid direction "${direction}" on field "${field.name}" - must be one of ${DIRECTION_VALUES.join(', ')}.`,
-        'direction',
-      );
-    }
-    const fieldLimit = clampInteger(argInt(field.arguments, 'limit'), {
-      min: 1,
-      max: ctx.settings ? ctx.settings.maxExpansionNeighbours : 5000,
-      fallback: ctx.settings ? ctx.settings.maxExpansionNeighbours : 20,
-    });
-
-    const { nodes: expandedNodes, edges: expandedEdges } = await expandNodeOnce(nodeData.id, ctx);
-    const neighbourDataById = new Map(expandedNodes.map((n) => [n.data.id, n.data]));
-
-    const matched = expandedEdges
-      .map((e) => e.data)
-      .filter((e) => e.relationship && e.relationship.toLowerCase() === relTypeFilter)
-      .filter((e) => {
-        if (direction === 'OUTGOING') return e.source === nodeData.id;
-        if (direction === 'INCOMING') return e.target === nodeData.id;
-        return e.source === nodeData.id || e.target === nodeData.id;
-      })
-      .slice(0, fieldLimit);
-
-    const neighbourEntries = [];
-    for (const edge of matched) {
-      const neighbourId = edge.source === nodeData.id ? edge.target : edge.source;
-      const neighbourData = neighbourDataById.get(neighbourId);
-      if (!neighbourData) continue;
-
-      ctx.edgesById.set(edge.id, edge);
-      if (!ctx.nodesById.has(neighbourId)) ctx.nodesById.set(neighbourId, neighbourData);
-
-      if (ancestors.has(neighbourId)) {
-        // Refuse to recurse into a node already on this branch's path
-        // back to the root - the edge/node are still included in the
-        // result, but the branch stops here instead of looping forever.
-        neighbourEntries.push({ ...buildScalarEntry(neighbourData, field.selectionSet), cycleTruncated: true });
-        continue;
-      }
-      const nextAncestors = new Set(ancestors);
-      nextAncestors.add(neighbourId);
-      // eslint-disable-next-line no-await-in-loop
-      neighbourEntries.push(await buildTreeNode(neighbourData, field.selectionSet, ctx, nextAncestors));
-    }
-    entry[field.name] = neighbourEntries;
-  }
+  const fieldEntries = await Promise.all(
+    relationshipFields(selectionSet).map(async (field) => [
+      field.name,
+      await buildRelationshipField(nodeData, field, ctx, ancestors),
+    ]),
+  );
+  fieldEntries.forEach(([name, entries]) => { entry[name] = entries; });
 
   return entry;
 }
@@ -241,6 +286,7 @@ export async function executeGraphQuery(ast, context) {
   const { settings, nodeTypeConfig = {}, relationshipTypeConfig = {}, dispatch } = context;
   const { selectionSet } = ast.root;
 
+  validateRootArguments(ast.root.arguments);
   validateSelectionSet(selectionSet);
 
   const relDepth = measureRelationshipDepth(selectionSet);
@@ -267,11 +313,11 @@ export async function executeGraphQuery(ast, context) {
   const rootNodes = await resolveRootNodes(ast.root.arguments, ctx);
   rootNodes.forEach((n) => ctx.nodesById.set(n.id, n));
 
-  const tree = [];
-  for (const node of rootNodes) {
-    // eslint-disable-next-line no-await-in-loop
-    tree.push(await buildTreeNode(node, selectionSet, ctx, new Set([node.id])));
-  }
+  // Independent root matches (from a broad "search") never share an
+  // ancestor path, so their subtrees are safe to resolve concurrently.
+  const tree = await Promise.all(
+    rootNodes.map((node) => buildTreeNode(node, selectionSet, ctx, new Set([node.id]))),
+  );
 
   return {
     tree,

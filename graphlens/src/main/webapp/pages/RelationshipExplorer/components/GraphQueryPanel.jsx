@@ -16,11 +16,18 @@ const EXAMPLE_QUERY = '{\n  node(search: "alice") {\n    id\n    label\n    risk
  */
 export default function GraphQueryPanel({ isRunning, error, result, onRunQuery, onLoadOntoCanvas }) {
   const [queryText, setQueryText] = useState(EXAMPLE_QUERY);
+  const [localError, setLocalError] = useState(null);
 
   const handleRun = () => {
-    if (!queryText.trim()) return;
+    if (!queryText.trim()) {
+      setLocalError('Enter a query first.');
+      return;
+    }
+    setLocalError(null);
     onRunQuery(queryText);
   };
+
+  const displayError = localError || (error && error.message);
 
   return (
     <div className="graphlens-section">
@@ -38,7 +45,7 @@ export default function GraphQueryPanel({ isRunning, error, result, onRunQuery, 
           <Button label={isRunning ? 'Running...' : 'Run query'} appearance="primary" onClick={handleRun} disabled={isRunning} />
           {result && <Button label="Load onto canvas" onClick={onLoadOntoCanvas} />}
         </div>
-        {error && <p role="alert" style={{ fontSize: 12, color: '#7a1f1f' }}>{error.message}</p>}
+        {displayError && <p role="alert" style={{ fontSize: 12, color: '#7a1f1f' }}>{displayError}</p>}
         {result && (
           <>
             <p style={{ fontSize: 12 }}>

@@ -219,3 +219,45 @@ test('diagnostics.truncated reflects rows dropped by the configured graph-size l
   expect(result.tree).toEqual([{ id: 'user:alice', FRIEND_OF: [] }]);
   expect(result.diagnostics.truncated).toBe(true);
 });
+
+test('a bare word in place of a quoted string argument is rejected, not silently ignored', async () => {
+  // type: host (a bare word/enum) instead of type: "host" - the root's
+  // type filter must not be silently dropped just because it was
+  // spelled wrong.
+  const ast = parseQuery('{ node(search: "a", type: host) { id } }');
+  const dispatch = makeDispatch({}, { initialRows: [ALICE_SEARCH_ROW, SRV1_SEARCH_ROW] });
+  await expect(executeGraphQuery(ast, { settings, dispatch })).rejects.toThrow(/must be a quoted string/);
+  expect(dispatch).not.toHaveBeenCalled();
+});
+
+test('a quoted string in place of a bare-word direction argument is rejected, not silently defaulted', async () => {
+  const ast = parseQuery('{ node(search: "alice") { id FRIEND_OF(direction: "OUTGOING") { id } } }');
+  const dispatch = makeDispatch({ 'user:alice': ALICE_EDGE_ROWS });
+  await expect(executeGraphQuery(ast, { settings, dispatch })).rejects.toThrow(/must be a bare word/);
+  expect(dispatch).not.toHaveBeenCalled();
+});
+
+test('a quoted string in place of an integer "limit" argument is rejected before any search runs', async () => {
+  const ast = parseQuery('{ node(search: "alice", limit: "ten") { id } }');
+  const dispatch = makeDispatch();
+  await expect(executeGraphQuery(ast, { settings, dispatch })).rejects.toThrow(/must be an integer/);
+  expect(dispatch).not.toHaveBeenCalled();
+});
+
+test('argument-type errors on a deeply nested relationship field are still caught before any search runs', async () => {
+  const ast = parseQuery('{ node(search: "alice") { id FRIEND_OF { id FRIEND_OF(limit: "lots") { id } } } }');
+  const dispatch = makeDispatch({ 'user:alice': ALICE_EDGE_ROWS, 'user:bob': BOB_EDGE_ROWS });
+  await expect(executeGraphQuery(ast, { settings, dispatch })).rejects.toThrow(/must be an integer/);
+  expect(dispatch).not.toHaveBeenCalled();
+});
+
+test('resolves independent root matches concurrently and still returns a correct, ordered tree', async () => {
+  const ast = parseQuery('{ node(search: "a") { id FRIEND_OF { id } } }');
+  const dispatch = makeDispatch({ 'user:alice': ALICE_EDGE_ROWS, 'host:srv1': [] }, { initialRows: [ALICE_SEARCH_ROW, SRV1_SEARCH_ROW] });
+  const result = await executeGraphQuery(ast, { settings, dispatch });
+
+  expect(result.tree).toEqual([
+    { id: 'user:alice', FRIEND_OF: [{ id: 'user:bob' }] },
+    { id: 'host:srv1', FRIEND_OF: [] },
+  ]);
+});
