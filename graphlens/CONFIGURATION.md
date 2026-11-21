@@ -18,7 +18,9 @@ through Splunk's standard `configs/conf-*` REST endpoint.
 | | `max_path_depth` | 5 | Max hops considered by the path finder |
 | | `max_search_result_rows` | 500 | Upper bound on every controlled search's `\| head` |
 | | `search_dispatch_max_time_seconds` | 30 | Client-side search timeout |
-| `[search]` | `relationship_index` | `graphlens_relationships` | Index searched by `graphlens_relationship_index` macro |
+| `[search]` | `relationship_source_type` | `index` | `index` or `lookup` - where observed relationship data comes from (see DATA_INGESTION.md) |
+| | `relationship_index` | `graphlens_relationships` | Index searched when `relationship_source_type = index` |
+| | `relationship_lookup` | `graphlens_relationships_lookup` | **Lookup definition** name (not a raw CSV filename) read via `\| inputlookup` when `relationship_source_type = lookup` - see DATA_INGESTION.md |
 | | `evidence_default_index` | `*` | Fallback index for evidence search |
 | | `default_earliest` / `default_latest` | `-24h` / `now` | Default time range |
 | `[features]` | `enable_export` / `enable_annotations` / `enable_saved_views` / `enable_clustering` / `enable_path_finder` | all `true` | Feature toggles |

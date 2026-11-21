@@ -2,7 +2,7 @@
 
 ## Forward-looking risk (read this first)
 
-- **GraphLens's three views are built on custom Mako templates
+- **GraphLens's four views are built on custom Mako templates
   (`appserver/templates/*.html`), which Splunk has stated it will stop
   supporting in a future platform version.** `splunk-appinspect`'s
   `check_for_custom_mako_templates` check (added in a release newer than
@@ -11,20 +11,20 @@
   templates." The templates are confirmed working today against a live
   Splunk Enterprise 10.6.1 (build 1) instance, and this is only a
   `warning`, not a failure - but it means the Relationship Explorer,
-  Health and Configuration pages will eventually stop loading on some
-  future Splunk release unless GraphLens migrates to whatever Splunk's
-  then-current supported mechanism is for serving a custom page without a
-  Mako view. See APPINSPECT.md's `check_for_custom_mako_templates` section
-  for why this document deliberately does not guess at that replacement
-  mechanism, and what to check before the next release.
+  Health, Configuration and Help pages will eventually stop loading on
+  some future Splunk release unless GraphLens migrates to whatever
+  Splunk's then-current supported mechanism is for serving a custom page
+  without a Mako view. See APPINSPECT.md's `check_for_custom_mako_templates`
+  section for why this document deliberately does not guess at that
+  replacement mechanism, and what to check before the next release.
 
 ## No Splunk Web chrome around `type="html"` views
 
-GraphLens's three pages render with no Splunk Web app-switcher/nav chrome
+GraphLens's pages render with no Splunk Web app-switcher/nav chrome
 around them at all - confirmed as a Splunk platform characteristic, not a
 GraphLens defect, by reading `appserver/mrsparkle/controllers/view.py` on
 a live Splunk Enterprise 10.6.1 (build 1) instance: a `type="html"`
-custom view (what `default/data/ui/views/*.xml` declares all three of
+custom view (what `default/data/ui/views/*.xml` declares all of
 GraphLens's views as) is unconditionally routed through
 `bypass_module_system()`'s fast path, which never builds the `VIEW`/
 `modules` structure Splunk's own chrome-rendering template
@@ -33,7 +33,7 @@ Mako template inherits from, and there is no setting that changes it.
 
 Since 1.1.3, GraphLens provides its own in-app navigation
 (`shared/components/PageNav.jsx`) to work around the resulting "no way to
-reach the other two pages" problem - see CHANGELOG.md. What this does not
+reach the other pages" problem - see CHANGELOG.md. What this does not
 restore: the standard Splunk header (Activity/Settings/username menu, app
 switcher). There is no in-app substitute for those; use your browser
 back/forward or Splunk's own app list (`/en-US/app/launcher/home`, or your
@@ -65,6 +65,16 @@ instance's configured home) to switch away from GraphLens entirely.
 
 ## Functional scope
 
+- **`graphlens_graph_statistics` (default/savedsearches.conf) is not
+  dispatched from anywhere in the current UI** - it exists and is
+  documented, but nothing in `src/main/webapp` calls it. It also still
+  reads from the `graphlens_relationship_index` macro's hardcoded index
+  name regardless of the Configuration page's "Relationship data source"
+  setting (index vs. lookup, added in 1.2.0 - see CHANGELOG.md), since
+  converting it to respect that setting the way the UI-reachable searches
+  now do would mean rebuilding it as an ad-hoc template with no UI
+  consumer to verify it against. Wire it up (and convert it the same way)
+  before relying on it.
 - **Node details do not re-query on every selection.** The details panel
   shows data already returned by the search that introduced the node
   (initial search or expansion), rather than re-dispatching the

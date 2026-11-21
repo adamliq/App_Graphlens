@@ -30,6 +30,61 @@ describe('splTemplates - every search starts with the literal "search" keyword',
   });
 });
 
+describe('splTemplates - lookup-mode source generates | inputlookup instead of search index', () => {
+  // Lookup mode is an alternative generating clause, not a filter
+  // variation - these pin that each relationship-reading template honours
+  // the `source` argument instead of silently falling back to index mode,
+  // and that `inputlookup` (not `search`) leads. Confirmed against a live
+  // Splunk instance that `| inputlookup <name>` dispatches as a valid sole
+  // generating command the same way `search index=...` does (see
+  // ARCHITECTURE.md, CHANGELOG.md 1.2.0).
+  const lookupSource = { type: 'lookup', lookupName: 'graphlens_relationships_lookup' };
+
+  test('buildInitialEntitySearchSpl leads with inputlookup, not search', () => {
+    const spl = buildInitialEntitySearchSpl('jsmith', 20, lookupSource);
+    expect(spl.startsWith('| inputlookup graphlens_relationships_lookup')).toBe(true);
+    expect(spl).not.toMatch(/^search /);
+    expect(spl).toContain('append [ | inputlookup graphlens_relationships_lookup');
+  });
+
+  test('buildExpandNodeSpl leads with inputlookup and filters via a separate | search stage', () => {
+    const spl = buildExpandNodeSpl('user:jsmith', 50, lookupSource);
+    expect(spl.startsWith('| inputlookup graphlens_relationships_lookup')).toBe(true);
+    expect(spl).toContain('| search (source_id="user:jsmith" OR target_id="user:jsmith")');
+  });
+
+  test('buildNodeDetailsSpl and buildEdgeDetailsSpl honour lookup mode', () => {
+    expect(buildNodeDetailsSpl('user:jsmith', lookupSource).startsWith('| inputlookup graphlens_relationships_lookup')).toBe(true);
+    expect(buildEdgeDetailsSpl('edge:abc123', lookupSource).startsWith('| inputlookup graphlens_relationships_lookup')).toBe(true);
+  });
+
+  test('buildClusterExpandSpl honours lookup mode', () => {
+    const spl = buildClusterExpandSpl('node_type', 'user', 100, lookupSource);
+    expect(spl.startsWith('| inputlookup graphlens_relationships_lookup')).toBe(true);
+  });
+
+  test('an invalid lookup name falls back to the default rather than being embedded', () => {
+    const spl = buildExpandNodeSpl('user:jsmith', 50, { type: 'lookup', lookupName: '../etc/passwd' });
+    expect(spl).toContain('| inputlookup graphlens_relationships_lookup');
+    expect(spl).not.toContain('../etc/passwd');
+  });
+
+  test('omitting source defaults to index mode (backward compatible)', () => {
+    const spl = buildExpandNodeSpl('user:jsmith', 50);
+    expect(spl.startsWith('search index="graphlens_relationships"')).toBe(true);
+  });
+
+  test('buildEvidenceSpl never takes a source argument and always reads an index', () => {
+    const spl = buildEvidenceSpl({
+      safe_evidence_index: 'graphlens_relationships',
+      safe_evidence_sourcetype: 'graphlens:relationship',
+      safe_evidence_key_field: 'evidence_reference',
+      safe_evidence_key_value: '"edge:abc123"',
+    }, 100);
+    expect(spl.startsWith('search index=')).toBe(true);
+  });
+});
+
 describe('splTemplates - identifier validation', () => {
   test('buildExpandNodeSpl rejects an invalid node id', () => {
     expect(() => buildExpandNodeSpl('user: jsmith" | delete', 100)).toThrow(GraphLensValidationError);
@@ -46,6 +101,38 @@ describe('splTemplates - identifier validation', () => {
   test('buildExpandNodeSpl embeds a server-side graphlens_id_pattern guard for the exact node id', () => {
     const spl = buildExpandNodeSpl('user:jsmith', 50);
     expect(spl).toContain('| where match("user:jsmith", `graphlens_id_pattern`)');
+  });
+});
+
+describe('splTemplates - edge_id is derived when missing, before grouping by it', () => {
+  // edge_id is optional (DATA_MODEL.md, DATA_INGESTION.md), documented as
+  // derived deterministically when a data source omits it - confirmed
+  // against a live instance (both index and lookup mode) that this
+  // derivation did not actually exist before this fix, and that `stats
+  // ... by edge_id ...` silently drops every row missing the field
+  // entirely (not merely empty), the same class of bug previously fixed
+  // for evidence_reference. See CHANGELOG.md.
+  test.each([
+    ['buildExpandNodeSpl', () => buildExpandNodeSpl('user:jsmith', 50), /stats .*by.*edge_id/],
+    ['buildEdgeDetailsSpl', () => buildEdgeDetailsSpl('edge:abc123'), /stats .*by.*edge_id/],
+    ['buildNodeDetailsSpl', () => buildNodeDetailsSpl('user:jsmith'), /stats .*dc\(edge_id\)/],
+    ['buildClusterExpandSpl', () => buildClusterExpandSpl('node_type', 'user', 100), /stats .*by.*edge_id/],
+  ])('%s derives edge_id before any stats that reads it', (_name, build, statsPattern) => {
+    const spl = build();
+    const deriveIndex = spl.indexOf('eval edge_id=if(isnull(edge_id)');
+    const statsIndex = spl.search(statsPattern);
+    expect(deriveIndex).toBeGreaterThan(-1);
+    expect(statsIndex).toBeGreaterThan(-1);
+    expect(deriveIndex).toBeLessThan(statsIndex);
+  });
+
+  test('buildEdgeDetailsSpl filters on edge_id only after deriving it, not at the generating stage', () => {
+    const spl = buildEdgeDetailsSpl('edge:abc123');
+    const deriveIndex = spl.indexOf('eval edge_id=if(isnull(edge_id)');
+    const filterIndex = spl.indexOf('search edge_id="edge:abc123"');
+    expect(spl.startsWith('search index="graphlens_relationships"\n')).toBe(true);
+    expect(deriveIndex).toBeGreaterThan(-1);
+    expect(filterIndex).toBeGreaterThan(deriveIndex);
   });
 });
 

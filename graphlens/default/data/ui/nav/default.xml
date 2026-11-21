@@ -2,4 +2,5 @@
     <view name="graphlens_relationship_explorer" default="true" />
     <view name="graphlens_health" />
     <view name="graphlens_configuration" />
+    <view name="graphlens_help" />
 </nav>

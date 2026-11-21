@@ -48,6 +48,16 @@ in a search:
   `evidenceQueryBuilder.js` for why this extra layer exists (defence
   against a compromised/malformed upstream log source, not just the UI
   user).
+- **The relationship index/lookup name** embedded as the generating clause
+  of every relationship-reading template (`search index="<index>"` or
+  `| inputlookup <lookup>`) is likewise validated before being spliced in
+  unquoted - `safeIndexNameOrFallback` against `INDEX_NAME_PATTERN` for
+  index mode, `safeLookupNameOrFallback` against the equally strict
+  `LOOKUP_NAME_PATTERN` (`^[A-Za-z0-9_-]{1,80}$`) for lookup mode - even
+  though both values come from admin-only configuration
+  (`graphlens_settings.conf`, gated by `graphlens_manage_config`), not
+  direct user input, for the same defence-in-depth reason as the index/
+  sourcetype validation above.
 - **Numeric limits** (expansion size, path depth, result counts) are
   coerced and clamped with `clampInteger`, which returns a plain
   JavaScript number - never the original string - so trailing

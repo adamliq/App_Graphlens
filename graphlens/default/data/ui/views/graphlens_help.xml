@@ -1,0 +1,1 @@
+<view template="graphlens:/templates/Help.html" type="html" isVisible="true" label="Help" />

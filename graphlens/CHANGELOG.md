@@ -2,6 +2,131 @@
 
 All notable changes to GraphLens are documented in this file.
 
+## [1.3.0] - 2026-11-21
+
+### Added
+
+- **Lookup-table relationship data source.** The Configuration page's
+  "Relationship data source" setting now offers a choice between **Index**
+  (the existing, time-series behaviour) and **Lookup (static table)**: in
+  lookup mode, every relationship-reading search/expansion reads a Splunk
+  lookup table via `| inputlookup <name>` instead of `search index=...` -
+  no index, ingestion pipeline, or scheduled search required. See
+  DATA_INGESTION.md option D for how to set one up, and the Help page's
+  new "Where the relationship data comes from" section.
+- New `relationship_source_type` (`index`/`lookup`) and `relationship_lookup`
+  settings in `graphlens_settings.conf` (`[search]` stanza), editable from
+  the Configuration page alongside the existing `relationship_index`.
+- `shared/utilities/splSafety.js` gained `LOOKUP_NAME_PATTERN` and
+  `safeLookupNameOrFallback`, mirroring the existing index/sourcetype
+  validation, since a lookup name is likewise spliced unquoted into SPL.
+
+### Fixed
+
+- **The Configuration page's "Relationship index" setting silently did
+  nothing.** Every relationship-reading template in `splTemplates.js`
+  actually used a hardcoded `graphlens_relationship_index` macro
+  (`index=graphlens_relationships`, in `default/macros.conf`) - changing
+  the setting had no effect on any search, because nothing read it back
+  into the macro. Discovered while building the lookup-mode feature above.
+  Fixed by making the generating clause of every relationship-reading
+  template dynamic: built client-side (`buildRelationshipSourceLines` in
+  `splTemplates.js`) from a `source` argument that `configService.js`'s
+  new `relationshipSourceFromSettings()` derives from the Configuration
+  page's current settings, for both index and lookup mode. The
+  `graphlens_relationship_index` macro itself is unchanged and kept, since
+  `graphlens_graph_statistics` (never dispatched from the UI - see
+  KNOWN_LIMITATIONS.md) still uses it.
+- **`edge_id` was never actually derived when a data source omits it**,
+  despite DATA_INGESTION.md and DATA_MODEL.md documenting that as
+  supported ("edge_id can be omitted - GraphLens derives one
+  deterministically from source_id + target_id + relationship_type if
+  it's missing"). No such derivation existed anywhere in `splTemplates.js`.
+  Every template that groups by edge_id (`buildExpandNodeSpl`,
+  `buildEdgeDetailsSpl`, `buildClusterExpandSpl`, and the `dc(edge_id)` in
+  `buildNodeDetailsSpl`) therefore silently dropped every such row - `stats
+  ... by` over a field entirely ABSENT from a row returns zero rows for
+  it, not rows grouped under an empty value, the exact same class of bug
+  previously fixed for `evidence_reference` (see 1.0.x history above).
+  Discovered live while verifying the lookup-mode feature above (a minimal
+  2-row test lookup with no edge_id column returned zero results from
+  expand), then confirmed the same bug independently reproduces in index
+  mode too, with a real CSV-ingested event (`splunk add oneshot`, not
+  `collect`, which does not produce the CSV shape `INDEXED_EXTRACTIONS =
+  csv` needs). Fixed with a new `DERIVE_EDGE_ID_LINE` eval
+  (`splTemplates.js`) run before any such `stats`, in both index and
+  lookup mode, for every affected template.
+
+### Verified
+
+Against a disposable, bare Splunk Docker instance (no GraphLens app
+installed, so nothing else could be influencing the result): `|
+inputlookup <name>` dispatches successfully as the sole leading
+(generating) command via `/services/search/jobs` the same way `search
+index=...` does; a `| search <filter>` stage and a bracketed `append [ |
+inputlookup ... ]` subsearch both behave identically to their index-mode
+equivalents. This avoided repeating this project's recurring pattern of
+shipping an SPL-dispatch assumption that turns out wrong against a live
+instance. See ARCHITECTURE.md, "How searches retrieve relationships."
+
+A second live check, this time against an actual GraphLens 1.3.0 install
+(fresh `splunk/splunk` container, package built/AppInspect-clean, app
+installed and restarted): a bare `| inputlookup <name>` (no `.csv`
+extension) fails with "requires a .csv or KV store lookup definition"
+unless a matching **lookup definition** (Settings > Lookups > Lookup
+table definitions) exists - merely uploading the CSV file is not enough.
+Confirmed this is handled correctly end-to-end once a lookup definition is
+created: the Configuration page's "Relationship lookup" field saves and
+loads via `configs/conf-graphlens_settings`, and switching to lookup mode
+correctly drives entity search, node details via `append [ | inputlookup
+... ]`, and one-hop expansion against a 2-row/3-node test lookup, with
+identical result shapes to index mode. DATA_INGESTION.md, the `.conf.spec`
+file, CONFIGURATION.md and the Configuration page's own field label were
+all updated to say "lookup definition name," not "lookup table name," to
+head this off before an administrator hits it.
+
+A third live check specifically targeted the `edge_id` derivation fix,
+reproducing it both ways before confirming the fix: in lookup mode (a
+2-row test lookup with no `edge_id` column) and in index mode (a real
+CSV-shaped event via `splunk add oneshot`, not `| collect`, which writes
+auto-kv-style raw text that this sourcetype's `KV_MODE = none` /
+`INDEXED_EXTRACTIONS = csv` config does not parse the same way - a
+methodology trap worth remembering for future verification). Both
+reproduced the identical "zero rows" failure pre-fix and both returned the
+correct row, with a sensible derived `edge_id`
+(`user:jsmith_AUTHENTICATED_TO_host:server01`), post-fix.
+
+Version bumped to 1.3.0 (new feature + two bug fixes, not a patch). Full
+npm test (new lookup-mode, `LOOKUP_NAME_PATTERN`/`safeLookupNameOrFallback`,
+and edge_id-derivation tests added - 269 tests total) and lint (0
+warnings) pass. AppInspect re-run clean (0 errors/failures, 7 warnings,
+same profile as 1.2.0 - see APPINSPECT.md).
+
+## [1.2.0] - 2026-11-21
+
+### Added
+
+- **A fourth page, Help** (`graphlens_help` view / `HelpPage`), reachable
+  from the nav tabs on every page. A static, no-search, no-capability
+  reference page condensing USER_GUIDE.md for in-app reading - searching,
+  expanding, filters, legend, evidence, path finder, export, graph limits,
+  resetting. Unlike the other three pages, it dispatches no searches and
+  checks no capability, since every user who can open the app at all
+  should be able to read it.
+- `shared/components/PageNav.jsx` and `default/data/ui/nav/default.xml`
+  updated to include it alongside Relationship Explorer, Health and
+  Configuration.
+
+Verified end-to-end against a live Splunk instance: the Help page loads
+(HTTP 200, zero page errors), shows the correct version, and the nav tabs
+correctly link all four pages together.
+
+Version bumped to 1.2.0 (new feature, not a patch). Full npm test (254
+tests) and lint (0 warnings) pass; AppInspect re-run clean (0 errors/
+failures, 7 warnings, same profile as 1.1.4) - as expected,
+`check_for_custom_mako_templates` now also names `Help.html`, alongside
+the other three - see APPINSPECT.md.
+
 ## [1.1.4] - 2026-11-20
 
 Fixes a genuine readability bug flagged directly: the toolbar (search box,

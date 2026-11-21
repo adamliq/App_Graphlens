@@ -37,9 +37,26 @@ search_dispatch_max_time_seconds = <positive integer>
 * Default: 30
 
 [search]
+relationship_source_type = <"index" or "lookup">
+* Where observed relationship data is read from. "index" reads
+  relationship_index as time-series events; "lookup" reads
+  relationship_lookup directly via | inputlookup instead - no index or
+  ingestion pipeline required. See DATA_INGESTION.md.
+* Default: index
+
 relationship_index = <index name>
 * Index containing observed, time-series relationship summary events.
+  Only used when relationship_source_type = index.
 * Default: graphlens_relationships
+
+relationship_lookup = <lookup definition name>
+* Name of a lookup *definition* (Settings > Lookups > Lookup table
+  definitions) containing observed relationship summary rows, in the same
+  shape as the index schema in DATA_MODEL.md. This must be a lookup
+  definition's name, not a raw CSV filename - | inputlookup on a bare name
+  with no matching definition fails. Only used when
+  relationship_source_type = lookup. See DATA_INGESTION.md.
+* Default: graphlens_relationships_lookup
 
 evidence_default_index = <index name or "*">
 * Fallback index constraint applied to evidence searches when a

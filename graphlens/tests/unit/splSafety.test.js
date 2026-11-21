@@ -11,6 +11,7 @@ import {
   assertValidTimeLiteral,
   safeIndexNameOrFallback,
   safeSourcetypeOrFallback,
+  safeLookupNameOrFallback,
   GraphLensValidationError,
 } from '../../src/main/webapp/shared/utilities/splSafety';
 
@@ -187,6 +188,22 @@ describe('safeIndexNameOrFallback / safeSourcetypeOrFallback', () => {
 
   test('falls back for a non-string value', () => {
     expect(safeIndexNameOrFallback(undefined, 'fallback_index')).toBe('fallback_index');
+  });
+});
+
+describe('safeLookupNameOrFallback', () => {
+  test('accepts a normal lookup table name', () => {
+    expect(safeLookupNameOrFallback('graphlens_relationships_lookup', 'fallback')).toBe('graphlens_relationships_lookup');
+  });
+
+  test('falls back for a lookup name carrying SPL metacharacters or path traversal', () => {
+    expect(safeLookupNameOrFallback('main | delete', 'fallback_lookup')).toBe('fallback_lookup');
+    expect(safeLookupNameOrFallback('../../etc/passwd', 'fallback_lookup')).toBe('fallback_lookup');
+    expect(safeLookupNameOrFallback('lookup.csv', 'fallback_lookup')).toBe('fallback_lookup');
+  });
+
+  test('falls back for a non-string value', () => {
+    expect(safeLookupNameOrFallback(undefined, 'fallback_lookup')).toBe('fallback_lookup');
   });
 });
 

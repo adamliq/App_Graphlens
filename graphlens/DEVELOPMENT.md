@@ -115,10 +115,11 @@ verification:
 - `default/app.conf` (`[launcher] version` and `[id] version`)
 - `package.json` (`version`) and the regenerated `package-lock.json`
   (`npm install --package-lock-only`)
-- `const APP_VERSION` in `src/main/webapp/pages/RelationshipExplorer/App.jsx`
-  and `src/main/webapp/pages/HealthPage/App.jsx` (used in export metadata
-  and the Health page's own display - not sourced from `package.json` at
-  build time, so it does not update itself)
+- `const APP_VERSION` in `src/main/webapp/pages/RelationshipExplorer/App.jsx`,
+  `src/main/webapp/pages/HealthPage/App.jsx`, and
+  `src/main/webapp/pages/HelpPage/App.jsx` (used in export metadata and
+  each page's own display - not sourced from `package.json` at build time,
+  so it does not update itself)
 - `CHANGELOG.md` (new version heading)
 
 ## Dependency updates

@@ -79,8 +79,24 @@ full injection-prevention discussion):
 | `buildEdgeDetailsSpl` | Aggregated edge properties (not currently wired to the UI) |
 | `buildEvidenceSpl` | Bounded supporting-event retrieval for a node or edge |
 | `buildClusterExpandSpl` | Optional bounded expansion of a collapsed cluster/group node (not currently wired to the UI) |
-| `graphlens_graph_statistics` (saved search) | Aggregate counts for limit/health reporting |
+| `graphlens_graph_statistics` (saved search) | Aggregate counts for limit/health reporting - not currently dispatched from the UI (see KNOWN_LIMITATIONS.md) |
 | `graphlens_health` (saved search) | Recent audited actions, for the Health page |
+
+All five relationship-reading templates (everything above except
+`buildEvidenceSpl`, which always reads raw evidence events from an index)
+take a `source` argument built by `configService.js`'s
+`relationshipSourceFromSettings()` from the Configuration page's
+"Relationship data source" setting: `{ type: 'index', index }` generates
+`search index="<index>" ...`; `{ type: 'lookup', lookupName }` generates
+`| inputlookup <lookup> | search ...` instead - confirmed against a live
+instance that `| inputlookup` works as the sole leading (generating)
+command for ad-hoc dispatch, the same way `search index=...` does, and
+that both the `| search` filter stage and a bracketed `append [ | inputlookup
+... ]` subsearch behave identically to their index-mode equivalents. See
+DATA_INGESTION.md for when to use a lookup instead of an index, and
+CHANGELOG.md 1.2.0 for why this replaced a static
+`graphlens_relationship_index` macro that the Configuration page's
+"Relationship index" field never actually fed into.
 
 `searchService.js` exposes `dispatchSavedSearch` (named saved search,
 `services/saved/searches/<name>/dispatch`) and `dispatchAdHocSearch`
@@ -102,16 +118,26 @@ cannot let an invalid identifier through.
 
 ## How SUIT renders the interface
 
-Each page (`RelationshipExplorer`, `ConfigurationPage`, `HealthPage`) is a
-small React application built with `@splunk/react-ui` components, entered
-through `src/main/webapp/pages/<Page>/index.jsx`, compiled by webpack into
+Each page (`RelationshipExplorer`, `ConfigurationPage`, `HealthPage`,
+`HelpPage`) is a small React application built with `@splunk/react-ui`
+components, entered through `src/main/webapp/pages/<Page>/index.jsx`
+(each wrapped in `@splunk/themes`' `SplunkThemeProvider` - see
+KNOWN_LIMITATIONS.md's theming note below), compiled by webpack into
 `appserver/static/build/pages/<Page>/App.js` + `App.css`. A thin Mako view
 (`default/data/ui/views/<name>.xml` -> `appserver/templates/<Page>.html`)
-provides the page shell inside Splunk Web's standard chrome (navigation,
-header) and loads the compiled bundle by `<script src="${make_url(...)}">`
-- the templates intentionally contain **no Mako Python code blocks**
-(`<% %>` / `<%! %>`), only `<%inherit>`/`<%block>` directives and `${}`
-expressions, because Splunk AppInspect's `check_for_existence_of_python_code_block_in_mako_template`
+provides the page shell and loads the compiled bundle from a hardcoded
+absolute static path (`/static/app/graphlens/build/pages/<Page>/App.js`
+- not `${make_url(...)}`, which turned out not to be defined in this
+namespace and caused a live HTTP 500; see CHANGELOG.md 1.0.1). **These
+views render with no Splunk Web chrome at all** (no app switcher, no
+header, no navigation) - confirmed as an unconditional platform
+characteristic of `type="html"` custom views, not something this app's
+templates control; GraphLens provides its own in-app navigation instead
+(`shared/components/PageNav.jsx`) - see KNOWN_LIMITATIONS.md, "No Splunk
+Web chrome around `type=\"html\"` views". The templates intentionally
+contain **no Mako Python code blocks** (`<% %>` / `<%! %>`), only
+`<%inherit>`/`<%block>` directives and `${}` expressions, because Splunk
+AppInspect's `check_for_existence_of_python_code_block_in_mako_template`
 check flags any custom Mako template containing an actual code block as a
 critical risk. See DEVELOPMENT.md for the verification note on this.
 
@@ -186,7 +212,8 @@ graphlens/
 │   └── pages/
 │       ├── RelationshipExplorer/   Main graph explorer page
 │       ├── ConfigurationPage/      Admin configuration page
-│       └── HealthPage/             Health/audit summary page
+│       ├── HealthPage/             Health/audit summary page
+│       └── HelpPage/               Static in-app user guide
 ├── sample_data/              Synthetic sample CSVs (see scripts/generate_sample_data.py)
 ├── scripts/                  Icon/sample-data generators, packaging script
 └── tests/                    unit/, security/, performance/
