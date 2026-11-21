@@ -2,6 +2,32 @@
 
 All notable changes to GraphLens are documented in this file.
 
+## [1.6.5] - 2026-11-21
+
+### Fixed
+
+- **Node labels hardened with the same background as edge labels.** Node
+  labels sit below the node on the plain canvas, not on the node's own
+  fill, so they were never exposed to the per-type-colour contrast
+  problem edge labels had (1.6.4) - but in a dense graph a curved edge
+  can still pass directly under where a label lands, and nothing stopped
+  that from eventually causing the same kind of illegibility. Gave node
+  labels the identical canvas-coloured background
+  (`text-background-color`/`-opacity`/`-shape`/`-padding`) - a no-op on
+  the common case, since it already matches the plain canvas, confirmed
+  live with the J Smith sample node: its own risk halo visibly passes
+  under its label, and the label stays perfectly legible.
+- Rechecked parallel edges while verifying this (the bundled sample data
+  already has two: `AUTHENTICATED_TO` and `OWNS` both between the same
+  two nodes) - Cytoscape's own "bundled bezier" curve style already fans
+  these apart automatically, confirmed live that both labels render
+  distinctly with no overlap. Nothing to fix there.
+
+Version bumped to 1.6.5 (defensive hardening, requested as part of a
+label readability/visibility recheck). Full npm test (300 tests) and
+lint (0 warnings) pass; AppInspect re-run clean (0 errors/failures, same
+7-warning profile as prior releases).
+
 ## [1.6.4] - 2026-11-21
 
 ### Fixed
