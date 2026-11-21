@@ -96,43 +96,14 @@ function applyTypeFilter(nodeDataList, typeFilter) {
   return nodeDataList.filter((n) => n.type === typeFilter);
 }
 
-async function resolveRootNodes(args, ctx) {
-  const limit = clampInteger(argInt(args, 'limit'), { min: 1, max: 100, fallback: 20 });
-  const typeFilter = argString(args, 'type');
-  const idArg = argString(args, 'id');
-  const searchArg = argString(args, 'search');
-  const source = relationshipSourceFromSettings(ctx.settings || {});
-
-  if (idArg !== undefined) {
-    if (!isValidId(idArg)) {
-      throw new GraphLensValidationError('The "id" argument is not a valid GraphLens identifier.', 'id');
-    }
-    // No standalone "fetch one node's own metadata" search is wired into
-    // the app (see splTemplates.js's buildNodeDetailsSpl comment), so an
-    // id-rooted query resolves the node via its own one-hop expansion: a
-    // node with zero relationships cannot be resolved this way, and is
-    // documented as a known limitation.
-    const expansionLimit = clampInteger(ctx.settings ? ctx.settings.maxExpansionNeighbours : undefined, { min: 1, max: 5000, fallback: 100 });
-    const spl = buildExpandNodeSpl(idArg, expansionLimit, source);
-    ctx.budget.expansions += 1;
-    const { rows } = await ctx.dispatch(spl);
-    const { nodes } = transformRowsToGraph([], rows, { maxNodes: 1000, nodeTypeConfig: ctx.nodeTypeConfig });
-    const match = nodes.find((n) => n.data.id === idArg);
-    return applyTypeFilter(match ? [match.data] : [], typeFilter);
+/** Folds a transformRowsToGraph() diagnostics object into the execution's overall truncation flag. */
+function noteTruncation(ctx, diagnostics) {
+  if (diagnostics && diagnostics.limitReached) {
+    ctx.diagnostics.truncated = true;
   }
-
-  if (searchArg !== undefined) {
-    const { splSafe } = sanitizeSearchTerm(searchArg);
-    const spl = buildInitialEntitySearchSpl(splSafe, limit, source);
-    const { rows } = await ctx.dispatch(spl);
-    const { nodes } = transformRowsToGraph(rows, [], { maxNodes: limit, nodeTypeConfig: ctx.nodeTypeConfig });
-    return applyTypeFilter(nodes.map((n) => n.data), typeFilter).slice(0, limit);
-  }
-
-  throw new GraphLensValidationError('The "node" root field needs either a "search" or an "id" argument.', 'node');
 }
 
-/** Expands a node's relationships at most once per query execution, regardless of how many relationship fields reference it. */
+/** Expands a node's relationships at most once per query execution, regardless of how many relationship fields - or the root resolver itself - reference it. */
 function expandNodeOnce(nodeId, ctx) {
   if (ctx.expandCache.has(nodeId)) {
     return ctx.expandCache.get(nodeId);
@@ -147,15 +118,53 @@ function expandNodeOnce(nodeId, ctx) {
     const source = relationshipSourceFromSettings(ctx.settings || {});
     const spl = buildExpandNodeSpl(nodeId, expansionLimit, source);
     const { rows } = await ctx.dispatch(spl);
-    return transformRowsToGraph([], rows, {
+    const result = transformRowsToGraph([], rows, {
       maxNodes: ctx.settings ? ctx.settings.maxVisibleNodes : undefined,
       maxEdges: ctx.settings ? ctx.settings.maxVisibleEdges : undefined,
       nodeTypeConfig: ctx.nodeTypeConfig,
       relationshipTypeConfig: ctx.relationshipTypeConfig,
     });
+    noteTruncation(ctx, result.diagnostics);
+    return result;
   })();
   ctx.expandCache.set(nodeId, promise);
   return promise;
+}
+
+async function resolveRootNodes(args, ctx) {
+  const limit = clampInteger(argInt(args, 'limit'), { min: 1, max: 100, fallback: 20 });
+  const typeFilter = argString(args, 'type');
+  const idArg = argString(args, 'id');
+  const searchArg = argString(args, 'search');
+
+  if (idArg !== undefined) {
+    if (!isValidId(idArg)) {
+      throw new GraphLensValidationError('The "id" argument is not a valid GraphLens identifier.', 'id');
+    }
+    // No standalone "fetch one node's own metadata" search is wired into
+    // the app (see splTemplates.js's buildNodeDetailsSpl comment), so an
+    // id-rooted query resolves the node via its own one-hop expansion: a
+    // node with zero relationships cannot be resolved this way, and is
+    // documented as a known limitation. Routed through expandNodeOnce (not
+    // a second, separate dispatch) so a query that also follows a
+    // relationship field from this same root reuses this same expansion
+    // instead of searching for it twice.
+    const { nodes } = await expandNodeOnce(idArg, ctx);
+    const match = nodes.find((n) => n.data.id === idArg);
+    return applyTypeFilter(match ? [match.data] : [], typeFilter);
+  }
+
+  if (searchArg !== undefined) {
+    const { splSafe } = sanitizeSearchTerm(searchArg);
+    const source = relationshipSourceFromSettings(ctx.settings || {});
+    const spl = buildInitialEntitySearchSpl(splSafe, limit, source);
+    const { rows } = await ctx.dispatch(spl);
+    const { nodes, diagnostics } = transformRowsToGraph(rows, [], { maxNodes: limit, nodeTypeConfig: ctx.nodeTypeConfig });
+    noteTruncation(ctx, diagnostics);
+    return applyTypeFilter(nodes.map((n) => n.data), typeFilter).slice(0, limit);
+  }
+
+  throw new GraphLensValidationError('The "node" root field needs either a "search" or an "id" argument.', 'node');
 }
 
 async function buildTreeNode(nodeData, selectionSet, ctx, ancestors) {
