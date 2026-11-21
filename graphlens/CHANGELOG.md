@@ -2,6 +2,23 @@
 
 All notable changes to GraphLens are documented in this file.
 
+## [1.6.3] - 2026-11-21
+
+### Fixed
+
+- **Node/Edge details panels showed risk score as plain text**, even for
+  a risk ≥ 70 node/edge, which has had a dedicated red halo on the
+  canvas since 1.6.0 - the two places a user reads the same risk score
+  disagreed on how much attention it deserved. Both panels
+  (`NodeDetailsPanel.jsx`/`EdgeDetailsPanel.jsx`) now render a high risk
+  score in the same red (`STATUS_COLORS.risk`) and bold, confirmed live.
+- Rechecked colour/layout again on this pass: no further issues found
+  against the bundled sample data.
+
+Version bumped to 1.6.3 (bug fix only). Full npm test (300 tests) and
+lint (0 warnings) pass; AppInspect re-run clean (0 errors/failures, same
+7-warning profile as prior releases).
+
 ## [1.6.2] - 2026-11-21
 
 ### Fixed
