@@ -2,6 +2,29 @@
 
 All notable changes to GraphLens are documented in this file.
 
+## [1.6.2] - 2026-11-21
+
+### Fixed
+
+- Rechecked layout/colour after 1.6.1, cycling through all five layouts
+  (cose, concentric, breadthfirst, circle, grid) live against the bundled
+  sample data. Four were already clean; **concentric** still showed
+  residual crowding between an edge label and the node label directly
+  below it on a small, low-degree-variance graph (its rings collapse
+  close together in that case, and `minNodeSpacing`'s 10px default cushion
+  wasn't enough even with `nodeDimensionsIncludeLabels` on). Bumped
+  `minNodeSpacing` to 28px for the concentric layout only; confirmed live
+  the crowding is reduced.
+- No other layout or colour issues found on this pass - also re-confirmed
+  Cytoscape's own resize handling is unaffected and unrelated page errors
+  seen during verification are pre-existing Splunk Web platform noise
+  (home-page cards/DMC/federated-analytics config polling during login),
+  not GraphLens's own code.
+
+Version bumped to 1.6.2 (bug fix only). Full npm test (300 tests) and
+lint (0 warnings) pass; AppInspect re-run clean (0 errors/failures, same
+7-warning profile as prior releases).
+
 ## [1.6.1] - 2026-11-21
 
 ### Fixed
