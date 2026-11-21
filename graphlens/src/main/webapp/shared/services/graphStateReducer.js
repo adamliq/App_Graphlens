@@ -203,6 +203,48 @@ export function resetGraph(state) {
 }
 
 /**
+ * Replace the whole graph with a previously-exported snapshot (Cytoscape-
+ * shaped `{ nodes, edges }`, as produced by transforming a parsed import
+ * file through graphTransformer.transformRowsToGraph - never trusted
+ * directly). Like resetGraph followed by loading several "root" nodes at
+ * once: imported nodes carry no expansion parent/child link (the same as
+ * the single root node setInitialNode creates), so they stay visible
+ * until explicitly hidden or the graph is reset, and can still be
+ * expanded normally afterwards. Bounded by the same graph limits as every
+ * other node/edge admission path, the same way mergeExpansion is - an
+ * import can never exceed what loading the same rows via a live search
+ * could reach either.
+ */
+export function loadGraphSnapshot(state, { nodes = [], edges = [] }, limits) {
+  const next = createEmptyGraphState({ graphLimits: state.graphLimits, currentLayout: state.currentLayout });
+  const maxNodes = (limits && limits.maxVisibleNodes) || next.graphLimits.maxVisibleNodes;
+  const maxEdges = (limits && limits.maxVisibleEdges) || next.graphLimits.maxVisibleEdges;
+  let limitReached = false;
+
+  nodes.forEach(({ data }) => {
+    if (Object.keys(next.visibleNodes).length >= maxNodes) {
+      limitReached = true;
+      return;
+    }
+    next.visibleNodes[data.id] = data;
+  });
+
+  edges.forEach(({ data }) => {
+    // Only admit an edge if both endpoints made it into the snapshot (an
+    // endpoint may have been dropped by the node limit above, or may
+    // simply be missing from a hand-edited import file).
+    if (!next.visibleNodes[data.source] || !next.visibleNodes[data.target]) return;
+    if (Object.keys(next.visibleEdges).length >= maxEdges) {
+      limitReached = true;
+      return;
+    }
+    next.visibleEdges[data.id] = data;
+  });
+
+  return { nextState: next, diagnostics: { limitReached } };
+}
+
+/**
  * Nodes/edges as they should be rendered right now: visible minus
  * individually-hidden nodes minus nodes/relationships hidden by type.
  */

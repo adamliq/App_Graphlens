@@ -8,9 +8,10 @@ import { loadNodeTypeConfig, loadRelationshipTypeConfig, deriveNodeTypeList, der
 import { recordAuditEvent, AUDIT_ACTIONS } from '../../shared/services/auditService';
 import { findShortestPath } from '../../shared/services/pathFinder';
 import { buildExportBlob } from '../../shared/services/exportService';
+import { parseImportedGraphJson } from '../../shared/services/importService';
 import { buildEvidenceTokensForEdge, buildEvidenceTokensForNode } from '../../shared/services/evidenceQueryBuilder';
 import { buildInitialEntitySearchSpl, buildExpandNodeSpl, buildEvidenceSpl } from '../../shared/services/splTemplates';
-import { sanitizeSearchTerm, isValidId } from '../../shared/utilities/splSafety';
+import { sanitizeSearchTerm, isValidId, GraphLensValidationError } from '../../shared/utilities/splSafety';
 
 import GraphToolbar from './components/GraphToolbar';
 import GraphCanvas, { fitGraph, centerOnNode } from './components/GraphCanvas';
@@ -28,7 +29,7 @@ import ErrorNotification from './components/ErrorNotification';
 import EmptyState from './components/EmptyState';
 import PageNav from '../../shared/components/PageNav';
 
-const APP_VERSION = '1.4.0';
+const APP_VERSION = '1.5.0';
 
 function downloadBlob(blob, filename) {
   const url = URL.createObjectURL(blob);
@@ -55,6 +56,7 @@ export default function App() {
   const [path, setPath] = useState(null);
   const cyRef = useRef(null);
   const currentSearchRef = useRef(null);
+  const importInputRef = useRef(null);
 
   const { state, actions, renderable, isNodeExpanded, isNodePinned } = useGraphState(
     settings
@@ -246,6 +248,39 @@ export default function App() {
     }
   }, [state, handleApiError]);
 
+  const handleImportFile = useCallback((file) => {
+    if (!settings || !file) return;
+    setError(null);
+    const reader = new FileReader();
+    reader.onload = () => {
+      try {
+        const { nodeRows, edgeRows } = parseImportedGraphJson(String(reader.result));
+        const { nodes, edges } = transformRowsToGraph(nodeRows, edgeRows, {
+          maxNodes: settings.maxVisibleNodes,
+          maxEdges: settings.maxVisibleEdges,
+          nodeTypeConfig,
+          relationshipTypeConfig,
+        });
+        actions.loadSnapshot({ nodes, edges }, settings);
+        setSearchResults([]);
+        setPath(null);
+        setPathEndpoints({ startNodeId: null, endNodeId: null });
+        setEvidence({ isLoading: false, error: null, rows: [], fieldOrder: [], targetLabel: null });
+        setLayoutToken((t) => t + 1);
+        recordAuditEvent(AUDIT_ACTIONS.IMPORT_GRAPH, { detail: `${nodes.length} nodes, ${edges.length} edges` });
+      } catch (err) {
+        const message = err instanceof GraphLensValidationError ? err.message : 'Could not read that file.';
+        setError({ code: 'import_error', message, retryable: false });
+        recordAuditEvent(AUDIT_ACTIONS.IMPORT_GRAPH, { outcome: 'failure', detail: message });
+      }
+    };
+    reader.onerror = () => {
+      setError({ code: 'import_error', message: 'Could not read that file.', retryable: false });
+      recordAuditEvent(AUDIT_ACTIONS.IMPORT_GRAPH, { outcome: 'failure', detail: 'file read error' });
+    };
+    reader.readAsText(file);
+  }, [settings, actions, nodeTypeConfig, relationshipTypeConfig]);
+
   const handleTimeRangeChange = useCallback((preset) => {
     actions.setActiveFilters({ timeEarliest: preset.earliest, timeLatest: preset.latest });
   }, [actions]);
@@ -278,6 +313,19 @@ export default function App() {
         onReset={handleReset}
         onExportOpen={() => setExportDialogOpen(true)}
         exportEnabled={settings.enableExport}
+        onImportClick={() => importInputRef.current && importInputRef.current.click()}
+        importEnabled={settings.enableExport}
+      />
+      <input
+        ref={importInputRef}
+        type="file"
+        accept="application/json,.json"
+        style={{ display: 'none' }}
+        onChange={(e) => {
+          const file = e.target.files && e.target.files[0];
+          handleImportFile(file);
+          e.target.value = '';
+        }}
       />
 
       <div className="graphlens-filters">

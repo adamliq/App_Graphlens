@@ -1,7 +1,7 @@
 import React from 'react';
 import PageNav from '../../shared/components/PageNav';
 
-const APP_VERSION = '1.4.0';
+const APP_VERSION = '1.5.0';
 
 /**
  * Static, no-dependency reference page - unlike the other three pages,
@@ -98,11 +98,20 @@ export default function App() {
       </section>
 
       <section className="graphlens-section">
-        <h2>Export</h2>
+        <h2>Export and import</h2>
         <p>
           Toolbar <strong>Export</strong> button: JSON (full graph data plus
           metadata), CSV (nodes or edges), or PNG (canvas snapshot). Exports
-          only ever include what is currently visible to you.
+          only ever include what is currently visible to you. Toolbar
+          <strong> Import</strong> button: pick a previously exported JSON
+          file to load it back onto the canvas, replacing the current
+          graph - a convenience for resuming or sharing a specific
+          snapshot, read entirely in your browser (nothing is uploaded).
+          It is not a way to bring your own Splunk data into GraphLens -
+          see &quot;Loading your own data&quot; below for that. Every
+          imported node and edge is re-validated the same way a live
+          search result would be, so an import can never add anything
+          GraphLens would not otherwise accept.
         </p>
       </section>
 

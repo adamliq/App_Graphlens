@@ -18,6 +18,7 @@ const ACTIONS = {
   SET_ACTIVE_FILTERS: 'SET_ACTIVE_FILTERS',
   SET_LAYOUT: 'SET_LAYOUT',
   RESET: 'RESET',
+  LOAD_SNAPSHOT: 'LOAD_SNAPSHOT',
 };
 
 function reducer(state, action) {
@@ -54,6 +55,10 @@ function reducer(state, action) {
       return ops.setLayout(state, action.layoutName);
     case ACTIONS.RESET:
       return ops.resetGraph(state);
+    case ACTIONS.LOAD_SNAPSHOT: {
+      const { nextState } = ops.loadGraphSnapshot(state, action.elements, action.limits);
+      return nextState;
+    }
     default:
       return state;
   }
@@ -85,6 +90,7 @@ export function useGraphState(initialLimits) {
     setActiveFilters: (filters) => dispatch({ type: ACTIONS.SET_ACTIVE_FILTERS, filters }),
     setLayout: (layoutName) => dispatch({ type: ACTIONS.SET_LAYOUT, layoutName }),
     reset: () => dispatch({ type: ACTIONS.RESET }),
+    loadSnapshot: (elements, limits) => dispatch({ type: ACTIONS.LOAD_SNAPSHOT, elements, limits }),
   }), []);
 
   const renderable = useMemo(() => ops.selectRenderableElements(state), [state]);
