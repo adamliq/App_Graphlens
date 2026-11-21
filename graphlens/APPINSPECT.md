@@ -45,7 +45,7 @@ final submission**, since that service can surface additional,
 environment-dependent findings (e.g. newly disclosed vulnerable
 third-party libraries) that a fully offline run cannot.
 
-## Result summary (1.1.0 validation run, splunk-appinspect 4.4.0)
+## Result summary (1.2.0 validation run, splunk-appinspect 4.4.0)
 
 ```
 error:          0
@@ -59,17 +59,21 @@ success:        144
 Total:          254
 ```
 
-**Zero errors, zero failures.** Seven warnings remain, all reviewed and
-accepted with justification below: the three carried over unchanged from
-1.0.1 (`check_for_updates_disabled`, `check_collections_conf`,
-`check_for_custom_mako_templates`), plus four new ones introduced purely
-by 1.1.0 adding the app's first scripted input
+**Zero errors, zero failures.** Same profile as 1.1.0-1.1.4 - re-run for
+1.2.0 specifically because it added a fourth Mako view template
+(`Help.html`); `check_for_custom_mako_templates` now names all four
+templates instead of three (see its own section below), which is the only
+substantive difference. Seven warnings remain, all reviewed and accepted
+with justification below: the three carried over unchanged from 1.0.1
+(`check_for_updates_disabled`, `check_collections_conf`,
+`check_for_custom_mako_templates`), plus four introduced by 1.1.0 adding
+the app's first scripted input
 (`check_scripted_inputs_cmd_path_pattern`, `check_for_indexer_synced_configs`,
 `check_for_python_script_existence`, `check_for_scripted_inputs`) - three
 of those four say "No action required" or are purely informational in
-their own check message. Two *failures* the same run initially surfaced
-(missing `python.version`/`python.required` on the scripted input stanza)
-were fixed, not accepted - see "Remediation notes" below.
+their own check message. Two *failures* that same 1.1.0 run initially
+surfaced (missing `python.version`/`python.required` on the scripted input
+stanza) were fixed, not accepted - see "Remediation notes" below.
 
 A Splunk version number written as `10.6.1.1` in several 1.0.1-era
 comments, which the IP/hostname scanner flagged as a private-IP-shaped
@@ -200,9 +204,10 @@ release:
 > will no longer support custom Mako templates. Remove the custom
 > template.
 
-This fires for all three of GraphLens's view templates
-(`RelationshipExplorer.html`, `Health.html`, `Configuration.html`) simply
-for existing as custom Mako files - unlike the earlier, narrower
+This fires for all four of GraphLens's view templates
+(`RelationshipExplorer.html`, `Health.html`, `Configuration.html`,
+`Help.html` since 1.2.0) simply for existing as custom Mako files -
+unlike the earlier, narrower
 `check_for_existence_of_python_code_block_in_mako_template` check (item 1
 above), this one does not care whether the template contains a Python
 code block; any custom Mako template triggers it.

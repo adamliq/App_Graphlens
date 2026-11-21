@@ -17,11 +17,15 @@ All notable changes to GraphLens are documented in this file.
   updated to include it alongside Relationship Explorer, Health and
   Configuration.
 
+Verified end-to-end against a live Splunk instance: the Help page loads
+(HTTP 200, zero page errors), shows the correct version, and the nav tabs
+correctly link all four pages together.
+
 Version bumped to 1.2.0 (new feature, not a patch). Full npm test (254
-tests) and lint (0 warnings) pass; AppInspect re-run against the packaged
-build - see its own section in APPINSPECT.md for the result, including
-whether `check_for_custom_mako_templates` now also flags the new
-template (expected, consistent with the other three).
+tests) and lint (0 warnings) pass; AppInspect re-run clean (0 errors/
+failures, 7 warnings, same profile as 1.1.4) - as expected,
+`check_for_custom_mako_templates` now also names `Help.html`, alongside
+the other three - see APPINSPECT.md.
 
 ## [1.1.4] - 2026-11-20
 
