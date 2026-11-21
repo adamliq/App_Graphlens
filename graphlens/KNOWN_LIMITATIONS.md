@@ -98,6 +98,11 @@ instance's configured home) to switch away from GraphLens entirely.
   extra layout dependency needs to be packaged/vetted. A future release
   could add `cytoscape-dagre`/`cytoscape-cola` if a customer need
   justifies the extra dependency surface.
+- **Import only accepts a GraphLens JSON export, and always replaces the
+  whole current graph** - there is no way to import a CSV file (nodes/
+  edges exports are flat tables and do not round-trip the structure JSON
+  does) or to merge an imported file into the graph already on screen.
+  Import a file first, then expand further, if you want to combine them.
 
 ## Packaging / environment
 

@@ -90,6 +90,21 @@ Exports only ever include what is currently visible to you (data your own
 searches already returned); sanitisation prevents exported labels from
 carrying spreadsheet-formula-injection payloads.
 
+## Import
+
+Toolbar **Import** button: pick a JSON file previously produced by
+**Export > JSON (graph)** and GraphLens loads it back onto the canvas,
+replacing whatever graph is currently shown. This is a convenience for
+resuming or sharing a specific graph snapshot - it is not a way to bring
+your own Splunk data into GraphLens (see DATA_INGESTION.md for that). The
+file is read entirely in your browser; nothing is uploaded anywhere. Every
+node and edge in the file is re-validated exactly the same way a live
+search result would be (invalid identifiers are silently dropped, labels
+are HTML-escaped) - an import can never add anything GraphLens would not
+otherwise accept. Only CSV/PNG exports are one-way; CSV cannot be
+imported back, since it is a flat table and does not round-trip the
+node/edge/metadata structure JSON does.
+
 ## Graph limits
 
 If you see a banner reading "Graph size limit reached", the graph has hit

@@ -16,6 +16,7 @@ export const AUDIT_ACTIONS = Object.freeze({
   COLLAPSE_NODE: 'collapse_node',
   VIEW_EVIDENCE: 'view_evidence',
   EXPORT_GRAPH: 'export_graph',
+  IMPORT_GRAPH: 'import_graph',
   CREATE_ANNOTATION: 'create_annotation',
   DELETE_ANNOTATION: 'delete_annotation',
   SAVE_VIEW: 'save_view',

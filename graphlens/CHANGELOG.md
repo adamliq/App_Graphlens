@@ -2,6 +2,60 @@
 
 All notable changes to GraphLens are documented in this file.
 
+## [1.5.0] - 2026-11-21
+
+### Added
+
+- **Import button**, alongside the existing Export button on the
+  Relationship Explorer toolbar. Pick a JSON file previously produced by
+  Export > JSON (graph) and GraphLens loads it back onto the canvas,
+  replacing the current graph - a convenience for resuming or sharing a
+  specific graph snapshot. The file is read entirely client-side via the
+  browser's `FileReader` API; nothing is uploaded anywhere, and this is
+  not a way to bring Splunk data into GraphLens (see DATA_INGESTION.md for
+  that).
+- New `shared/services/importService.js` (`parseImportedGraphJson`) -
+  the exact counterpart to `exportService.js`'s `exportGraphAsJson`,
+  translating the exported JSON shape back into the raw node/edge "row"
+  shape `graphTransformer.transformRowsToGraph` expects, so an imported
+  file goes through the identical validation/escaping/dedup/limit
+  pipeline a live search result does - nothing from a file is trusted any
+  more than that.
+- New `loadGraphSnapshot` in `graphStateReducer.js` - replaces the whole
+  graph with an imported (or any other) node/edge set, bounded by the same
+  `maxVisibleNodes`/`maxVisibleEdges` limits as every other admission
+  path, and a new `import_graph` audit action.
+- Import is gated by the existing `enableExport` feature flag (no new
+  setting or capability) - Import and Export are presented as one
+  paired feature.
+- Help page and USER_GUIDE.md updated with an "Import" section.
+
+Version bumped to 1.5.0 (new feature). Full npm test (280 tests, up from
+269 - new `tests/unit/importService.test.js`, `loadGraphSnapshot` cases in
+`graphStateReducer.test.js`, and an import-pipeline case in
+`tests/security/xss.test.js`) and lint (0 warnings) pass.
+
+## [1.4.0] - 2026-11-21
+
+### Added
+
+- **Help page now mirrors DATA_INGESTION.md, CONFIGURATION.md and
+  SECURITY.md**, not just USER_GUIDE.md: three new sections - "Loading
+  your own data", "Administrator settings", "Security model" - condense
+  those documents' content directly into the in-app Help page
+  (`graphlens_help` view), the same pattern already used for the rest of
+  the page. These three files were already shipped as flat files inside
+  the installed app package by `scripts/package_app.sh` (so they were
+  always readable from the installed app's own directory), but this is
+  the first release where their content is also visible from within
+  GraphLens's own UI, without opening package files directly. Each new
+  section ends by pointing at its source document's full version for
+  further detail.
+
+Version bumped to 1.4.0 (new content/capability, not a patch - the Help
+page itself was unchanged structurally, but gains real new sections).
+Full npm test (269 tests) and lint (0 warnings) pass.
+
 ## [1.3.0] - 2026-11-21
 
 ### Added

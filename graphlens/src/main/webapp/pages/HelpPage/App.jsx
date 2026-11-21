@@ -1,14 +1,16 @@
 import React from 'react';
 import PageNav from '../../shared/components/PageNav';
 
-const APP_VERSION = '1.3.0';
+const APP_VERSION = '1.5.0';
 
 /**
  * Static, no-dependency reference page - unlike the other three pages,
  * this one dispatches no searches and checks no capability, so every
  * user who can open the app at all can read it. Content mirrors
- * USER_GUIDE.md, condensed for in-app reading; USER_GUIDE.md remains the
- * authoritative, fuller version (not shipped as a web page itself).
+ * USER_GUIDE.md, DATA_INGESTION.md, CONFIGURATION.md and SECURITY.md,
+ * condensed for in-app reading; those files remain the authoritative,
+ * fuller versions (shipped in the installed package, not as web pages
+ * themselves).
  */
 export default function App() {
   return (
@@ -96,11 +98,20 @@ export default function App() {
       </section>
 
       <section className="graphlens-section">
-        <h2>Export</h2>
+        <h2>Export and import</h2>
         <p>
           Toolbar <strong>Export</strong> button: JSON (full graph data plus
           metadata), CSV (nodes or edges), or PNG (canvas snapshot). Exports
-          only ever include what is currently visible to you.
+          only ever include what is currently visible to you. Toolbar
+          <strong> Import</strong> button: pick a previously exported JSON
+          file to load it back onto the canvas, replacing the current
+          graph - a convenience for resuming or sharing a specific
+          snapshot, read entirely in your browser (nothing is uploaded).
+          It is not a way to bring your own Splunk data into GraphLens -
+          see &quot;Loading your own data&quot; below for that. Every
+          imported node and edge is re-validated the same way a live
+          search result would be, so an import can never add anything
+          GraphLens would not otherwise accept.
         </p>
       </section>
 
@@ -122,6 +133,71 @@ export default function App() {
       </section>
 
       <section className="graphlens-section">
+        <h2>Loading your own data</h2>
+        <p>
+          GraphLens is a visualization layer over data already in Splunk -
+          it has no file-upload feature of its own. Relationships are
+          brought in shaped to GraphLens&apos;s schema (<code>source_id</code>,
+          <code> target_id</code>, <code>relationship_type</code>, and so
+          on - see DATA_MODEL.md), either as indexed events (via a
+          scheduled search transforming existing events, a one-off file
+          upload, or a live HTTP Event Collector source) or, with no index
+          at all, as a lookup table in lookup mode (see above). Either way,
+          afterwards you register your node/relationship types in the
+          <code> graphlens_node_types</code> / <code>graphlens_relationship_types</code>
+          {' '}KV Store collections - an unregistered type still renders,
+          with a default colour - and optionally wire up
+          <code> evidence_reference</code> so <strong>View supporting
+          events</strong> works for an edge. See DATA_INGESTION.md in the
+          installed package for the complete, step-by-step guide.
+        </p>
+      </section>
+
+      <section className="graphlens-section">
+        <h2>Administrator settings</h2>
+        <p>
+          The Configuration page (requires the
+          <code> graphlens_manage_config</code> capability) controls graph
+          limits (max visible nodes/edges, max expansion neighbours/depth,
+          max path-finder depth, max search result rows, search dispatch
+          timeout), search defaults (relationship data source and name,
+          default evidence index, default time range), feature toggles
+          (export, annotations, saved views, clustering, path finder), and
+          an optional node/relationship type allowlist plus the layouts
+          and export formats offered in the UI. Settings live in
+          <code> graphlens_settings.conf</code>; the Configuration page
+          writes your changes to <code>local/graphlens_settings.conf</code>
+          {' '}through Splunk&apos;s standard configuration REST endpoint - the
+          shipped <code>default/</code> copy is replaced on every upgrade,
+          so never edit it directly. See CONFIGURATION.md in the installed
+          package for the full settings reference, plus upgrade and
+          rollback notes.
+        </p>
+      </section>
+
+      <section className="graphlens-section">
+        <h2>Security model</h2>
+        <p>
+          GraphLens adds no credential store and no external network
+          dependency of its own - every action goes through Splunk&apos;s own
+          REST APIs, using your current session. Splunk&apos;s own
+          role-based access control, not GraphLens&apos;s UI, is the actual
+          security boundary: hiding or disabling a button for your role is
+          a convenience, not what keeps you from seeing data your role
+          could not already search. Every value that reaches a search
+          (search terms, identifiers, index/lookup names, limits) is
+          validated or escaped first - GraphLens never accepts or runs
+          free-form SPL. Every tracked action (search, expansion, evidence
+          view, export, annotation, configuration change) is recorded in
+          the audit log (see the Health page), with actor/action/outcome
+          only - never credentials or raw event content. See SECURITY.md
+          in the installed package for the complete security model,
+          including the full access-control capability list and known
+          limitations.
+        </p>
+      </section>
+
+      <section className="graphlens-section">
         <h2>Graph limits</h2>
         <p>
           A &quot;Graph size limit reached&quot; banner means the graph has hit an
@@ -137,9 +213,10 @@ export default function App() {
       </section>
 
       <p style={{ fontSize: 12, color: '#5c5c5c' }}>
-        GraphLens {APP_VERSION}. For the full reference (data model, admin
-        guide, security model), see this app&apos;s documentation files in its
-        installed package.
+        GraphLens {APP_VERSION}. The sections above condense
+        DATA_INGESTION.md, CONFIGURATION.md and SECURITY.md; for those in
+        full, plus the data model and admin guide, see this app&apos;s
+        documentation files in its installed package.
       </p>
     </div>
   );

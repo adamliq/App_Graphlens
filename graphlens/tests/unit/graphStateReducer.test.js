@@ -10,6 +10,7 @@ import {
   setInitialNode,
   selectRenderableElements,
   setActiveFilters,
+  loadGraphSnapshot,
 } from '../../src/main/webapp/shared/services/graphStateReducer';
 
 function node(id, type = 'user') {
@@ -65,6 +66,42 @@ describe('mergeExpansion', () => {
     const { nextState, diagnostics } = mergeExpansion(state, 'A', cyEls(many, manyEdges), limits);
     expect(Object.keys(nextState.visibleNodes).length).toBeLessThanOrEqual(3);
     expect(diagnostics.limitReached).toBe(true);
+  });
+});
+
+describe('loadGraphSnapshot', () => {
+  test('replaces the whole graph with the given nodes/edges, selecting nothing', () => {
+    let state = createEmptyGraphState();
+    state = setInitialNode(state, node('old-root'));
+    const { nextState, diagnostics } = loadGraphSnapshot(state, cyEls([node('A'), node('B')], [edge('e1', 'A', 'B')]), state.graphLimits);
+    expect(Object.keys(nextState.visibleNodes).sort()).toEqual(['A', 'B']);
+    expect(Object.keys(nextState.visibleEdges)).toEqual(['e1']);
+    expect(nextState.visibleNodes['old-root']).toBeUndefined();
+    expect(nextState.selectedNodeId).toBeNull();
+    expect(diagnostics.limitReached).toBe(false);
+  });
+
+  test('drops an edge whose endpoint did not make it into the snapshot', () => {
+    const state = createEmptyGraphState();
+    const { nextState } = loadGraphSnapshot(state, cyEls([node('A')], [edge('e1', 'A', 'missing-target')]), state.graphLimits);
+    expect(Object.keys(nextState.visibleEdges)).toEqual([]);
+  });
+
+  test('respects maxVisibleNodes/maxVisibleEdges and reports limitReached', () => {
+    const state = createEmptyGraphState();
+    const many = Array.from({ length: 10 }, (_, i) => node(`N${i}`));
+    const limits = { ...state.graphLimits, maxVisibleNodes: 3 };
+    const { nextState, diagnostics } = loadGraphSnapshot(state, cyEls(many, []), limits);
+    expect(Object.keys(nextState.visibleNodes).length).toBe(3);
+    expect(diagnostics.limitReached).toBe(true);
+  });
+
+  test('imported nodes have no expansion parent, so a later expansion of one records a fresh parent-child link', () => {
+    const state = createEmptyGraphState();
+    const { nextState } = loadGraphSnapshot(state, cyEls([node('A')], []), state.graphLimits);
+    expect(nextState.expansionParents.A).toBeUndefined();
+    const { nextState: expanded } = mergeExpansion(nextState, 'A', cyEls([node('B')], [edge('e1', 'A', 'B')]), nextState.graphLimits);
+    expect(expanded.expansionChildren.A).toEqual(['B']);
   });
 });
 

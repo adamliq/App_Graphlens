@@ -22,6 +22,8 @@ export default function GraphToolbar({
   onReset,
   onExportOpen,
   exportEnabled,
+  onImportClick,
+  importEnabled,
 }) {
   return (
     <div className="graphlens-toolbar" role="toolbar" aria-label="Graph controls">
@@ -37,6 +39,7 @@ export default function GraphToolbar({
       <Button label="Fit to screen" onClick={onFit} />
       <Button label="Centre selected" onClick={onCenterSelected} />
       <Button label="Reset graph" onClick={onReset} appearance="destructive" />
+      {importEnabled && <Button label="Import" onClick={onImportClick} />}
       {exportEnabled && <Button label="Export" onClick={onExportOpen} />}
     </div>
   );
@@ -58,4 +61,6 @@ GraphToolbar.propTypes = {
   onReset: PropTypes.func.isRequired,
   onExportOpen: PropTypes.func.isRequired,
   exportEnabled: PropTypes.bool.isRequired,
+  onImportClick: PropTypes.func.isRequired,
+  importEnabled: PropTypes.bool.isRequired,
 };

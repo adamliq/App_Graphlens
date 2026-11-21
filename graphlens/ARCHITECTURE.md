@@ -29,7 +29,7 @@ React application (src/main/webapp/pages/*)
 GraphLens shared layer (src/main/webapp/shared/*):
   searchService, kvStoreService, auditService, configService,
   capabilityService, graphTransformer, graphStateReducer, pathFinder,
-  exportService, splSafety
+  exportService, importService, splSafety
         |
         v
 Cytoscape.js canvas (GraphCanvas.jsx)
@@ -177,6 +177,26 @@ expansion:
 This is unit-tested exhaustively in `tests/unit/graphStateReducer.test.js`,
 including the "diamond" case (a node reachable through two expansion
 paths survives collapsing one of them) and a three-level cascade case.
+
+## How export and import round-trip a graph
+
+`exportService.js`'s `exportGraphAsJson` and `importService.js`'s
+`parseImportedGraphJson` are exact counterparts: the JSON export's
+`nodes`/`edges` shape is just `visibleNodes`/`visibleEdges` sanitised for
+output, and import reverses that mapping back into the raw `node_id`/
+`source_id`/... "row" shape, then feeds it through the same
+`graphTransformer.transformRowsToGraph` a live search result goes through
+- nothing from an imported file is trusted any more than a Splunk search
+result would be (invalid identifiers are dropped, labels are escaped, the
+same `maxVisibleNodes`/`maxVisibleEdges` limits apply). The resulting
+Cytoscape elements replace the whole graph via `loadGraphSnapshot` (in
+`graphStateReducer.js`, alongside `mergeExpansion`/`collapseNode`) - like
+`resetGraph` followed by loading several "root" nodes at once, so
+imported nodes carry no expansion parent/child link and can still be
+expanded further afterwards. The file itself is read client-side via the
+browser's `FileReader` API and never uploaded anywhere; import is a
+convenience for resuming or sharing a graph snapshot, not a path for
+bringing Splunk data into GraphLens (see DATA_INGESTION.md for that).
 
 ## How permissions are enforced
 
