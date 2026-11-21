@@ -124,6 +124,13 @@ instance's configured home) to switch away from GraphLens entirely.
     explicit `type` argument, letting the field itself be named anything);
     it takes optional `direction` (`OUTGOING`/`INCOMING`/`BOTH`, default
     `BOTH`) and `limit` arguments.
+  - A field name can only be used once within a given selection set - a
+    direct consequence of having no aliases, since the name also doubles
+    as its key in the result tree. To follow the same relationship type
+    twice with different `direction`/`limit` filters (e.g. outgoing and
+    incoming separately), give each field its own name and an explicit
+    `type` argument naming the real relationship type, rather than
+    repeating the same field name.
   - Nesting depth is capped by `settings.max_expansion_depth` (the same
     limit node-by-node expansion is implicitly bounded by elsewhere), and
     total search dispatches by a hard `MAX_QUERY_EXPANSIONS` ceiling

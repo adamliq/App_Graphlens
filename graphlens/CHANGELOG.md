@@ -2,6 +2,30 @@
 
 All notable changes to GraphLens are documented in this file.
 
+## [1.7.3] - 2026-11-21
+
+### Fixed
+
+- **Repeating a field name in a graph query silently discarded data.**
+  This grammar has no field aliases, so a field's name doubles as its
+  key in the result tree. A query following the same relationship type
+  twice with different filters - e.g. `FRIEND_OF(direction: OUTGOING)
+  { id }` and `FRIEND_OF(direction: INCOMING) { id }` in the same
+  selection set - resolved both, but the second silently overwrote the
+  first under the shared `FRIEND_OF` key, so the result looked complete
+  while quietly missing one of the two lists. The same happened for an
+  accidentally-repeated scalar field. A repeated field name within one
+  selection set is now rejected up front, before any search runs, with
+  a message explaining there are no aliases and pointing at the
+  workaround: give each relationship field its own name and an explicit
+  `type` argument naming the real relationship type.
+- 4 new unit tests (344 total).
+
+Version bumped to 1.7.3 (another fix found in a third self-review pass
+over 1.7.0's query language). Full npm test (344 tests) and lint (0
+warnings) pass; AppInspect re-run clean (0 errors/failures, same
+7-warning profile as prior releases).
+
 ## [1.7.2] - 2026-11-21
 
 ### Fixed

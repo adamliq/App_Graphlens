@@ -261,3 +261,46 @@ test('resolves independent root matches concurrently and still returns a correct
     { id: 'host:srv1', FRIEND_OF: [] },
   ]);
 });
+
+test('rejects a relationship field name repeated in the same selection set, before dispatching anything', async () => {
+  const ast = parseQuery('{ node(search: "alice") { id FRIEND_OF(direction: OUTGOING) { id } FRIEND_OF(direction: INCOMING) { id } } }');
+  const dispatch = makeDispatch({ 'user:alice': ALICE_EDGE_ROWS });
+  await expect(executeGraphQuery(ast, { settings, dispatch }))
+    .rejects.toThrow(/Field "FRIEND_OF" is used more than once/);
+  expect(dispatch).not.toHaveBeenCalled();
+});
+
+test('rejects a scalar field name repeated in the same selection set', async () => {
+  const ast = parseQuery('{ node(search: "alice") { id label id } }');
+  const dispatch = makeDispatch();
+  await expect(executeGraphQuery(ast, { settings, dispatch }))
+    .rejects.toThrow(/Field "id" is used more than once/);
+  expect(dispatch).not.toHaveBeenCalled();
+});
+
+test('two distinctly-named fields can each target the same relationship type via an explicit "type" argument', async () => {
+  // No alias syntax exists in this grammar (see KNOWN_LIMITATIONS.md) - the
+  // workaround for "the same type, two different filters" is two distinctly
+  // named fields, each with its own explicit `type` argument, rather than
+  // repeating one field name (which the previous test confirms is rejected).
+  const ast = parseQuery(`{
+    node(search: "alice") {
+      id
+      friendsOut(type: "FRIEND_OF", direction: OUTGOING) { id }
+      friendsIn(type: "FRIEND_OF", direction: INCOMING) { id }
+    }
+  }`);
+  const dispatch = makeDispatch({ 'user:alice': ALICE_EDGE_ROWS });
+  const result = await executeGraphQuery(ast, { settings, dispatch });
+  expect(result.tree).toEqual([{ id: 'user:alice', friendsOut: [{ id: 'user:bob' }], friendsIn: [] }]);
+});
+
+test('does not reject the same field name reused in a different (nested) selection set', async () => {
+  const ast = parseQuery('{ node(search: "alice") { id FRIEND_OF { id FRIEND_OF { id } } } }');
+  const dispatch = makeDispatch({ 'user:alice': ALICE_EDGE_ROWS, 'user:bob': BOB_EDGE_ROWS });
+  const result = await executeGraphQuery(ast, { settings, dispatch });
+  expect(result.tree).toEqual([{
+    id: 'user:alice',
+    FRIEND_OF: [{ id: 'user:bob', FRIEND_OF: [{ id: 'user:alice', cycleTruncated: true }] }],
+  }]);
+});

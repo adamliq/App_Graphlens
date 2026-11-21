@@ -89,7 +89,19 @@ function relationshipFields(selectionSet) {
 // guarantee the depth check already gives, just extended to argument
 // correctness and relationship-field validity at every nesting level.
 function validateSelectionSet(selectionSet) {
+  const seenNames = new Set();
   selectionSet.forEach((field) => {
+    if (seenNames.has(field.name)) {
+      // This grammar has no field aliases (see KNOWN_LIMITATIONS.md), so a
+      // field's name doubles as its key in the result tree - a second field
+      // with the same name would silently overwrite the first's entry
+      // instead of erroring, discarding whichever was resolved first.
+      throw new GraphLensValidationError(
+        `Field "${field.name}" is used more than once in the same selection set. This grammar has no field aliases, so each field name can only appear once per selection set - give each relationship field a distinct name (an explicit "type" argument supplies the real relationship_type to match) rather than repeating this one.`,
+        field.name,
+      );
+    }
+    seenNames.add(field.name);
     if (field.selectionSet) {
       argString(field.arguments, 'type');
       const direction = argEnum(field.arguments, 'direction');
