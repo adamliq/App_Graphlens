@@ -234,14 +234,32 @@ in one request instead of clicking Expand repeatedly.
   (`tests/unit/graphQueryExecutor.test.js` mocks it); in the app,
   `RelationshipExplorer/App.jsx` supplies the same `dispatchAdHocSearch` +
   `waitForResults` call shape `handleSearch`/`handleExpandNode` use.
-- Execution is bounded four ways, independent of each template's own
-  internal clamping: a static check (before any search runs) that the
+- The whole query's shape is validated **before any search runs**: every
+  field name (scalar or relationship) and every argument's type (a
+  `type`/`search`/`id` must be a quoted string, `direction` a bare word,
+  `limit` an integer - a value of the wrong kind throws immediately rather
+  than being silently ignored and falling back to a default the user never
+  asked for), at every nesting level, plus the static depth check below -
+  all of it runs up front, so a malformed query anywhere in the tree never
+  gets partway through dispatching searches before failing.
+- Execution is bounded four ways beyond that, independent of each
+  template's own internal clamping: the same static depth check (that the
   query's relationship nesting does not exceed
-  `settings.maxExpansionDepth`; `MAX_QUERY_EXPANSIONS`, a hard ceiling on
+  `settings.maxExpansionDepth`); `MAX_QUERY_EXPANSIONS`, a hard ceiling on
   total `buildExpandNodeSpl` dispatches per execution; ancestor-path cycle
   detection, so a branch never recurses back into a node already on its
   own path to the root; and each relationship field's own `limit`
   argument, clamped against `settings.maxExpansionNeighbours`.
+- Independent branches - different root matches from a broad `search`,
+  different relationship fields on the same node, different neighbours
+  matched by the same field - are resolved concurrently (`Promise.all`),
+  not one at a time. This is safe without locking because the executor's
+  only shared mutable state (the node/edge accumulators, the per-node
+  expansion cache, the expansion-count budget) is always read and written
+  synchronously between `await` points, and `expandNodeOnce`'s cache is
+  populated synchronously before its search is dispatched - so two
+  branches that reach the same node always resolve to the same cached
+  dispatch, never two.
 - The result (`{ tree, nodes, edges, diagnostics }`) carries a nested
   `tree` for display and flat, already-deduplicated Cytoscape-shaped
   `nodes`/`edges` that feed straight into `loadGraphSnapshot` via the

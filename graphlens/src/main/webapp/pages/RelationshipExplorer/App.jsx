@@ -32,7 +32,7 @@ import ErrorNotification from './components/ErrorNotification';
 import EmptyState from './components/EmptyState';
 import PageNav from '../../shared/components/PageNav';
 
-const APP_VERSION = '1.7.1';
+const APP_VERSION = '1.7.2';
 
 function downloadBlob(blob, filename) {
   const url = URL.createObjectURL(blob);

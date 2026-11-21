@@ -2,6 +2,46 @@
 
 All notable changes to GraphLens are documented in this file.
 
+## [1.7.2] - 2026-11-21
+
+### Fixed
+
+- **A query-language argument given the wrong kind of value was
+  silently ignored instead of rejected.** `graphQueryExecutor.js`'s
+  argument helpers returned `undefined` (falling back to a default)
+  whenever an argument was *present but the wrong type* - not only when
+  it was absent - so e.g. `node(search: "a", type: host)` (a bare word
+  instead of `type: "host"`) silently dropped the type filter with no
+  explanation, and a quoted-string `direction` or a stringy `limit` were
+  silently defaulted the same way. These now throw a clear
+  `GraphLensValidationError` naming the argument and the kind of value
+  it needs.
+- **The whole query is now validated before any search is dispatched,
+  not just as each field is reached.** Every argument's type (not only
+  field names and the overall depth, as before) is checked up front, at
+  every nesting level, so a malformed argument anywhere in the tree -
+  even several relationship hops deep - is caught before the first
+  search runs, rather than after some of its siblings have already been
+  dispatched.
+
+### Changed
+
+- **Independent query branches now resolve concurrently.** Different
+  root matches from a broad `search`, different relationship fields on
+  the same node, and different neighbours matched by the same field are
+  now resolved via `Promise.all` instead of one at a time, which can
+  meaningfully speed up broad or deep queries. Confirmed safe without
+  locking: the executor's shared state is only ever touched
+  synchronously between `await` points (see ARCHITECTURE.md), and the
+  full unit test suite (asserting on tree shape, dispatch counts, and
+  budget/truncation accounting) passes unchanged.
+- 5 new unit tests (340 total).
+
+Version bumped to 1.7.2 (more fixes/polish to 1.7.0's query language,
+found in a second self-review pass). Full npm test (340 tests) and lint
+(0 warnings) pass; AppInspect re-run clean (0 errors/failures, same
+7-warning profile as prior releases).
+
 ## [1.7.1] - 2026-11-21
 
 ### Fixed
