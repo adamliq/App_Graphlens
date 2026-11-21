@@ -2,6 +2,32 @@
 
 All notable changes to GraphLens are documented in this file.
 
+## [1.11.0] - 2026-11-21
+
+### Changed
+
+- **Renamed the toolbar's Diagram/Text toggle to Graph/Table** (matching
+  Neo4j Bloom's own naming more closely) and gave each button an icon
+  (`@splunk/react-icons`'s `ChartLinkGraph` and `Table`) alongside its
+  label. Purely a rename/polish of 1.10.0's toggle - the underlying
+  `canvasViewMode` state values changed from `'diagram'`/`'text'` to
+  `'graph'`/`'table'` to match, with no behaviour change.
+- `@splunk/react-icons` is now a declared direct dependency (it was
+  already bundled as a transitive dependency of `@splunk/react-ui`
+  before this release, so this adds no new code to the bundle - just a
+  direct import of two icons already shipping). THIRDPARTY.md updated
+  accordingly.
+- Refreshed `npm audit`: 0 known vulnerabilities in the runtime
+  dependency set (patched transitive `browserslist`/
+  `baseline-browser-mapping`/`moment` versions picked up via `npm audit
+  fix`); 3 moderate, dev-only findings remain in `rimraf`'s own
+  transitive `glob`/`minimatch`, fixable only via a breaking `rimraf`
+  major-version bump, deferred - see THIRDPARTY.md.
+
+Full npm test (355 tests) and lint (0 warnings) pass; AppInspect re-run
+clean (0 errors/failures, same 7-warning profile as prior releases).
+Version bumped to 1.11.0.
+
 ## [1.10.0] - 2026-11-21
 
 ### Changed

@@ -1,7 +1,7 @@
 import React from 'react';
 import PageNav from '../../shared/components/PageNav';
 
-const APP_VERSION = '1.10.0';
+const APP_VERSION = '1.11.0';
 
 /**
  * Static, no-dependency reference page - unlike the other three pages,
@@ -57,9 +57,9 @@ export default function App() {
           <li><strong>Pin / unpin</strong>: keeps a node visible even if the expansion that introduced it is later collapsed.</li>
           <li><strong>Zoom / pan</strong>: mouse wheel / drag.</li>
           <li>
-            <strong>Diagram / Text</strong>: toolbar buttons. Text shows the
+            <strong>Graph / Table</strong>: toolbar buttons. Table shows the
             same, already-filtered nodes and relationships as two plain
-            tables instead of the canvas - read-only; switch back to Diagram
+            tables instead of the canvas - read-only; switch back to Graph
             to interact with the graph again.
           </li>
           <li><strong>Fit to screen</strong> / <strong>Centre selected</strong>: toolbar buttons.</li>

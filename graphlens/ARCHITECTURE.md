@@ -272,29 +272,30 @@ in one request instead of clicking Expand repeatedly.
   CONFIGURATION.md). See KNOWN_LIMITATIONS.md for the grammar's
   restrictions.
 
-## Multi-select, the time slicer, style overrides, saved views and the diagram/text toggle
+## Multi-select, the time slicer, style overrides, saved views and the Graph/Table toggle
 
 Five smaller additions, all client-side, each introducing no new SPL
 shape (the first three and the last run no search of their own at all;
 "saved views" only ever reuses `buildExpandNodeSpl`):
 
-- **The diagram/text toggle.** Two buttons in the toolbar
-  (`GraphToolbar.jsx`'s `viewMode`/`onViewModeChange`) switch
+- **The Graph/Table toggle.** Two buttons in the toolbar, each with a
+  `@splunk/react-icons` glyph (`ChartLinkGraph`, `Table`) alongside its
+  label (`GraphToolbar.jsx`'s `viewMode`/`onViewModeChange`), switch
   `RelationshipExplorer/App.jsx`'s `canvasViewMode` state between
-  `'diagram'` (the existing `GraphCanvas`) and `'text'`
+  `'graph'` (the existing `GraphCanvas`) and `'table'`
   (`GraphTableView.jsx`, two plain HTML tables - Nodes, Relationships).
   Both read the identical `renderable.nodes`/`renderable.edges` - the
   same already-filtered data the canvas itself renders - so the two
   views can never disagree about what counts as "in" the graph right
-  now. Switching away from Diagram unmounts `GraphCanvas` (destroying
-  its Cytoscape instance) rather than merely hiding it, both to avoid
+  now. Switching away from Graph unmounts `GraphCanvas` (destroying its
+  Cytoscape instance) rather than merely hiding it, both to avoid
   running a layout against a zero-size hidden container and to keep the
   two views' DOM entirely separate; `App.jsx` clears its own `cyRef` at
   the same time so every `cyRef.current`-dependent action (legend
   click-to-select, Fit to screen, Centre selected, PNG export) sees "no
   canvas" instead of a stale handle to a destroyed instance - the
   toolbar also disables the layout-specific buttons outright while in
-  Text view. The table view is read-only: selecting, expanding, pinning
+  Table view. The table view is read-only: selecting, expanding, pinning
   etc. remain canvas-only actions.
 - **Multi-select and bulk actions.** `GraphCanvas.jsx` leaves
   `boxSelectionEnabled` off by default (so ordinary click-and-drag still

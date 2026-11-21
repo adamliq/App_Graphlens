@@ -18,15 +18,16 @@ updates").
 | react | 18.2.0 | MIT | UI framework |
 | react-dom | 18.2.0 | MIT | React DOM renderer |
 | @splunk/react-ui | 5.12.0 | Apache-2.0 | Splunk UI Toolkit components (buttons, inputs, modals, selects, notifications) |
+| @splunk/react-icons | 5.13.0 | Apache-2.0 | Icon components (toolbar's Graph/Table view toggle). Already bundled as a transitive dependency of @splunk/react-ui before 1.11.0; declared directly now that app code imports specific icons from it. |
 | @splunk/themes | 1.9.0 | Apache-2.0 | `SplunkThemeProvider` - supplies the enterprise/light theme context `@splunk/react-ui` components render against (see ARCHITECTURE.md; without it, components fall back to this library's own default theme, `prisma`/`dark`) |
 | styled-components | 5.3.11 | MIT | Peer dependency of @splunk/react-ui, used internally by its components |
 | cytoscape | 3.34.0 | MIT | Graph visualisation and layout engine |
 | prop-types | 15.8.1 | MIT | Runtime React prop validation |
 
 @splunk/react-ui also pulls in a small number of its own runtime
-dependencies (`@splunk/react-icons`, `@splunk/ui-utils`,
-`@dnd-kit/*`, `@react-spring/web`, `decimal.js-light`, `intl-tel-input`,
-`lodash`, `moment`, `react-markdown`, `remark-gfm`, `use-sync-external-store`,
+dependencies (`@splunk/ui-utils`, `@dnd-kit/*`, `@react-spring/web`,
+`decimal.js-light`, `intl-tel-input`, `lodash`, `moment`,
+`react-markdown`, `remark-gfm`, `use-sync-external-store`,
 `use-typed-event-listener`), each under a permissive OSS licence (MIT or
 Apache-2.0/ISC). Run `npm ls @splunk/react-ui --all` for the exact
 transitive tree and consult each package's own LICENSE for full text.
@@ -53,13 +54,18 @@ transitive tree and consult each package's own LICENSE for full text.
 
 ## Vulnerability status
 
-`npm audit` reported **0 known vulnerabilities** against this dependency
-set as of the versions pinned above (checked 2026-07-18; a transitive
-`fast-uri` advisory disclosed after the 1.0.0 check was picked up and
-resolved via `npm audit fix` for 1.0.1). Re-run `npm
-audit` as part of every release (see the `package` script in
-`package.json` / the build pipeline in DEVELOPMENT.md) and update this
-section with the date and result of the most recent check.
+`npm audit --omit=dev` reports **0 known vulnerabilities** against the
+runtime dependency set as of the versions pinned above (checked
+2026-11-21, for 1.11.0; `npm audit fix` picked up patched transitive
+versions of `browserslist`/`baseline-browser-mapping`/`moment` since the
+prior 2026-07-18 check). The full `npm audit` (including build/test/lint
+tooling) additionally reports 3 moderate-severity findings in `rimraf`'s
+own transitive `glob`/`minimatch` - dev-only, never shipped - fixable
+only via `npm audit fix --force` (a breaking `rimraf` major-version
+bump); deferred pending verifying the build pipeline still works under
+it. Re-run `npm audit` as part of every release (see the `package`
+script in `package.json` / the build pipeline in DEVELOPMENT.md) and
+update this section with the date and result of the most recent check.
 
 ## Software bill of materials (SBOM)
 
