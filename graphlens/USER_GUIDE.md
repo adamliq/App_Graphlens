@@ -57,7 +57,13 @@ Left-hand panel:
 ## Legend
 
 The left-hand panel legend shows the colour used for each node type and
-relationship type currently present in your graph.
+relationship type currently present in your graph - guaranteed distinct
+for whatever types are on screen at once, even without any administrator
+curation. An **Indicators** section below it explains the canvas's other
+colour cues, which are independent of type colour: a red halo for a risk
+score of 70 or higher (stays visible no matter what else is true of the
+node), a blue double border for pinned, an orange border for selected,
+and a dashed green border for a node on a highlighted path.
 
 ## Viewing supporting events (evidence)
 

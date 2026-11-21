@@ -11,12 +11,29 @@
  * (see INSTALL.md). Until that has been done - or for any type an
  * administrator has not curated - GraphLens falls back to a deterministic
  * colour derived from the type name so the graph always renders sensibly.
+ *
+ * `colorForType` alone is not collision-free: two different type names can
+ * hash to the same palette entry (confirmed live - e.g. "user"/"group"/"ip"
+ * all landed on the same purple with the original 10-colour palette),
+ * which silently defeats the whole point of colour-coding types. Expanded
+ * to 19 colours (lower collision odds) and, more importantly,
+ * `deriveNodeTypeList`/`deriveRelationshipTypeList` below now run a second,
+ * deterministic pass (`resolveDistinctColors`) over whatever types are
+ * actually visible at once, reassigning any duplicate to the next unused
+ * palette colour - so the set of types on screen right now is guaranteed
+ * collision-free (up to 19 distinct types), not just unlikely to collide.
+ * None of these 19 colours overlap the fixed status-indicator colours used
+ * on the canvas for risk/pinned/selected/path-highlight (see
+ * GraphCanvas.jsx's STATUS_COLORS) - a type should never look like one of
+ * those states by coincidence.
  */
 import { queryCollection } from './kvStoreService';
 
 const FALLBACK_PALETTE = [
-  '#5A2BE2', '#2B7DE9', '#E97D2B', '#2BB6E9', '#2BE9A0',
-  '#E92B4C', '#B22B2B', '#7D2BE9', '#2B4CE9', '#2B9BE9',
+  '#D0BF25', '#729B27', '#47D025', '#279B78', '#25B6D0',
+  '#2D279B', '#7A25D0', '#95279B', '#D0258C', '#9B7E27',
+  '#AED025', '#4F9B27', '#25D036', '#279B9B', '#2536D0',
+  '#4F279B', '#AE25D0', '#9B277E', '#D02558',
 ];
 
 export function colorForType(typeName) {
@@ -26,6 +43,33 @@ export function colorForType(typeName) {
     hash = (hash * 31 + str.charCodeAt(i)) >>> 0;
   }
   return FALLBACK_PALETTE[hash % FALLBACK_PALETTE.length];
+}
+
+/**
+ * Given `entries` (an array of `{ key, color }`, one per type currently
+ * visible), returns a `Map<key, color>` where every value is distinct
+ * whenever that's possible within the palette - the first occurrence of a
+ * given colour (in `key`-sorted order, so the result doesn't depend on
+ * insertion/search order) keeps it; any later type that would otherwise
+ * share that colour is bumped to the next palette colour not already
+ * assigned. If more distinct types than palette colours are visible at
+ * once, the remainder keep their original (possibly colliding) colour -
+ * an acceptable, rare degradation rather than a hard limit.
+ */
+export function resolveDistinctColors(entries) {
+  const sorted = [...entries].sort((a, b) => a.key.localeCompare(b.key));
+  const used = new Set();
+  const resolved = new Map();
+  sorted.forEach(({ key, color }) => {
+    let finalColor = color;
+    if (used.has(finalColor)) {
+      const freeColor = FALLBACK_PALETTE.find((c) => !used.has(c));
+      if (freeColor) finalColor = freeColor;
+    }
+    used.add(finalColor);
+    resolved.set(key, finalColor);
+  });
+  return resolved;
 }
 
 export async function loadNodeTypeConfig({ fetchImpl } = {}) {
@@ -65,7 +109,7 @@ export async function loadRelationshipTypeConfig({ fetchImpl } = {}) {
   }
 }
 
-/** Builds the list of { node_type, display_label, color } for legend/filter UI from whatever types are actually present in the current graph, enriched with curated config where available. */
+/** Builds the list of { node_type, display_label, color } for legend/filter UI (and, via the colour, for the canvas itself - see RelationshipExplorer/App.jsx) from whatever node types are actually present in the current graph, enriched with curated config where available, with colours resolved distinct via resolveDistinctColors. */
 export function deriveNodeTypeList(nodes, nodeTypeConfig) {
   const seen = new Map();
   nodes.forEach((n) => {
@@ -77,7 +121,10 @@ export function deriveNodeTypeList(nodes, nodeTypeConfig) {
       color: (config && config.color) || colorForType(n.type),
     });
   });
-  return Array.from(seen.values());
+  const resolvedColors = resolveDistinctColors(
+    Array.from(seen.values()).map((v) => ({ key: v.node_type, color: v.color })),
+  );
+  return Array.from(seen.values()).map((v) => ({ ...v, color: resolvedColors.get(v.node_type) }));
 }
 
 export function deriveRelationshipTypeList(edges, relationshipTypeConfig) {
@@ -91,5 +138,8 @@ export function deriveRelationshipTypeList(edges, relationshipTypeConfig) {
       color: (config && config.color) || colorForType(e.relationship),
     });
   });
-  return Array.from(seen.values());
+  const resolvedColors = resolveDistinctColors(
+    Array.from(seen.values()).map((v) => ({ key: v.relationship_type, color: v.color })),
+  );
+  return Array.from(seen.values()).map((v) => ({ ...v, color: resolvedColors.get(v.relationship_type) }));
 }
