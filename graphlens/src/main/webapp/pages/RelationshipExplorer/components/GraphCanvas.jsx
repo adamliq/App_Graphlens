@@ -321,4 +321,4 @@ export function selectNodesByType(cy, nodeType) {
 }
 
 export const CYTOSCAPE_LAYOUTS = Object.keys(LAYOUT_OPTIONS);
-export { STATUS_COLORS, HIGH_RISK_THRESHOLD, STYLESHEET, LAYOUT_OPTIONS };
+export { STATUS_COLORS, HIGH_RISK_THRESHOLD };

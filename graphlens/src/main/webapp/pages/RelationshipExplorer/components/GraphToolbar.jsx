@@ -14,6 +14,8 @@ export default function GraphToolbar({
   earliest,
   latest,
   onTimeRangeChange,
+  viewMode,
+  onViewModeChange,
   layoutName,
   onLayoutChange,
   onRecalculateLayout,
@@ -29,15 +31,31 @@ export default function GraphToolbar({
     <div className="graphlens-toolbar" role="toolbar" aria-label="Graph controls">
       <EntitySearch isLoading={isSearching} results={searchResults} onSearch={onSearch} onPickResult={onPickResult} />
       <TimeRangeSelector earliest={earliest} latest={latest} onChange={onTimeRangeChange} />
+      <div role="tablist" aria-label="Graph view" style={{ display: 'flex', gap: 4 }}>
+        <Button
+          label="Diagram"
+          appearance={viewMode === 'diagram' ? 'primary' : 'secondary'}
+          role="tab"
+          aria-selected={viewMode === 'diagram'}
+          onClick={() => onViewModeChange('diagram')}
+        />
+        <Button
+          label="Text"
+          appearance={viewMode === 'text' ? 'primary' : 'secondary'}
+          role="tab"
+          aria-selected={viewMode === 'text'}
+          onClick={() => onViewModeChange('text')}
+        />
+      </div>
       <label htmlFor="graphlens-layout-select" style={{ fontSize: 12 }}>
         Layout{' '}
-        <Select inputId="graphlens-layout-select" value={layoutName} onChange={(e, { value }) => onLayoutChange(value)}>
+        <Select inputId="graphlens-layout-select" value={layoutName} onChange={(e, { value }) => onLayoutChange(value)} disabled={viewMode !== 'diagram'}>
           {CYTOSCAPE_LAYOUTS.map((l) => <Select.Option key={l} label={l} value={l} />)}
         </Select>
       </label>
-      <Button label="Recalculate layout" onClick={onRecalculateLayout} />
-      <Button label="Fit to screen" onClick={onFit} />
-      <Button label="Centre selected" onClick={onCenterSelected} />
+      <Button label="Recalculate layout" onClick={onRecalculateLayout} disabled={viewMode !== 'diagram'} />
+      <Button label="Fit to screen" onClick={onFit} disabled={viewMode !== 'diagram'} />
+      <Button label="Centre selected" onClick={onCenterSelected} disabled={viewMode !== 'diagram'} />
       <Button label="Reset graph" onClick={onReset} appearance="destructive" />
       {importEnabled && <Button label="Import" onClick={onImportClick} />}
       {exportEnabled && <Button label="Export" onClick={onExportOpen} />}
@@ -53,6 +71,8 @@ GraphToolbar.propTypes = {
   earliest: PropTypes.string.isRequired,
   latest: PropTypes.string.isRequired,
   onTimeRangeChange: PropTypes.func.isRequired,
+  viewMode: PropTypes.oneOf(['diagram', 'text']).isRequired,
+  onViewModeChange: PropTypes.func.isRequired,
   layoutName: PropTypes.string.isRequired,
   onLayoutChange: PropTypes.func.isRequired,
   onRecalculateLayout: PropTypes.func.isRequired,

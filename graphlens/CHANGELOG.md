@@ -2,6 +2,32 @@
 
 All notable changes to GraphLens are documented in this file.
 
+## [1.10.0] - 2026-11-21
+
+### Changed
+
+- **Moved the Diagram/Text toggle from the query panel to the main
+  toolbar**, per direct feedback after 1.9.0 shipped: it now switches
+  the main canvas itself, not just a query result's own preview.
+  Toolbar buttons **Diagram** (the canvas, as before) and **Text** (new
+  `GraphTableView.jsx` - two plain tables, Nodes and Relationships) both
+  read the identical `renderable.nodes`/`renderable.edges` the canvas
+  itself renders, so the two views can never disagree about what is
+  currently in the graph. Text is read-only; the layout-specific toolbar
+  buttons (layout dropdown, Recalculate layout, Fit to screen, Centre
+  selected) are disabled while it is shown, and switching to it
+  unmounts the Cytoscape canvas (rather than only hiding it) and clears
+  the app's canvas reference, so every action that depends on it (legend
+  click-to-select, Fit to screen, PNG export) correctly sees "no canvas"
+  instead of a stale handle to a destroyed instance.
+- 1.9.0's query-panel Diagram/Text tabs and `QueryResultPreview.jsx` are
+  removed; the query panel is back to always showing its JSON result
+  preview plus **Load onto canvas**, as it was before 1.9.0.
+
+Full npm test (355 tests) and lint (0 warnings) pass; AppInspect re-run
+clean (0 errors/failures, same 7-warning profile as prior releases).
+Version bumped to 1.10.0.
+
 ## [1.9.0] - 2026-11-21
 
 ### Added

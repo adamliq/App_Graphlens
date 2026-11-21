@@ -26,6 +26,7 @@ import TimeSlicer from './components/TimeSlicer';
 import StyleOverridesPanel from './components/StyleOverridesPanel';
 import GraphLegend from './components/GraphLegend';
 import GraphLimitBanner from './components/GraphLimitBanner';
+import GraphTableView from './components/GraphTableView';
 import NodeDetailsPanel from './components/NodeDetailsPanel';
 import EdgeDetailsPanel from './components/EdgeDetailsPanel';
 import BulkActionsPanel from './components/BulkActionsPanel';
@@ -38,7 +39,7 @@ import ErrorNotification from './components/ErrorNotification';
 import EmptyState from './components/EmptyState';
 import PageNav from '../../shared/components/PageNav';
 
-const APP_VERSION = '1.9.0';
+const APP_VERSION = '1.10.0';
 
 function downloadBlob(blob, filename) {
   const url = URL.createObjectURL(blob);
@@ -59,6 +60,7 @@ export default function App() {
   const [isSearching, setIsSearching] = useState(false);
   const [searchResults, setSearchResults] = useState([]);
   const [layoutToken, setLayoutToken] = useState(0);
+  const [canvasViewMode, setCanvasViewMode] = useState('diagram');
   const [exportDialogOpen, setExportDialogOpen] = useState(false);
   const [evidence, setEvidence] = useState({ isLoading: false, error: null, rows: [], fieldOrder: [], targetLabel: null });
   const [pathEndpoints, setPathEndpoints] = useState({ startNodeId: null, endNodeId: null });
@@ -250,6 +252,16 @@ export default function App() {
     actions.collapseNode(nodeId);
     recordAuditEvent(AUDIT_ACTIONS.COLLAPSE_NODE, { nodeId });
   }, [actions]);
+
+  const handleCanvasViewModeChange = useCallback((mode) => {
+    setCanvasViewMode(mode);
+    // Switching away from Diagram unmounts GraphCanvas (see render below),
+    // which destroys its Cytoscape instance - clear the ref so every
+    // cyRef.current-dependent action (legend click-to-select, Fit to
+    // screen, PNG export, ...) sees "no canvas" rather than a stale handle
+    // to an instance that no longer exists.
+    if (mode !== 'diagram') cyRef.current = null;
+  }, []);
 
   const handleSelectNodeType = useCallback((nodeType) => {
     selectNodesByType(cyRef.current, nodeType);
@@ -590,6 +602,8 @@ export default function App() {
         earliest={timeRange.earliest}
         latest={timeRange.latest}
         onTimeRangeChange={handleTimeRangeChange}
+        viewMode={canvasViewMode}
+        onViewModeChange={handleCanvasViewModeChange}
         layoutName={state.currentLayout}
         onLayoutChange={(name) => actions.setLayout(name)}
         onRecalculateLayout={() => setLayoutToken((t) => t + 1)}
@@ -662,8 +676,6 @@ export default function App() {
             isRunning={queryState.isRunning}
             error={queryState.error}
             result={queryState.result}
-            nodeColorByType={nodeColorByType}
-            relationshipColorByType={relationshipColorByType}
             onRunQuery={handleRunGraphQuery}
             onLoadOntoCanvas={handleLoadQueryResultOntoCanvas}
           />
@@ -682,20 +694,24 @@ export default function App() {
 
       <div className="graphlens-canvas-wrapper">
         {!hasGraph && <EmptyState />}
-        <GraphCanvas
-          nodes={renderable.nodes.map((n) => ({ data: { ...n, color: nodeColorByType[n.type] || n.color } }))}
-          edges={renderable.edges.map((e) => ({ data: { ...e, color: relationshipColorByType[e.relationship] || e.color } }))}
-          layoutName={state.currentLayout}
-          layoutToken={layoutToken}
-          pinnedNodeIds={state.pinnedNodeIds}
-          highlightedPath={path}
-          onSelectNode={(id) => actions.selectNode(id)}
-          onSelectEdge={(id) => actions.selectEdge(id)}
-          onClearSelection={() => actions.clearSelection()}
-          onExpandNode={handleExpandNode}
-          onMultiSelectNodes={setMultiSelectedNodeIds}
-          onCyReady={(cy) => { cyRef.current = cy; }}
-        />
+        {canvasViewMode === 'diagram' ? (
+          <GraphCanvas
+            nodes={renderable.nodes.map((n) => ({ data: { ...n, color: nodeColorByType[n.type] || n.color } }))}
+            edges={renderable.edges.map((e) => ({ data: { ...e, color: relationshipColorByType[e.relationship] || e.color } }))}
+            layoutName={state.currentLayout}
+            layoutToken={layoutToken}
+            pinnedNodeIds={state.pinnedNodeIds}
+            highlightedPath={path}
+            onSelectNode={(id) => actions.selectNode(id)}
+            onSelectEdge={(id) => actions.selectEdge(id)}
+            onClearSelection={() => actions.clearSelection()}
+            onExpandNode={handleExpandNode}
+            onMultiSelectNodes={setMultiSelectedNodeIds}
+            onCyReady={(cy) => { cyRef.current = cy; }}
+          />
+        ) : (
+          <GraphTableView nodes={renderable.nodes} edges={renderable.edges} />
+        )}
         <GraphLimitBanner
           visible={limitReached}
           nodeCount={nodeCount}

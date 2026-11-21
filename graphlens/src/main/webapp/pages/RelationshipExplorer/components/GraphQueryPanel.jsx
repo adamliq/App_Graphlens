@@ -2,7 +2,6 @@ import React, { useState } from 'react';
 import PropTypes from 'prop-types';
 import Button from '@splunk/react-ui/Button';
 import TextArea from '@splunk/react-ui/TextArea';
-import QueryResultPreview from './QueryResultPreview';
 
 const EXAMPLE_QUERY = '{\n  node(search: "alice") {\n    id\n    label\n    riskScore\n    FRIEND_OF(direction: OUTGOING, limit: 10) {\n      id\n      label\n    }\n  }\n}';
 
@@ -15,12 +14,9 @@ const EXAMPLE_QUERY = '{\n  node(search: "alice") {\n    id\n    label\n    risk
  * request, which node to start from and which of its relationships to
  * follow, instead of clicking Expand repeatedly.
  */
-export default function GraphQueryPanel({
-  isRunning, error, result, nodeColorByType, relationshipColorByType, onRunQuery, onLoadOntoCanvas,
-}) {
+export default function GraphQueryPanel({ isRunning, error, result, onRunQuery, onLoadOntoCanvas }) {
   const [queryText, setQueryText] = useState(EXAMPLE_QUERY);
   const [localError, setLocalError] = useState(null);
-  const [viewMode, setViewMode] = useState('diagram');
 
   const handleRun = () => {
     if (!queryText.trim()) {
@@ -32,17 +28,6 @@ export default function GraphQueryPanel({
   };
 
   const displayError = localError || (error && error.message);
-
-  // Coloured the same way the main canvas/legend are, so the preview never
-  // looks like a different, unrelated graph (see the 1.6.0 colour-
-  // consistency invariant in ARCHITECTURE.md) - purely cosmetic, never
-  // written back into the result itself.
-  const previewNodes = result
-    ? result.nodes.map((n) => ({ data: { ...n.data, color: nodeColorByType[n.data.type] || n.data.color } }))
-    : [];
-  const previewEdges = result
-    ? result.edges.map((e) => ({ data: { ...e.data, color: relationshipColorByType[e.data.relationship] || e.data.color } }))
-    : [];
 
   return (
     <div className="graphlens-section">
@@ -67,29 +52,9 @@ export default function GraphQueryPanel({
               {result.nodes.length} node(s), {result.edges.length} relationship(s) resolved
               {result.diagnostics.truncated ? ' - result was truncated by a configured limit.' : '.'}
             </p>
-            <div className="graphlens-actions-row" role="tablist" aria-label="Result view">
-              <Button
-                label="Diagram"
-                appearance={viewMode === 'diagram' ? 'primary' : 'secondary'}
-                role="tab"
-                aria-selected={viewMode === 'diagram'}
-                onClick={() => setViewMode('diagram')}
-              />
-              <Button
-                label="Text"
-                appearance={viewMode === 'text' ? 'primary' : 'secondary'}
-                role="tab"
-                aria-selected={viewMode === 'text'}
-                onClick={() => setViewMode('text')}
-              />
-            </div>
-            {viewMode === 'diagram' ? (
-              <QueryResultPreview nodes={previewNodes} edges={previewEdges} />
-            ) : (
-              <pre style={{ fontSize: 11, maxHeight: 220, overflow: 'auto', background: '#f5f5f5', padding: 8, margin: 0 }}>
-                {JSON.stringify(result.tree, null, 2)}
-              </pre>
-            )}
+            <pre style={{ fontSize: 11, maxHeight: 220, overflow: 'auto', background: '#f5f5f5', padding: 8, margin: 0 }}>
+              {JSON.stringify(result.tree, null, 2)}
+            </pre>
           </>
         )}
       </div>
@@ -106,12 +71,8 @@ GraphQueryPanel.propTypes = {
     edges: PropTypes.array,
     diagnostics: PropTypes.shape({ truncated: PropTypes.bool, totalExpansions: PropTypes.number }),
   }),
-  nodeColorByType: PropTypes.object,
-  relationshipColorByType: PropTypes.object,
   onRunQuery: PropTypes.func.isRequired,
   onLoadOntoCanvas: PropTypes.func.isRequired,
 };
 
-GraphQueryPanel.defaultProps = {
-  isRunning: false, error: null, result: null, nodeColorByType: {}, relationshipColorByType: {},
-};
+GraphQueryPanel.defaultProps = { isRunning: false, error: null, result: null };

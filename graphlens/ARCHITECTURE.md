@@ -266,28 +266,36 @@ in one request instead of clicking Expand repeatedly.
   "Load onto canvas" action - the same reducer action the Import feature
   uses (see above), so a query result is loaded exactly like an imported
   snapshot: it replaces the graph and carries no expansion parent/child
-  link. The same `nodes`/`edges` also feed `QueryResultPreview.jsx`, a
-  small read-only Cytoscape instance rendered inline in the query panel's
-  **Diagram** tab (the default; **Text** shows the same result as the
-  `tree`'s JSON instead) - independent of, and never written to, the main
-  canvas. It reuses the main canvas's own stylesheet/layout constants
-  (`GraphCanvas.jsx`'s exported `STYLESHEET`/`LAYOUT_OPTIONS`) so a node
-  or edge looks identical in both places, and colours each element the
-  same way the main canvas/legend do (`nodeColorByType`/
-  `relationshipColorByType`, computed once in `App.jsx`) before handing
-  it to the preview - cosmetic only, never written back into the result
-  object itself.
+  link.
 - Gated by the `enable_graph_query` setting (`[features]` stanza, same
   capability/permission boundary as the templates it calls - see
   CONFIGURATION.md). See KNOWN_LIMITATIONS.md for the grammar's
   restrictions.
 
-## Multi-select, the time slicer, style overrides and saved views
+## Multi-select, the time slicer, style overrides, saved views and the diagram/text toggle
 
-Four smaller additions, all client-side, each introducing no new SPL
-shape (the first three run no search of their own at all; the fourth
-only ever reuses `buildExpandNodeSpl`):
+Five smaller additions, all client-side, each introducing no new SPL
+shape (the first three and the last run no search of their own at all;
+"saved views" only ever reuses `buildExpandNodeSpl`):
 
+- **The diagram/text toggle.** Two buttons in the toolbar
+  (`GraphToolbar.jsx`'s `viewMode`/`onViewModeChange`) switch
+  `RelationshipExplorer/App.jsx`'s `canvasViewMode` state between
+  `'diagram'` (the existing `GraphCanvas`) and `'text'`
+  (`GraphTableView.jsx`, two plain HTML tables - Nodes, Relationships).
+  Both read the identical `renderable.nodes`/`renderable.edges` - the
+  same already-filtered data the canvas itself renders - so the two
+  views can never disagree about what counts as "in" the graph right
+  now. Switching away from Diagram unmounts `GraphCanvas` (destroying
+  its Cytoscape instance) rather than merely hiding it, both to avoid
+  running a layout against a zero-size hidden container and to keep the
+  two views' DOM entirely separate; `App.jsx` clears its own `cyRef` at
+  the same time so every `cyRef.current`-dependent action (legend
+  click-to-select, Fit to screen, Centre selected, PNG export) sees "no
+  canvas" instead of a stale handle to a destroyed instance - the
+  toolbar also disables the layout-specific buttons outright while in
+  Text view. The table view is read-only: selecting, expanding, pinning
+  etc. remain canvas-only actions.
 - **Multi-select and bulk actions.** `GraphCanvas.jsx` leaves
   `boxSelectionEnabled` off by default (so ordinary click-and-drag still
   pans, as every earlier version of the app has) and toggles it on only
