@@ -42,6 +42,17 @@ const STYLESHEET = [
       'text-margin-y': 4,
       'text-wrap': 'ellipsis',
       'text-max-width': '90px',
+      // A node label sits below the node on the plain canvas, not on the
+      // node's own fill, so it is not exposed to the same per-type-colour
+      // contrast problem edge labels had - but in a dense graph a curved
+      // edge can still pass directly under where a label lands. Giving it
+      // the same background as edge labels costs nothing on the common
+      // case (it already matches the canvas) and removes that remaining
+      // risk, rather than relying on it never actually happening.
+      'text-background-color': CANVAS_BG_COLOR,
+      'text-background-opacity': 1,
+      'text-background-shape': 'roundrectangle',
+      'text-background-padding': '2px',
       width: (ele) => 24 + Math.min(30, (ele.data('riskScore') || 0) / 3),
       height: (ele) => 24 + Math.min(30, (ele.data('riskScore') || 0) / 3),
       'border-width': 1,
