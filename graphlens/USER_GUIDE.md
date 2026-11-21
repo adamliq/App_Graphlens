@@ -83,6 +83,61 @@ unrestricted graph-database traversal - if the two nodes aren't connected
 within what you have expanded so far (and within the administrator's
 configured maximum path depth), expand more of the graph and try again.
 
+## Query language
+
+In the left-hand panel's **Query** section, you can describe a starting
+node and which of its relationships to follow in a single GraphQL-like
+request, instead of searching and clicking Expand repeatedly. For example:
+
+```
+{
+  node(search: "alice") {
+    id
+    label
+    riskScore
+    FRIEND_OF(direction: OUTGOING, limit: 10) {
+      id
+      label
+      LOGGED_IN {
+        id
+        label
+      }
+    }
+  }
+}
+```
+
+This starts from whatever matches "alice" (the same search the toolbar's
+entity search box runs), then follows up to 10 outgoing `FRIEND_OF`
+relationships from it, and in turn follows each of *those* nodes'
+`LOGGED_IN` relationships. You can also start from a known node id instead
+of a search term: `node(id: "user:jsmith") { ... }`.
+
+A few things worth knowing:
+
+- Every field inside `node { ... }` is either a **property** - one of
+  `id`, `label`, `type`, `group`, `description`, `riskScore`,
+  `eventCount`, `firstSeen`, `lastSeen`, `sourceIndex`,
+  `sourceSourcetype` - or a **relationship to follow**, written as a
+  field with its own `{ ... }` whose name matches a relationship type
+  (case-insensitive). If a relationship type isn't a convenient field
+  name, give the field any name you like and add `type: "the_real_name"`.
+- `direction: OUTGOING`, `INCOMING` or `BOTH` (the default) on a
+  relationship field controls which end of the relationship the current
+  node must be on. `limit` bounds how many of that relationship it
+  follows.
+- Click **Run query** to execute it, then **Load onto canvas** to replace
+  the current graph with the result - the same way importing a file does.
+  The panel also shows a JSON preview of what was found.
+- This is not an unrestricted graph-database query console: it compiles
+  down to the same bounded, pre-approved searches every other action in
+  GraphLens uses, within your own Splunk search permissions (see
+  SECURITY.md), and is subject to the administrator-configured maximum
+  expansion depth and a fixed overall search budget - a very broad query
+  may come back noting its result was truncated. See
+  KNOWN_LIMITATIONS.md for the full list of what the syntax does not
+  support (fragments, variables, aliases, and a few others).
+
 ## Export
 
 Toolbar **Export** button. Choose:

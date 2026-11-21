@@ -1,7 +1,7 @@
 import React from 'react';
 import PageNav from '../../shared/components/PageNav';
 
-const APP_VERSION = '1.6.5';
+const APP_VERSION = '1.7.0';
 
 /**
  * Static, no-dependency reference page - unlike the other three pages,
@@ -105,6 +105,25 @@ export default function App() {
       </section>
 
       <section className="graphlens-section">
+        <h2>Query language</h2>
+        <p>
+          The left-hand panel&apos;s <strong>Query</strong> section lets you
+          describe a starting node and which of its relationships to follow
+          in one GraphQL-like request, e.g.{' '}
+          <code>{'{ node(search: "alice") { id FRIEND_OF(direction: OUTGOING) { id } } }'}</code>.
+          Click <strong>Run query</strong>, then <strong>Load onto
+          canvas</strong> to replace the current graph with the result - the
+          same way importing a file does. It is not an unrestricted
+          graph-database query console: every query compiles down to the
+          same bounded, pre-approved searches every other action in
+          GraphLens uses, within your own Splunk permissions, bounded by
+          the administrator&apos;s configured maximum expansion depth and
+          an overall search budget. See USER_GUIDE.md in the installed
+          package for the full syntax reference.
+        </p>
+      </section>
+
+      <section className="graphlens-section">
         <h2>Export and import</h2>
         <p>
           Toolbar <strong>Export</strong> button: JSON (full graph data plus
@@ -169,7 +188,8 @@ export default function App() {
           max path-finder depth, max search result rows, search dispatch
           timeout), search defaults (relationship data source and name,
           default evidence index, default time range), feature toggles
-          (export, annotations, saved views, clustering, path finder), and
+          (export, annotations, saved views, clustering, path finder, query
+          language), and
           an optional node/relationship type allowlist plus the layouts
           and export formats offered in the UI. Settings live in
           <code> graphlens_settings.conf</code>; the Configuration page

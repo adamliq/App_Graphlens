@@ -2,6 +2,56 @@
 
 All notable changes to GraphLens are documented in this file.
 
+## [1.7.0] - 2026-11-21
+
+### Added
+
+- **Query language**: a new **Query** section in the Relationship
+  Explorer's left-hand panel, where a restricted, GraphQL-like syntax
+  lets you describe a starting node and which of its relationships to
+  follow in one request (e.g.
+  `{ node(search: "alice") { id FRIEND_OF(direction: OUTGOING) { id } } }`),
+  instead of searching and clicking Expand repeatedly. Run it, then
+  **Load onto canvas** to replace the current graph with the result -
+  the same `loadSnapshot` action the Import feature (1.5.0) already
+  uses. See USER_GUIDE.md ("Query language") for the syntax and a
+  worked example.
+- New `shared/services/graphQueryLanguage.js` - a hand-rolled tokenizer
+  and recursive-descent parser for the grammar (not the `graphql` npm
+  package: the supported subset is small and fixed, and this project
+  already hand-writes its own narrow parsers/validators rather than
+  adding a general-purpose parsing dependency - see `splSafety.js`).
+  Throws a clear, position-aware error on malformed query text.
+- New `shared/services/graphQueryExecutor.js` - resolves a parsed query
+  **entirely by reusing the two existing, already-reviewed templates**
+  every other action already dispatches (`buildInitialEntitySearchSpl`
+  for the root field, `buildExpandNodeSpl` - at most once per distinct
+  node - for every relationship field under it). Relationship-type and
+  direction selection is applied client-side against rows those
+  searches already returned, exactly like the existing
+  `hiddenRelationshipTypes` filter - **no new SPL shape or injection
+  surface is introduced**. Bounded by a static check against
+  `max_expansion_depth`, a hard per-execution dispatch ceiling
+  (`MAX_QUERY_EXPANSIONS`), ancestor-path cycle detection, and each
+  relationship field's own `limit` clamped against
+  `max_expansion_neighbours`. See ARCHITECTURE.md and SECURITY.md for
+  the full design, and `tests/unit/graphQueryLanguage.test.js` /
+  `tests/unit/graphQueryExecutor.test.js` (33 new tests, including a
+  dedicated case confirming a crafted `id` argument is rejected by the
+  existing identifier validator before any search is ever dispatched).
+- New `enable_graph_query` setting (`[features]` stanza, default
+  `true`) and matching Configuration page toggle - gates the panel with
+  no new capability, since every search the feature can run is one a
+  user's existing permissions already allow them to run by hand.
+- New `run_graph_query` audit action, recording only a node/edge count
+  and a truncation flag - never the query text itself, the same
+  precedent the entity search box's own audit record already sets for
+  the raw search term.
+
+Version bumped to 1.7.0 (new feature). Full npm test (333 tests) and
+lint (0 warnings) pass; AppInspect re-run clean (0 errors/failures, same
+7-warning profile as prior releases).
+
 ## [1.6.5] - 2026-11-21
 
 ### Fixed

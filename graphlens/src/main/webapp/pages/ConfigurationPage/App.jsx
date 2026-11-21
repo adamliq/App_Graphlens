@@ -161,6 +161,7 @@ function FeaturesForm({ settings, disabled, onSave }) {
     enable_saved_views: settings.enableSavedViews,
     enable_clustering: settings.enableClustering,
     enable_path_finder: settings.enablePathFinder,
+    enable_graph_query: settings.enableGraphQuery,
   });
   const toggle = (key) => setValues((s) => ({ ...s, [key]: !s[key] }));
   return (
@@ -170,6 +171,7 @@ function FeaturesForm({ settings, disabled, onSave }) {
       <Switch selected={values.enable_saved_views} disabled={disabled} onClick={() => toggle('enable_saved_views')}>Enable saved views</Switch>
       <Switch selected={values.enable_clustering} disabled={disabled} onClick={() => toggle('enable_clustering')}>Enable clustering</Switch>
       <Switch selected={values.enable_path_finder} disabled={disabled} onClick={() => toggle('enable_path_finder')}>Enable path finder</Switch>
+      <Switch selected={values.enable_graph_query} disabled={disabled} onClick={() => toggle('enable_graph_query')}>Enable query language</Switch>
       <Button label="Save features" appearance="primary" disabled={disabled} onClick={() => onSave(values)} />
     </div>
   );
@@ -200,6 +202,7 @@ const settingsShape = PropTypes.shape({
   enableSavedViews: PropTypes.bool,
   enableClustering: PropTypes.bool,
   enablePathFinder: PropTypes.bool,
+  enableGraphQuery: PropTypes.bool,
 });
 
 LimitsForm.propTypes = { settings: settingsShape.isRequired, disabled: PropTypes.bool.isRequired, onSave: PropTypes.func.isRequired };
