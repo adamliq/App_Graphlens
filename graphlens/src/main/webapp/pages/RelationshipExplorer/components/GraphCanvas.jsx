@@ -88,12 +88,24 @@ const STYLESHEET = [
   },
 ];
 
+// Every layout below defaults `nodeDimensionsIncludeLabels` to false (a
+// Cytoscape core default, confirmed by reading its layout source) - the
+// spacing/overlap-avoidance math only ever considered each node's own
+// circle, never its label text below it. Confirmed live: with labels
+// excluded, an adjacent node's label routinely overlapped another node's
+// label or an edge's own label, making both unreadable. `true` here makes
+// every layout treat "node + its label" as the shape that must not
+// overlap.
 const LAYOUT_OPTIONS = {
-  cose: { name: 'cose', animate: false, nodeRepulsion: 8000, idealEdgeLength: 90, fit: true },
-  concentric: { name: 'concentric', animate: false, fit: true },
-  breadthfirst: { name: 'breadthfirst', animate: false, fit: true, directed: true },
-  circle: { name: 'circle', animate: false, fit: true },
-  grid: { name: 'grid', animate: false, fit: true },
+  cose: {
+    name: 'cose', animate: false, nodeRepulsion: 8000, idealEdgeLength: 90, fit: true, nodeDimensionsIncludeLabels: true,
+  },
+  concentric: { name: 'concentric', animate: false, fit: true, nodeDimensionsIncludeLabels: true },
+  breadthfirst: {
+    name: 'breadthfirst', animate: false, fit: true, directed: true, nodeDimensionsIncludeLabels: true,
+  },
+  circle: { name: 'circle', animate: false, fit: true, nodeDimensionsIncludeLabels: true },
+  grid: { name: 'grid', animate: false, fit: true, nodeDimensionsIncludeLabels: true },
 };
 
 /**
