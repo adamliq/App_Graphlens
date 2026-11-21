@@ -4,6 +4,10 @@ import cytoscape from 'cytoscape';
 
 const DEFAULT_NODE_COLOR = '#5A2BE2';
 const DEFAULT_EDGE_COLOR = '#9B9B9B';
+// Matches .graphlens-canvas-wrapper's --graphlens-canvas-bg fallback in
+// App.css, so an edge label's background reads as part of the plain
+// canvas rather than a visible, mismatched box.
+const CANVAS_BG_COLOR = '#fafafa';
 
 /**
  * Fixed meanings, independent of a node/edge's own type colour - also
@@ -65,6 +69,15 @@ const STYLESHEET = [
     style: { 'border-color': STATUS_COLORS.pathHighlight, 'border-width': 4, 'border-style': 'dashed' },
   },
   {
+    // Edge labels are drawn directly on top of the edge's own line, whose
+    // colour varies per relationship type (up to 19 colours, several
+    // fairly dark) - a single fixed dark label colour (#4a4a4a) was
+    // frequently near-illegible on a dark line, confirmed live and
+    // reported directly. A solid background behind the label (matching
+    // the plain canvas colour) makes legibility independent of whatever
+    // colour the line underneath happens to be, rather than trying to
+    // pick one label colour that contrasts with every possible line
+    // colour - the same fix used for e.g. map/chart edge labels generally.
     selector: 'edge',
     style: {
       width: (ele) => 1 + Math.min(6, Math.log2(1 + (ele.data('eventCount') || 1))),
@@ -74,7 +87,11 @@ const STYLESHEET = [
       'curve-style': 'bezier',
       label: 'data(relationshipLabel)',
       'font-size': 8,
-      color: '#4a4a4a',
+      color: '#1a1a1a',
+      'text-background-color': CANVAS_BG_COLOR,
+      'text-background-opacity': 1,
+      'text-background-shape': 'roundrectangle',
+      'text-background-padding': '2px',
       'text-rotation': 'autorotate',
     },
   },

@@ -1,6 +1,7 @@
 import React from 'react';
 import PropTypes from 'prop-types';
 import Button from '@splunk/react-ui/Button';
+import { STATUS_COLORS, HIGH_RISK_THRESHOLD } from './GraphCanvas';
 
 export default function NodeDetailsPanel({
   node,
@@ -33,7 +34,9 @@ export default function NodeDetailsPanel({
         <dd>{node.type}</dd>
         {node.group && (<><dt>Group</dt><dd>{node.group}</dd></>)}
         <dt>Risk score</dt>
-        <dd>{node.riskScore}</dd>
+        <dd style={(node.riskScore || 0) >= HIGH_RISK_THRESHOLD ? { color: STATUS_COLORS.risk, fontWeight: 600 } : undefined}>
+          {node.riskScore}
+        </dd>
         <dt>Event count</dt>
         <dd>{node.eventCount}</dd>
         {node.firstSeen && (<><dt>First seen</dt><dd>{node.firstSeen}</dd></>)}

@@ -1,6 +1,7 @@
 import React from 'react';
 import PropTypes from 'prop-types';
 import Button from '@splunk/react-ui/Button';
+import { STATUS_COLORS, HIGH_RISK_THRESHOLD } from './GraphCanvas';
 
 export default function EdgeDetailsPanel({ edge, onViewEvidence }) {
   if (!edge) {
@@ -25,7 +26,9 @@ export default function EdgeDetailsPanel({ edge, onViewEvidence }) {
         <dt>Directed</dt>
         <dd>{edge.directed ? 'Yes' : 'No'}</dd>
         <dt>Risk score</dt>
-        <dd>{edge.riskScore}</dd>
+        <dd style={(edge.riskScore || 0) >= HIGH_RISK_THRESHOLD ? { color: STATUS_COLORS.risk, fontWeight: 600 } : undefined}>
+          {edge.riskScore}
+        </dd>
         <dt>Event count</dt>
         <dd>{edge.eventCount}</dd>
         {edge.firstSeen && (<><dt>First seen</dt><dd>{edge.firstSeen}</dd></>)}
