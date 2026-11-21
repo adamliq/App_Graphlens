@@ -7,7 +7,7 @@ import { getSettings } from '../../shared/services/configService';
 import { hasCapability, CAPABILITIES } from '../../shared/services/capabilityService';
 import PageNav from '../../shared/components/PageNav';
 
-const APP_VERSION = '1.11.0';
+const APP_VERSION = '1.12.0';
 
 export default function App() {
   const [canView, setCanView] = useState(null);

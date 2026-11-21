@@ -296,7 +296,15 @@ shape (the first three and the last run no search of their own at all;
   canvas" instead of a stale handle to a destroyed instance - the
   toolbar also disables the layout-specific buttons outright while in
   Table view. The table view is read-only: selecting, expanding, pinning
-  etc. remain canvas-only actions.
+  etc. remain canvas-only actions. Since 1.12.0 every other toolbar
+  control also carries a `@splunk/react-icons` glyph alongside its
+  label or option text: `EntitySearch`'s Search button (`Magnifier`),
+  `TimeRangeSelector`'s preset options (`Clock`), `GraphToolbar`'s
+  layout options (`Layout`), Recalculate layout (`ArrowClockwise`), Fit
+  to screen (`ArrowsFourCorners`), Centre selected (`NodesCentered`),
+  Reset graph (`TrashCanCross`), Import (`ArrowCircleInRight`) and
+  Export (`ArrowCircleOutRight`) - purely cosmetic, no behaviour
+  change.
 - **Multi-select and bulk actions.** `GraphCanvas.jsx` leaves
   `boxSelectionEnabled` off by default (so ordinary click-and-drag still
   pans, as every earlier version of the app has) and toggles it on only

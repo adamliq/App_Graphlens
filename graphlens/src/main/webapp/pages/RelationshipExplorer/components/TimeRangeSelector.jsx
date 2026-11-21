@@ -1,6 +1,7 @@
 import React from 'react';
 import PropTypes from 'prop-types';
 import Select from '@splunk/react-ui/Select';
+import Clock from '@splunk/react-icons/Clock';
 
 export const TIME_RANGE_PRESETS = [
   { label: 'Last 15 minutes', earliest: '-15m', latest: 'now' },
@@ -25,7 +26,7 @@ export default function TimeRangeSelector({ earliest, latest, onChange }) {
       }}
     >
       {TIME_RANGE_PRESETS.map((preset) => (
-        <Select.Option key={preset.earliest} label={preset.label} value={preset.earliest} />
+        <Select.Option key={preset.earliest} label={preset.label} value={preset.earliest} icon={<Clock />} />
       ))}
     </Select>
   );

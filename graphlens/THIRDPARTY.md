@@ -18,7 +18,7 @@ updates").
 | react | 18.2.0 | MIT | UI framework |
 | react-dom | 18.2.0 | MIT | React DOM renderer |
 | @splunk/react-ui | 5.12.0 | Apache-2.0 | Splunk UI Toolkit components (buttons, inputs, modals, selects, notifications) |
-| @splunk/react-icons | 5.13.0 | Apache-2.0 | Icon components (toolbar's Graph/Table view toggle). Already bundled as a transitive dependency of @splunk/react-ui before 1.11.0; declared directly now that app code imports specific icons from it. |
+| @splunk/react-icons | 5.13.0 | Apache-2.0 | Icon components (toolbar buttons and dropdowns). Already bundled as a transitive dependency of @splunk/react-ui before 1.11.0; declared directly since 1.11.0 now that app code imports specific icons from it. |
 | @splunk/themes | 1.9.0 | Apache-2.0 | `SplunkThemeProvider` - supplies the enterprise/light theme context `@splunk/react-ui` components render against (see ARCHITECTURE.md; without it, components fall back to this library's own default theme, `prisma`/`dark`) |
 | styled-components | 5.3.11 | MIT | Peer dependency of @splunk/react-ui, used internally by its components |
 | cytoscape | 3.34.0 | MIT | Graph visualisation and layout engine |

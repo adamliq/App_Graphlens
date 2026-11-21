@@ -4,6 +4,13 @@ import Button from '@splunk/react-ui/Button';
 import Select from '@splunk/react-ui/Select';
 import ChartLinkGraph from '@splunk/react-icons/ChartLinkGraph';
 import Table from '@splunk/react-icons/Table';
+import Layout from '@splunk/react-icons/Layout';
+import ArrowClockwise from '@splunk/react-icons/ArrowClockwise';
+import ArrowsFourCorners from '@splunk/react-icons/ArrowsFourCorners';
+import NodesCentered from '@splunk/react-icons/NodesCentered';
+import TrashCanCross from '@splunk/react-icons/TrashCanCross';
+import ArrowCircleInRight from '@splunk/react-icons/ArrowCircleInRight';
+import ArrowCircleOutRight from '@splunk/react-icons/ArrowCircleOutRight';
 import EntitySearch from './EntitySearch';
 import TimeRangeSelector from './TimeRangeSelector';
 import { CYTOSCAPE_LAYOUTS } from './GraphCanvas';
@@ -54,15 +61,15 @@ export default function GraphToolbar({
       <label htmlFor="graphlens-layout-select" style={{ fontSize: 12 }}>
         Layout{' '}
         <Select inputId="graphlens-layout-select" value={layoutName} onChange={(e, { value }) => onLayoutChange(value)} disabled={viewMode !== 'graph'}>
-          {CYTOSCAPE_LAYOUTS.map((l) => <Select.Option key={l} label={l} value={l} />)}
+          {CYTOSCAPE_LAYOUTS.map((l) => <Select.Option key={l} label={l} value={l} icon={<Layout />} />)}
         </Select>
       </label>
-      <Button label="Recalculate layout" onClick={onRecalculateLayout} disabled={viewMode !== 'graph'} />
-      <Button label="Fit to screen" onClick={onFit} disabled={viewMode !== 'graph'} />
-      <Button label="Centre selected" onClick={onCenterSelected} disabled={viewMode !== 'graph'} />
-      <Button label="Reset graph" onClick={onReset} appearance="destructive" />
-      {importEnabled && <Button label="Import" onClick={onImportClick} />}
-      {exportEnabled && <Button label="Export" onClick={onExportOpen} />}
+      <Button label="Recalculate layout" icon={<ArrowClockwise />} onClick={onRecalculateLayout} disabled={viewMode !== 'graph'} />
+      <Button label="Fit to screen" icon={<ArrowsFourCorners />} onClick={onFit} disabled={viewMode !== 'graph'} />
+      <Button label="Centre selected" icon={<NodesCentered />} onClick={onCenterSelected} disabled={viewMode !== 'graph'} />
+      <Button label="Reset graph" icon={<TrashCanCross />} onClick={onReset} appearance="destructive" />
+      {importEnabled && <Button label="Import" icon={<ArrowCircleInRight />} onClick={onImportClick} />}
+      {exportEnabled && <Button label="Export" icon={<ArrowCircleOutRight />} onClick={onExportOpen} />}
     </div>
   );
 }

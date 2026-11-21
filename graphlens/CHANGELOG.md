@@ -2,6 +2,23 @@
 
 All notable changes to GraphLens are documented in this file.
 
+## [1.12.0] - 2026-11-21
+
+### Changed
+
+- **Added icons to the rest of the toolbar's buttons and dropdowns**,
+  matching the Graph/Table toggle's icons added in 1.11.0:
+  `EntitySearch`'s Search button, the time range dropdown's presets,
+  the layout dropdown's options, Recalculate layout, Fit to screen,
+  Centre selected, Reset graph, Import and Export each now carry a
+  `@splunk/react-icons` glyph alongside their existing label. Purely
+  cosmetic - no behaviour change, no new dependency (same
+  `@splunk/react-icons` package declared in 1.11.0).
+
+Full npm test (355 tests) and lint (0 warnings) pass; AppInspect
+re-run clean (0 errors/failures, same 7-warning profile as prior
+releases). Version bumped to 1.12.0.
+
 ## [1.11.0] - 2026-11-21
 
 ### Changed
