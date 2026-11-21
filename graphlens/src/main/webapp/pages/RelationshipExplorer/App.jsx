@@ -29,7 +29,7 @@ import ErrorNotification from './components/ErrorNotification';
 import EmptyState from './components/EmptyState';
 import PageNav from '../../shared/components/PageNav';
 
-const APP_VERSION = '1.6.0';
+const APP_VERSION = '1.6.1';
 
 function downloadBlob(blob, filename) {
   const url = URL.createObjectURL(blob);

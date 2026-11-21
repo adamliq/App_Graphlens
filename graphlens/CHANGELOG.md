@@ -2,6 +2,30 @@
 
 All notable changes to GraphLens are documented in this file.
 
+## [1.6.1] - 2026-11-21
+
+### Fixed
+
+- **Node/edge labels routinely overlapped each other** - every layout
+  (cose, concentric, breadthfirst, circle, grid) defaults Cytoscape's
+  `nodeDimensionsIncludeLabels` option to `false` (confirmed by reading
+  Cytoscape's own layout source), so overlap-avoidance spacing only ever
+  considered each node's own circle, never its label text below it -
+  visible in earlier screenshots (e.g. a "Finance Admins" node label
+  overlapping an adjacent "Authenticated to" edge label). Set
+  `nodeDimensionsIncludeLabels: true` for all five layouts
+  (`GraphCanvas.jsx`), confirmed live against the bundled sample data:
+  labels are now clearly separated with no overlap, at both a 3-node and
+  a 4-node graph size.
+- Checked Cytoscape's own resize handling while auditing this (a
+  `ResizeObserver` plus a window `resize` listener, both wired internally
+  since recent Cytoscape core versions) - already correct, nothing to fix
+  there.
+
+Version bumped to 1.6.1 (bug fix only). Full npm test (300 tests) and
+lint (0 warnings) pass; AppInspect re-run clean (0 errors/failures, same
+7-warning profile as prior releases).
+
 ## [1.6.0] - 2026-11-21
 
 ### Fixed
