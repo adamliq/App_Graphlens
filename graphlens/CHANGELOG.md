@@ -2,6 +2,33 @@
 
 All notable changes to GraphLens are documented in this file.
 
+## [1.6.4] - 2026-11-21
+
+### Fixed
+
+- **Edge labels showed dark font on a dark edge line** - reported
+  directly. Edge labels are drawn directly on top of the edge's own
+  line, whose colour varies per relationship type (up to 19 colours,
+  several fairly dark since 1.6.0's palette expansion), but the label
+  used a single fixed dark colour (`#4a4a4a`) with no background -
+  readable against a light line, close to illegible against a dark one.
+  Fixed by giving every edge label a solid background matching the plain
+  canvas colour (`text-background-color`/`-opacity`/`-shape`/`-padding`),
+  so legibility no longer depends on guessing a label colour that
+  contrasts with whatever colour the line underneath happens to be.
+  Confirmed live against a relationship type deliberately chosen to hash
+  to the darkest colour in the palette (`#9B277E`, luminance 0.099) -
+  the label is now clearly legible, at every rotation and in every
+  selection/path-highlight state (neither touches label styling, so both
+  inherit the same fix).
+- Checked node labels too: already unaffected, since `text-valign:
+  bottom` positions them below the node on the plain canvas, never on a
+  coloured shape.
+
+Version bumped to 1.6.4 (bug fix only). Full npm test (300 tests) and
+lint (0 warnings) pass; AppInspect re-run clean (0 errors/failures, same
+7-warning profile as prior releases).
+
 ## [1.6.3] - 2026-11-21
 
 ### Fixed
