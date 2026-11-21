@@ -245,8 +245,30 @@ export function loadGraphSnapshot(state, { nodes = [], edges = [] }, limits) {
 }
 
 /**
+ * Whether an element's [firstSeen, lastSeen] span overlaps the selected
+ * [timeFilterMin, timeFilterMax] window (both already-parsed epoch ms, or
+ * null for "no bound on this side"). An element with no parseable time
+ * data of its own is never filtered out by the window - the same
+ * graceful-default treatment missing risk/event-count data already gets
+ * in this function, since the window only has anything to compare
+ * against when an element actually carries first_seen/last_seen.
+ */
+function withinTimeWindow(firstSeen, lastSeen, timeFilterMin, timeFilterMax) {
+  if (timeFilterMin === null && timeFilterMax === null) return true;
+  const firstMs = firstSeen ? Date.parse(firstSeen) : NaN;
+  const lastMs = lastSeen ? Date.parse(lastSeen) : NaN;
+  if (!Number.isFinite(firstMs) && !Number.isFinite(lastMs)) return true;
+  const effectiveFirst = Number.isFinite(firstMs) ? firstMs : lastMs;
+  const effectiveLast = Number.isFinite(lastMs) ? lastMs : firstMs;
+  if (timeFilterMax !== null && effectiveFirst > timeFilterMax) return false;
+  if (timeFilterMin !== null && effectiveLast < timeFilterMin) return false;
+  return true;
+}
+
+/**
  * Nodes/edges as they should be rendered right now: visible minus
- * individually-hidden nodes minus nodes/relationships hidden by type.
+ * individually-hidden nodes minus nodes/relationships hidden by type,
+ * minus anything outside the active risk/event-count/time-window filters.
  */
 export function selectRenderableElements(state) {
   const hiddenTypeSet = new Set(state.hiddenNodeTypes);
@@ -256,12 +278,15 @@ export function selectRenderableElements(state) {
   const riskMin = Number.isFinite(filters.riskMin) ? filters.riskMin : 0;
   const riskMax = Number.isFinite(filters.riskMax) ? filters.riskMax : 100;
   const minEventCount = Number.isFinite(filters.minEventCount) ? filters.minEventCount : 0;
+  const timeFilterMin = Number.isFinite(filters.timeFilterMin) ? filters.timeFilterMin : null;
+  const timeFilterMax = Number.isFinite(filters.timeFilterMax) ? filters.timeFilterMax : null;
 
   const nodes = Object.values(state.visibleNodes).filter(
     (n) => !hiddenNodeSet.has(n.id)
       && !hiddenTypeSet.has(n.type)
       && (n.riskScore || 0) >= riskMin
-      && (n.riskScore || 0) <= riskMax,
+      && (n.riskScore || 0) <= riskMax
+      && withinTimeWindow(n.firstSeen, n.lastSeen, timeFilterMin, timeFilterMax),
   );
   const visibleNodeIds = new Set(nodes.map((n) => n.id));
 
@@ -269,7 +294,8 @@ export function selectRenderableElements(state) {
     (e) => visibleNodeIds.has(e.source)
       && visibleNodeIds.has(e.target)
       && !hiddenRelSet.has(e.relationship)
-      && (e.eventCount || 0) >= minEventCount,
+      && (e.eventCount || 0) >= minEventCount
+      && withinTimeWindow(e.firstSeen, e.lastSeen, timeFilterMin, timeFilterMax),
   );
 
   return { nodes, edges };

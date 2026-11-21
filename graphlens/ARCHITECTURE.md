@@ -272,6 +272,66 @@ in one request instead of clicking Expand repeatedly.
   CONFIGURATION.md). See KNOWN_LIMITATIONS.md for the grammar's
   restrictions.
 
+## Multi-select, the time slicer, style overrides and saved views
+
+Four smaller additions, all client-side, each introducing no new SPL
+shape (the first three run no search of their own at all; the fourth
+only ever reuses `buildExpandNodeSpl`):
+
+- **Multi-select and bulk actions.** `GraphCanvas.jsx` leaves
+  `boxSelectionEnabled` off by default (so ordinary click-and-drag still
+  pans, as every earlier version of the app has) and toggles it on only
+  while Shift is held - the conventional rubber-band-select modifier. A
+  `select`/`unselect` listener (scoped to `'node'`) reports Cytoscape's
+  own `:selected` collection to React whenever it changes; a legend
+  click (`GraphCanvas.selectNodesByType`) populates the same collection
+  by filtering nodes by their `type` data field (never a selector string
+  built from that value). `RelationshipExplorer/App.jsx` shows
+  `BulkActionsPanel` instead of the usual node/edge details whenever that
+  collection holds more than one node, and every bulk action (pin,
+  unpin, hide, expand) is the identical single-node action already used
+  elsewhere, just looped - never a new code path.
+- **The time slicer.** `TimeSlicer.jsx` adds two new optional keys to the
+  same generic `activeFilters` bag `RiskFilter` already writes into
+  (`timeFilterMin`/`timeFilterMax`, epoch ms) and
+  `graphStateReducer.js`'s `selectRenderableElements` hides any node/edge
+  whose `[firstSeen, lastSeen]` span does not overlap that window - an
+  element with no parseable time data of its own is never hidden by it.
+  Exactly like the Risk filter, this only ever hides what has already
+  been fetched; it never changes what the toolbar's time range causes to
+  be searched.
+- **Session-only style overrides.** `StyleOverridesPanel.jsx` keeps a
+  plain `{type: colour}` map in React state only - never written to KV
+  Store, never to browser storage, gone on reload. `App.jsx` merges it
+  over the curated per-type colour before computing
+  `nodeColorByType`/`relationshipColorByType`, the same single source of
+  truth the legend/filter swatches and the canvas itself already share
+  (see the 1.6.0 colour-consistency fix above), so an override is never
+  visible in only one of those places.
+- **Saved views.** `savedViewsService.js` stores a named "recipe" - which
+  single node a graph started from (`setInitialNode`) and which of its
+  neighbours were expanded, in order - in the `graphlens_saved_views` KV
+  Store collection (see collections.conf), not a frozen snapshot of node/
+  edge data the way Export/Import is. Loading one re-dispatches
+  `buildExpandNodeSpl` for the starting node, then for each recorded
+  expansion in order, showing current data for the same nodes rather than
+  resurrecting stale values. Saving only works for a graph that has
+  exactly one node with no expansion-parent link (`findSingleRootNodeId`)
+  - a graph built via Import or the query panel's "Load onto canvas" can
+    start from several nodes at once and has no single node this
+    schema's `initial_node_id` column could name; see
+    KNOWN_LIMITATIONS.md. The replay itself is built by composing
+    `graphStateReducer.js`'s own pure `setInitialNode`/`mergeExpansion`
+    functions directly (each expansion step needs the previous one's node
+    to already be visible, which React's batched, asynchronous state
+    updates cannot guarantee mid-loop) and committed in one
+    `actions.replaceState` call at the end - a narrow escape hatch added
+    to `useGraphState.js` specifically for this, not for ordinary use.
+    Private to the current user in this release: every write sets
+    `sharing="private"` and `owner` to the current username, and every
+    read filters to it - a UI convention, not a hard access-control
+    boundary, the same as the audit log's precedent (see SECURITY.md).
+
 ## How permissions are enforced
 
 See SECURITY.md, "Access control". In summary: Splunk's own role-based

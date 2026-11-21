@@ -42,6 +42,14 @@ document remains the fuller, authoritative version.
 - **Change layout**: toolbar dropdown (cose, concentric, breadthfirst,
   circle, grid). **Recalculate layout** re-runs the current layout without
   changing which layout is selected.
+- **Select several nodes at once**: hold **Shift** and drag a box around
+  them, or click a node type in the legend to select every currently
+  visible node of that type. An ordinary click-and-drag still pans the
+  canvas exactly as before - only a Shift-drag draws a selection box.
+  With more than one node selected, the details panel is replaced by
+  **bulk actions**: Pin all, Unpin all, Hide all, Expand all, or Clear
+  selection - each one is exactly the same action a single node already
+  has, just applied to every selected node at once.
 
 ## Filters
 
@@ -50,6 +58,12 @@ Left-hand panel:
 - **Node types** / **Relationship types**: checkboxes to hide specific
   types from view (data stays loaded; only the display is filtered).
 - **Risk & frequency**: minimum/maximum risk score and minimum event count.
+- **Time window** (the "time slicer"): two sliders bounding which nodes/
+  edges are shown, by their own first-seen/last-seen span, to whatever
+  range is currently loaded. This is separate from, and does not change,
+  the toolbar's time range below - it only hides elements already
+  fetched, the same way the Risk filter does, rather than re-running any
+  search. Click **Reset window** to go back to showing everything loaded.
 - **Time range**: toolbar dropdown - changes the time window used by
   subsequent searches (expansion, entity search). Changing it does not
   retroactively re-run past expansions.
@@ -59,11 +73,23 @@ Left-hand panel:
 The left-hand panel legend shows the colour used for each node type and
 relationship type currently present in your graph - guaranteed distinct
 for whatever types are on screen at once, even without any administrator
-curation. An **Indicators** section below it explains the canvas's other
-colour cues, which are independent of type colour: a red halo for a risk
-score of 70 or higher (stays visible no matter what else is true of the
-node), a blue double border for pinned, an orange border for selected,
-and a dashed green border for a node on a highlighted path.
+curation. Click a node type to select every visible node of that type
+(see "Select several nodes at once" above). An **Indicators** section
+below it explains the canvas's other colour cues, which are independent
+of type colour: a red halo for a risk score of 70 or higher (stays
+visible no matter what else is true of the node), a blue double border
+for pinned, an orange border for selected, and a dashed green border for
+a node on a highlighted path.
+
+## Colours (this session only)
+
+The left-hand panel's colour override section lets you pick a different
+colour for a node or relationship type, for this browser tab only - it
+is never written anywhere, never visible to anyone else, and gone the
+moment you reload the page. Use it to make something stand out while
+you are looking at it; it does not change the curated colours an
+administrator has set up (see CONFIGURATION.md), which are still what
+everyone else - and you, after a reload - will see.
 
 ## Viewing supporting events (evidence)
 
@@ -137,6 +163,21 @@ A few things worth knowing:
   may come back noting its result was truncated. See
   KNOWN_LIMITATIONS.md for the full list of what the syntax does not
   support (fragments, variables, aliases, and a few others).
+
+## Saved views
+
+The left-hand panel's **Saved views** section lets you name and save the
+graph you are currently looking at - which node you started from and
+which of its neighbours you have expanded - and come back to it later,
+privately. Give it a name (and an optional description) and click
+**Save current view**; click **Load** on any saved view to replace the
+current graph with it. Loading a view re-runs the same searches a live
+exploration would, so you see current data for the same nodes rather
+than a frozen picture from when you saved it - if you want an exact,
+unchanging copy instead, use Export. A saved view only works for a graph
+that started from a single search result; one built via Import or the
+query panel's "Load onto canvas" cannot be saved this way (see
+KNOWN_LIMITATIONS.md). Saved views are visible only to you.
 
 ## Export
 

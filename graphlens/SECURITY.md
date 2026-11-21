@@ -161,6 +161,41 @@ treated as fully untrusted, exactly like a Splunk search result:
   `graphlens_audit_log`), including on failure (malformed file, rejected
   rows), with the node/edge counts only - never the file's raw content.
 
+## Multi-select, the time slicer, style overrides and saved views
+
+- **Multi-select and bulk actions** run no search of their own at all -
+  box/lasso-select and the legend's "select this type" both only change
+  which already-visible Cytoscape elements are selected, and every bulk
+  action (pin, unpin, hide, expand) dispatches exactly the same already-
+  reviewed path the single-node version of that action already uses, just
+  once per selected node.
+- **The time slicer** is a pure client-side filter over data already
+  fetched (see ARCHITECTURE.md) - identical in kind to the existing Risk
+  filter, just filtering on `firstSeen`/`lastSeen` instead of risk score.
+  It never changes what is searched or dispatches anything of its own.
+- **Session-only style overrides** are kept in React state alone - never
+  written to KV Store, never to browser storage, and never sent to
+  Splunk or anywhere else. They cannot affect any other user's session
+  and do not survive a reload; they also never change the *curated*
+  per-type colours an administrator maintains in
+  `graphlens_node_types`/`graphlens_relationship_types`, only how this one
+  browser tab currently renders them.
+- **Saved views** write to the `graphlens_saved_views` KV Store
+  collection through the same generic, already-reviewed
+  `kvStoreService.js` used elsewhere (`storage/collections/data`, subject
+  to the collection's own ACL - see `kvStoreService.js`'s header comment).
+  Every write stores `owner` as the current username and `sharing` as
+  `"private"`; every read filters to the current username
+  (`listSavedViews`). As with the audit log, **this is a UI convention,
+  not a hard access-control boundary** - Splunk's own KV Store ACL on the
+  collection is the actual authority, not this filtering. Loading a saved
+  view never constructs new SPL: it validates the stored `initial_node_id`
+  and each stored expanded-node id with the same `isValidId` check live
+  expansion already uses, then dispatches the same `buildExpandNodeSpl`
+  template, once per node, exactly as a live exploration session would.
+  An invalid or no-longer-resolvable id is skipped (an expansion id) or
+  surfaces a clear error (the starting node), never passed into a search.
+
 ## Access control
 
 GraphLens uses native Splunk capabilities, never client-side role-name

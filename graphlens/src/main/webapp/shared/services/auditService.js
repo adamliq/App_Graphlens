@@ -21,6 +21,7 @@ export const AUDIT_ACTIONS = Object.freeze({
   CREATE_ANNOTATION: 'create_annotation',
   DELETE_ANNOTATION: 'delete_annotation',
   SAVE_VIEW: 'save_view',
+  LOAD_VIEW: 'load_view',
   DELETE_VIEW: 'delete_view',
   CONFIG_CHANGE: 'config_change',
   GRAPH_LIMIT_REACHED: 'graph_limit_reached',
