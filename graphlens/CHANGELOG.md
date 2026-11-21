@@ -2,6 +2,27 @@
 
 All notable changes to GraphLens are documented in this file.
 
+## [1.4.0] - 2026-11-21
+
+### Added
+
+- **Help page now mirrors DATA_INGESTION.md, CONFIGURATION.md and
+  SECURITY.md**, not just USER_GUIDE.md: three new sections - "Loading
+  your own data", "Administrator settings", "Security model" - condense
+  those documents' content directly into the in-app Help page
+  (`graphlens_help` view), the same pattern already used for the rest of
+  the page. These three files were already shipped as flat files inside
+  the installed app package by `scripts/package_app.sh` (so they were
+  always readable from the installed app's own directory), but this is
+  the first release where their content is also visible from within
+  GraphLens's own UI, without opening package files directly. Each new
+  section ends by pointing at its source document's full version for
+  further detail.
+
+Version bumped to 1.4.0 (new content/capability, not a patch - the Help
+page itself was unchanged structurally, but gains real new sections).
+Full npm test (269 tests) and lint (0 warnings) pass.
+
 ## [1.3.0] - 2026-11-21
 
 ### Added
