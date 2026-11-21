@@ -162,6 +162,8 @@ function FeaturesForm({ settings, disabled, onSave }) {
     enable_clustering: settings.enableClustering,
     enable_path_finder: settings.enablePathFinder,
     enable_graph_query: settings.enableGraphQuery,
+    enable_time_slicer: settings.enableTimeSlicer,
+    enable_style_overrides: settings.enableStyleOverrides,
   });
   const toggle = (key) => setValues((s) => ({ ...s, [key]: !s[key] }));
   return (
@@ -172,6 +174,8 @@ function FeaturesForm({ settings, disabled, onSave }) {
       <Switch selected={values.enable_clustering} disabled={disabled} onClick={() => toggle('enable_clustering')}>Enable clustering</Switch>
       <Switch selected={values.enable_path_finder} disabled={disabled} onClick={() => toggle('enable_path_finder')}>Enable path finder</Switch>
       <Switch selected={values.enable_graph_query} disabled={disabled} onClick={() => toggle('enable_graph_query')}>Enable query language</Switch>
+      <Switch selected={values.enable_time_slicer} disabled={disabled} onClick={() => toggle('enable_time_slicer')}>Enable time slicer</Switch>
+      <Switch selected={values.enable_style_overrides} disabled={disabled} onClick={() => toggle('enable_style_overrides')}>Enable session style overrides</Switch>
       <Button label="Save features" appearance="primary" disabled={disabled} onClick={() => onSave(values)} />
     </div>
   );
@@ -203,6 +207,8 @@ const settingsShape = PropTypes.shape({
   enableClustering: PropTypes.bool,
   enablePathFinder: PropTypes.bool,
   enableGraphQuery: PropTypes.bool,
+  enableTimeSlicer: PropTypes.bool,
+  enableStyleOverrides: PropTypes.bool,
 });
 
 LimitsForm.propTypes = { settings: settingsShape.isRequired, disabled: PropTypes.bool.isRequired, onSave: PropTypes.func.isRequired };

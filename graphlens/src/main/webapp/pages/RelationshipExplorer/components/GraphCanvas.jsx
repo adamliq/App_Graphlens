@@ -162,6 +162,7 @@ export default function GraphCanvas({
   onSelectEdge,
   onClearSelection,
   onExpandNode,
+  onMultiSelectNodes,
   onCyReady,
 }) {
   const containerRef = useRef(null);
@@ -174,6 +175,14 @@ export default function GraphCanvas({
       wheelSensitivity: 0.2,
       minZoom: 0.1,
       maxZoom: 4,
+      // Box selection starts disabled - enabling it unconditionally would
+      // change Cytoscape's default background-drag from panning to
+      // drawing a selection box, regressing the plain click-and-drag pan
+      // every earlier version of this app has had. Instead it is toggled
+      // on only while Shift is held (see the keydown/keyup listeners
+      // below), the same convention most diagramming/graph tools use for
+      // rubber-band multi-select, so ordinary panning is never affected.
+      boxSelectionEnabled: false,
     });
     cyRef.current = cy;
 
@@ -183,10 +192,24 @@ export default function GraphCanvas({
       if (evt.target === cy) onClearSelection();
     });
     cy.on('dbltap', 'node', (evt) => onExpandNode(evt.target.id()));
+    // Cytoscape maintains its own independent multi-element :selected set
+    // (populated by a Shift-drag box-select, ctrl/shift-click, or
+    // selectNodesByType below) - reported here so the app can offer bulk
+    // actions when more than one node is selected, without disturbing the
+    // single-selection state above (selectedNodeId/selectedEdgeId), which
+    // still drives the details panel exactly as before.
+    cy.on('select unselect', 'node', () => onMultiSelectNodes(cy.nodes(':selected').map((n) => n.id())));
+
+    const handleKeyDown = (evt) => { if (evt.key === 'Shift') cy.boxSelectionEnabled(true); };
+    const handleKeyUp = (evt) => { if (evt.key === 'Shift') cy.boxSelectionEnabled(false); };
+    document.addEventListener('keydown', handleKeyDown);
+    document.addEventListener('keyup', handleKeyUp);
 
     if (onCyReady) onCyReady(cy);
 
     return () => {
+      document.removeEventListener('keydown', handleKeyDown);
+      document.removeEventListener('keyup', handleKeyUp);
       cy.destroy();
       cyRef.current = null;
     };
@@ -262,6 +285,7 @@ GraphCanvas.propTypes = {
   onSelectEdge: PropTypes.func.isRequired,
   onClearSelection: PropTypes.func.isRequired,
   onExpandNode: PropTypes.func.isRequired,
+  onMultiSelectNodes: PropTypes.func.isRequired,
   onCyReady: PropTypes.func,
 };
 
@@ -280,6 +304,20 @@ export function centerOnNode(cy, nodeId) {
   if (ele && ele.length > 0) {
     cy.animate({ center: { eles: ele }, zoom: Math.max(cy.zoom(), 1) }, { duration: 200 });
   }
+}
+
+/**
+ * Selects every currently-visible node of `nodeType` (a legend click),
+ * replacing whatever was selected before - the same Cytoscape-native
+ * selection the "select unselect" listener above already reports to the
+ * app, so this feeds the same multi-select/bulk-actions path a box/lasso
+ * drag does. Uses a predicate rather than a Cytoscape selector string so
+ * no value is ever interpolated into selector syntax.
+ */
+export function selectNodesByType(cy, nodeType) {
+  if (!cy) return;
+  cy.nodes().unselect();
+  cy.nodes().filter((n) => n.data('type') === nodeType).select();
 }
 
 export const CYTOSCAPE_LAYOUTS = Object.keys(LAYOUT_OPTIONS);

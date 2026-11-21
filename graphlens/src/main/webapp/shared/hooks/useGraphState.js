@@ -19,6 +19,7 @@ const ACTIONS = {
   SET_LAYOUT: 'SET_LAYOUT',
   RESET: 'RESET',
   LOAD_SNAPSHOT: 'LOAD_SNAPSHOT',
+  REPLACE_STATE: 'REPLACE_STATE',
 };
 
 function reducer(state, action) {
@@ -59,6 +60,8 @@ function reducer(state, action) {
       const { nextState } = ops.loadGraphSnapshot(state, action.elements, action.limits);
       return nextState;
     }
+    case ACTIONS.REPLACE_STATE:
+      return action.state;
     default:
       return state;
   }
@@ -91,6 +94,13 @@ export function useGraphState(initialLimits) {
     setLayout: (layoutName) => dispatch({ type: ACTIONS.SET_LAYOUT, layoutName }),
     reset: () => dispatch({ type: ACTIONS.RESET }),
     loadSnapshot: (elements, limits) => dispatch({ type: ACTIONS.LOAD_SNAPSHOT, elements, limits }),
+    // An escape hatch for a caller that has already computed a whole next
+    // state by composing the pure functions above itself (see
+    // savedViewsService.js's replay in RelationshipExplorer/App.jsx,
+    // which must build several mergeExpansion steps in sequence before
+    // any one of them can safely reach React state - see its own comment
+    // for why). Not for ordinary use; prefer a dedicated action above.
+    replaceState: (nextState) => dispatch({ type: ACTIONS.REPLACE_STATE, state: nextState }),
   }), []);
 
   const renderable = useMemo(() => ops.selectRenderableElements(state), [state]);

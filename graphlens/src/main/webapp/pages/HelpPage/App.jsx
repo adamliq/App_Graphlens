@@ -1,7 +1,7 @@
 import React from 'react';
 import PageNav from '../../shared/components/PageNav';
 
-const APP_VERSION = '1.7.3';
+const APP_VERSION = '1.8.0';
 
 /**
  * Static, no-dependency reference page - unlike the other three pages,
@@ -58,6 +58,14 @@ export default function App() {
           <li><strong>Zoom / pan</strong>: mouse wheel / drag.</li>
           <li><strong>Fit to screen</strong> / <strong>Centre selected</strong>: toolbar buttons.</li>
           <li><strong>Change layout</strong>: toolbar dropdown. Recalculate layout re-runs the current layout.</li>
+          <li>
+            <strong>Select several nodes at once</strong>: hold Shift and
+            drag a box around them (an ordinary drag still pans), or click a
+            node type in the legend. With more than one selected, the
+            details panel shows <strong>bulk actions</strong> instead -
+            Pin all, Unpin all, Hide all, Expand all - each the same action
+            a single node already has.
+          </li>
         </ul>
       </section>
 
@@ -66,9 +74,13 @@ export default function App() {
         <p>
           The left-hand panel lets you hide specific node/relationship types
           (data stays loaded, only the display is filtered), set a minimum/
-          maximum risk score and minimum event count, and shows a colour
+          maximum risk score and minimum event count, slice by a time window
+          (two sliders over whatever is currently loaded, by its own first-
+          seen/last-seen span - separate from the toolbar&apos;s own time
+          range below, and never re-runs a search), and shows a colour
           legend for every type currently present in your graph - guaranteed
-          distinct for whatever types are on screen at once. An
+          distinct for whatever types are on screen at once, and clickable
+          to select every visible node of that type. An
           <strong> Indicators</strong> section below it explains the
           canvas&apos;s other colour cues, which are independent of type
           colour and never hide each other: a red halo for risk score 70+
@@ -77,6 +89,16 @@ export default function App() {
           green border for a node on a highlighted path. The toolbar&apos;s
           time range dropdown changes the window used by subsequent searches
           (it does not retroactively re-run past expansions).
+        </p>
+      </section>
+
+      <section className="graphlens-section">
+        <h2>Colours (this session only)</h2>
+        <p>
+          The left-hand panel also lets you override a node or relationship
+          type&apos;s colour for this browser tab only - never written
+          anywhere, never seen by anyone else, gone on reload. It does not
+          change the curated colours an administrator has set up.
         </p>
       </section>
 
@@ -120,6 +142,20 @@ export default function App() {
           the administrator&apos;s configured maximum expansion depth and
           an overall search budget. See USER_GUIDE.md in the installed
           package for the full syntax reference.
+        </p>
+      </section>
+
+      <section className="graphlens-section">
+        <h2>Saved views</h2>
+        <p>
+          The left-hand panel&apos;s <strong>Saved views</strong> section
+          names and saves the graph you are looking at - which node you
+          started from and which of its neighbours you expanded - so you
+          can come back to it later. <strong>Load</strong> re-runs the same
+          searches a live exploration would (so you see current data, not a
+          frozen copy - use Export for that), and only works for a graph
+          that started from a single search result. Saved views are private
+          to you.
         </p>
       </section>
 
@@ -189,7 +225,7 @@ export default function App() {
           timeout), search defaults (relationship data source and name,
           default evidence index, default time range), feature toggles
           (export, annotations, saved views, clustering, path finder, query
-          language), and
+          language, time slicer, style overrides), and
           an optional node/relationship type allowlist plus the layouts
           and export formats offered in the UI. Settings live in
           <code> graphlens_settings.conf</code>; the Configuration page

@@ -13,26 +13,32 @@ import { buildEvidenceTokensForEdge, buildEvidenceTokensForNode } from '../../sh
 import { buildInitialEntitySearchSpl, buildExpandNodeSpl, buildEvidenceSpl } from '../../shared/services/splTemplates';
 import { parseGraphQuery } from '../../shared/services/graphQueryLanguage';
 import { executeGraphQuery } from '../../shared/services/graphQueryExecutor';
+import { listSavedViews, saveView, deleteSavedView } from '../../shared/services/savedViewsService';
+import { setInitialNode as replaySetInitialNode, mergeExpansion as replayMergeExpansion } from '../../shared/services/graphStateReducer';
 import { sanitizeSearchTerm, isValidId, GraphLensValidationError } from '../../shared/utilities/splSafety';
 
 import GraphToolbar from './components/GraphToolbar';
-import GraphCanvas, { fitGraph, centerOnNode } from './components/GraphCanvas';
+import GraphCanvas, { fitGraph, centerOnNode, selectNodesByType } from './components/GraphCanvas';
 import NodeTypeFilter from './components/NodeTypeFilter';
 import RelationshipTypeFilter from './components/RelationshipTypeFilter';
 import RiskFilter from './components/RiskFilter';
+import TimeSlicer from './components/TimeSlicer';
+import StyleOverridesPanel from './components/StyleOverridesPanel';
 import GraphLegend from './components/GraphLegend';
 import GraphLimitBanner from './components/GraphLimitBanner';
 import NodeDetailsPanel from './components/NodeDetailsPanel';
 import EdgeDetailsPanel from './components/EdgeDetailsPanel';
+import BulkActionsPanel from './components/BulkActionsPanel';
 import EvidencePanel from './components/EvidencePanel';
 import PathFinderPanel from './components/PathFinderPanel';
 import GraphQueryPanel from './components/GraphQueryPanel';
+import SavedViewsPanel from './components/SavedViewsPanel';
 import ExportDialog from './components/ExportDialog';
 import ErrorNotification from './components/ErrorNotification';
 import EmptyState from './components/EmptyState';
 import PageNav from '../../shared/components/PageNav';
 
-const APP_VERSION = '1.7.3';
+const APP_VERSION = '1.8.0';
 
 function downloadBlob(blob, filename) {
   const url = URL.createObjectURL(blob);
@@ -58,6 +64,12 @@ export default function App() {
   const [pathEndpoints, setPathEndpoints] = useState({ startNodeId: null, endNodeId: null });
   const [path, setPath] = useState(null);
   const [queryState, setQueryState] = useState({ isRunning: false, error: null, result: null });
+  const [multiSelectedNodeIds, setMultiSelectedNodeIds] = useState([]);
+  const [sessionNodeColorOverrides, setSessionNodeColorOverrides] = useState({});
+  const [sessionRelationshipColorOverrides, setSessionRelationshipColorOverrides] = useState({});
+  const [savedViews, setSavedViews] = useState([]);
+  const [savedViewsLoading, setSavedViewsLoading] = useState(false);
+  const [savedViewsError, setSavedViewsError] = useState(null);
   const cyRef = useRef(null);
   const currentSearchRef = useRef(null);
   const importInputRef = useRef(null);
@@ -90,6 +102,27 @@ export default function App() {
     return () => { cancelled = true; };
   }, []);
 
+  const refreshSavedViews = useCallback(async () => {
+    setSavedViewsLoading(true);
+    try {
+      const views = await listSavedViews();
+      setSavedViews(views);
+    } catch (err) {
+      setSavedViewsError(toUserFacingError(err));
+    } finally {
+      setSavedViewsLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (settings && settings.enableSavedViews) {
+      refreshSavedViews();
+    }
+    // refreshSavedViews is stable (empty dep list) - only settings becoming
+    // available (or the feature being turned on) should trigger this.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [settings && settings.enableSavedViews]);
+
   const timeRange = { earliest: state.activeFilters.timeEarliest, latest: state.activeFilters.timeLatest };
 
   const selectedNode = state.selectedNodeId ? state.visibleNodes[state.selectedNodeId] : null;
@@ -101,8 +134,22 @@ export default function App() {
     ? nodeCount >= settings.maxVisibleNodes || edgeCount >= settings.maxVisibleEdges
     : false;
 
-  const nodeTypeList = useMemo(() => deriveNodeTypeList(Object.values(state.visibleNodes), nodeTypeConfig), [state.visibleNodes, nodeTypeConfig]);
-  const relationshipTypeList = useMemo(() => deriveRelationshipTypeList(Object.values(state.visibleEdges), relationshipTypeConfig), [state.visibleEdges, relationshipTypeConfig]);
+  const rawNodeTypeList = useMemo(() => deriveNodeTypeList(Object.values(state.visibleNodes), nodeTypeConfig), [state.visibleNodes, nodeTypeConfig]);
+  const rawRelationshipTypeList = useMemo(() => deriveRelationshipTypeList(Object.values(state.visibleEdges), relationshipTypeConfig), [state.visibleEdges, relationshipTypeConfig]);
+
+  // Session-only colour overrides (StyleOverridesPanel) - never persisted,
+  // never sent anywhere, gone on reload. Applied here, before anything
+  // else reads a type's colour, so the legend/filter swatches and the
+  // canvas itself stay in agreement the same way they already have to
+  // agree on the curated KV Store colour (see the comment below).
+  const nodeTypeList = useMemo(
+    () => rawNodeTypeList.map((nt) => (sessionNodeColorOverrides[nt.node_type] ? { ...nt, color: sessionNodeColorOverrides[nt.node_type] } : nt)),
+    [rawNodeTypeList, sessionNodeColorOverrides],
+  );
+  const relationshipTypeList = useMemo(
+    () => rawRelationshipTypeList.map((rt) => (sessionRelationshipColorOverrides[rt.relationship_type] ? { ...rt, color: sessionRelationshipColorOverrides[rt.relationship_type] } : rt)),
+    [rawRelationshipTypeList, sessionRelationshipColorOverrides],
+  );
 
   // The legend/filter swatches above and the canvas itself must always
   // agree on "what colour is this type" - confirmed live that they did
@@ -114,6 +161,24 @@ export default function App() {
   // maps are the single source of truth for both; see nodes/edges below.
   const nodeColorByType = useMemo(() => Object.fromEntries(nodeTypeList.map((nt) => [nt.node_type, nt.color])), [nodeTypeList]);
   const relationshipColorByType = useMemo(() => Object.fromEntries(relationshipTypeList.map((rt) => [rt.relationship_type, rt.color])), [relationshipTypeList]);
+
+  // Stable basis for the time slicer's own min/max bounds: the full
+  // visible set, not the already-filtered renderable one, so the slider's
+  // range does not shift around as other filters (type/risk) hide things.
+  const timeBounds = useMemo(() => {
+    let min = null;
+    let max = null;
+    const widen = (value) => {
+      if (!value) return;
+      const ms = Date.parse(value);
+      if (!Number.isFinite(ms)) return;
+      if (min === null || ms < min) min = ms;
+      if (max === null || ms > max) max = ms;
+    };
+    Object.values(state.visibleNodes).forEach((n) => { widen(n.firstSeen); widen(n.lastSeen); });
+    Object.values(state.visibleEdges).forEach((e) => { widen(e.firstSeen); widen(e.lastSeen); });
+    return { min, max };
+  }, [state.visibleNodes, state.visibleEdges]);
 
   const handleApiError = useCallback((err) => {
     const normalized = toUserFacingError(err);
@@ -186,6 +251,65 @@ export default function App() {
     recordAuditEvent(AUDIT_ACTIONS.COLLAPSE_NODE, { nodeId });
   }, [actions]);
 
+  const handleSelectNodeType = useCallback((nodeType) => {
+    selectNodesByType(cyRef.current, nodeType);
+  }, []);
+
+  const handleSetNodeColorOverride = useCallback((nodeType, color) => {
+    setSessionNodeColorOverrides((prev) => ({ ...prev, [nodeType]: color }));
+  }, []);
+
+  const handleClearNodeColorOverride = useCallback((nodeType) => {
+    setSessionNodeColorOverrides((prev) => {
+      const next = { ...prev };
+      delete next[nodeType];
+      return next;
+    });
+  }, []);
+
+  const handleSetRelationshipColorOverride = useCallback((relationshipType, color) => {
+    setSessionRelationshipColorOverrides((prev) => ({ ...prev, [relationshipType]: color }));
+  }, []);
+
+  const handleClearRelationshipColorOverride = useCallback((relationshipType) => {
+    setSessionRelationshipColorOverrides((prev) => {
+      const next = { ...prev };
+      delete next[relationshipType];
+      return next;
+    });
+  }, []);
+
+  const handleBulkClear = useCallback(() => {
+    if (cyRef.current) cyRef.current.nodes().unselect();
+    setMultiSelectedNodeIds([]);
+  }, []);
+
+  const handleBulkPin = useCallback(() => {
+    multiSelectedNodeIds.forEach((id) => actions.pinNode(id));
+  }, [multiSelectedNodeIds, actions]);
+
+  const handleBulkUnpin = useCallback(() => {
+    multiSelectedNodeIds.forEach((id) => actions.unpinNode(id));
+  }, [multiSelectedNodeIds, actions]);
+
+  const handleBulkHide = useCallback(() => {
+    multiSelectedNodeIds.forEach((id) => actions.hideNode(id));
+    // The hidden nodes are about to be removed from the canvas entirely
+    // (selectRenderableElements filters them out), so their selection no
+    // longer means anything - clear it rather than leave the bulk panel
+    // pointing at nodes that are no longer there.
+    handleBulkClear();
+  }, [multiSelectedNodeIds, actions, handleBulkClear]);
+
+  const handleBulkExpand = useCallback(async () => {
+    // Sequential, mirroring one-at-a-time manual expansion, rather than
+    // firing every selected node's search concurrently.
+    for (const id of multiSelectedNodeIds) {
+      // eslint-disable-next-line no-await-in-loop
+      await handleExpandNode(id);
+    }
+  }, [multiSelectedNodeIds, handleExpandNode]);
+
   const handleViewEvidence = useCallback(async (targetId, kind) => {
     if (!settings) return;
     const target = kind === 'node' ? state.visibleNodes[targetId] : state.visibleEdges[targetId];
@@ -237,6 +361,8 @@ export default function App() {
     setPathEndpoints({ startNodeId: null, endNodeId: null });
     setEvidence({ isLoading: false, error: null, rows: [], fieldOrder: [], targetLabel: null });
     setQueryState({ isRunning: false, error: null, result: null });
+    setMultiSelectedNodeIds([]);
+    setSavedViewsError(null);
     setError(null);
     setLayoutToken((t) => t + 1);
   }, [actions]);
@@ -337,6 +463,109 @@ export default function App() {
     setLayoutToken((t) => t + 1);
   }, [settings, queryState.result, actions]);
 
+  const handleSaveView = useCallback(async (name, description) => {
+    setSavedViewsError(null);
+    try {
+      await saveView({ state, viewName: name, description });
+      recordAuditEvent(AUDIT_ACTIONS.SAVE_VIEW, { detail: name });
+      await refreshSavedViews();
+    } catch (err) {
+      const message = err instanceof GraphLensValidationError ? err.message : toUserFacingError(err).message;
+      setSavedViewsError({ message });
+      recordAuditEvent(AUDIT_ACTIONS.SAVE_VIEW, { outcome: 'failure', detail: String((err && err.code) || (err && err.name) || 'error') });
+    }
+  }, [state, refreshSavedViews]);
+
+  const handleDeleteSavedView = useCallback(async (viewId) => {
+    try {
+      await deleteSavedView(viewId);
+      recordAuditEvent(AUDIT_ACTIONS.DELETE_VIEW, {});
+      await refreshSavedViews();
+    } catch (err) {
+      setSavedViewsError(toUserFacingError(err));
+    }
+  }, [refreshSavedViews]);
+
+  const handleLoadSavedView = useCallback(async (view) => {
+    if (!settings) return;
+    setSavedViewsError(null);
+    try {
+      if (!isValidId(view.initialNodeId)) {
+        throw new GraphLensValidationError("This view's starting node id is not valid.", 'initial_node_id');
+      }
+      const earliest = view.timeEarliest || settings.defaultEarliest;
+      const latest = view.timeLatest || settings.defaultLatest;
+      const source = relationshipSourceFromSettings(settings);
+      const expansionLimit = settings.maxExpansionNeighbours;
+
+      // The same buildExpandNodeSpl dispatch handleExpandNode already
+      // uses, called once per node being restored - no new SPL shape.
+      const dispatchExpand = async (nodeId) => {
+        const spl = buildExpandNodeSpl(nodeId, expansionLimit, source);
+        const job = dispatchAdHocSearch(spl, { earliest, latest, maxWaitMs: settings.searchDispatchMaxTimeSeconds * 1000 });
+        const { rows } = await job.waitForResults({ count: settings.maxSearchResultRows });
+        return transformRowsToGraph([], rows, {
+          maxNodes: settings.maxVisibleNodes,
+          maxEdges: settings.maxVisibleEdges,
+          nodeTypeConfig,
+          relationshipTypeConfig,
+        });
+      };
+
+      const { nodes: rootNodes } = await dispatchExpand(view.initialNodeId);
+      const rootMatch = rootNodes.find((n) => n.data.id === view.initialNodeId);
+      if (!rootMatch) {
+        throw new GraphLensValidationError("This view's starting node currently has no relationships and can't be reconstructed.", 'initial_node_id');
+      }
+
+      // Built entirely via pure composition of graphStateReducer's own
+      // functions, committed in a single actions.replaceState at the end -
+      // not via the React-level actions.setInitialNode/mergeExpansion in
+      // a loop. Each step here needs the PREVIOUS step's node to already
+      // be visible (mergeExpansion throws otherwise), which React's own
+      // asynchronous, batched state updates cannot guarantee mid-loop;
+      // composing the pure functions directly sidesteps that entirely.
+      let nextState = replaySetInitialNode(state, rootMatch.data);
+      for (const nodeId of view.expandedNodeIds) {
+        if (!isValidId(nodeId) || !nextState.visibleNodes[nodeId] || nextState.expandedNodeIds.includes(nodeId)) continue;
+        // eslint-disable-next-line no-await-in-loop
+        const { nodes, edges } = await dispatchExpand(nodeId);
+        const { nextState: merged } = replayMergeExpansion(nextState, nodeId, { nodes, edges }, settings);
+        nextState = merged;
+      }
+
+      const validPinnedIds = (view.pinnedNodeIds || []).filter((id) => isValidId(id) && nextState.visibleNodes[id]);
+      nextState = {
+        ...nextState,
+        pinnedNodeIds: validPinnedIds,
+        hiddenNodeTypes: Array.isArray(view.nodeFilters.hiddenNodeTypes) ? view.nodeFilters.hiddenNodeTypes : [],
+        hiddenRelationshipTypes: Array.isArray(view.relationshipFilters.hiddenRelationshipTypes) ? view.relationshipFilters.hiddenRelationshipTypes : [],
+        activeFilters: {
+          ...nextState.activeFilters,
+          riskMin: Number.isFinite(view.nodeFilters.riskMin) ? view.nodeFilters.riskMin : nextState.activeFilters.riskMin,
+          riskMax: Number.isFinite(view.nodeFilters.riskMax) ? view.nodeFilters.riskMax : nextState.activeFilters.riskMax,
+          minEventCount: Number.isFinite(view.nodeFilters.minEventCount) ? view.nodeFilters.minEventCount : nextState.activeFilters.minEventCount,
+          timeEarliest: earliest,
+          timeLatest: latest,
+        },
+        currentLayout: view.layout || nextState.currentLayout,
+      };
+
+      actions.replaceState(nextState);
+      setSearchResults([]);
+      setPath(null);
+      setPathEndpoints({ startNodeId: null, endNodeId: null });
+      setEvidence({ isLoading: false, error: null, rows: [], fieldOrder: [], targetLabel: null });
+      setMultiSelectedNodeIds([]);
+      setLayoutToken((t) => t + 1);
+      recordAuditEvent(AUDIT_ACTIONS.LOAD_VIEW, { detail: view.viewName });
+    } catch (err) {
+      const message = err instanceof GraphLensValidationError ? err.message : toUserFacingError(err).message;
+      setSavedViewsError({ message });
+      recordAuditEvent(AUDIT_ACTIONS.LOAD_VIEW, { outcome: 'failure', detail: String((err && err.code) || (err && err.name) || 'error') });
+    }
+  }, [settings, state, actions, nodeTypeConfig, relationshipTypeConfig]);
+
   const handleTimeRangeChange = useCallback((preset) => {
     actions.setActiveFilters({ timeEarliest: preset.earliest, timeLatest: preset.latest });
   }, [actions]);
@@ -394,7 +623,28 @@ export default function App() {
           minEventCount={state.activeFilters.minEventCount}
           onChange={(filters) => actions.setActiveFilters(filters)}
         />
-        <GraphLegend nodeTypes={nodeTypeList} relationshipTypes={relationshipTypeList} />
+        {settings.enableTimeSlicer && (
+          <TimeSlicer
+            minMs={timeBounds.min}
+            maxMs={timeBounds.max}
+            valueMin={state.activeFilters.timeFilterMin}
+            valueMax={state.activeFilters.timeFilterMax}
+            onChange={(filters) => actions.setActiveFilters(filters)}
+          />
+        )}
+        {settings.enableStyleOverrides && (
+          <StyleOverridesPanel
+            nodeTypes={nodeTypeList}
+            relationshipTypes={relationshipTypeList}
+            nodeOverrides={sessionNodeColorOverrides}
+            relationshipOverrides={sessionRelationshipColorOverrides}
+            onSetNodeColor={handleSetNodeColorOverride}
+            onSetRelationshipColor={handleSetRelationshipColorOverride}
+            onClearNodeColor={handleClearNodeColorOverride}
+            onClearRelationshipColor={handleClearRelationshipColorOverride}
+          />
+        )}
+        <GraphLegend nodeTypes={nodeTypeList} relationshipTypes={relationshipTypeList} onSelectNodeType={handleSelectNodeType} />
         {settings.enablePathFinder && (
           <PathFinderPanel
             nodes={renderable.nodes}
@@ -416,6 +666,16 @@ export default function App() {
             onLoadOntoCanvas={handleLoadQueryResultOntoCanvas}
           />
         )}
+        {settings.enableSavedViews && (
+          <SavedViewsPanel
+            views={savedViews}
+            isLoading={savedViewsLoading}
+            error={savedViewsError}
+            onSave={handleSaveView}
+            onLoad={handleLoadSavedView}
+            onDelete={handleDeleteSavedView}
+          />
+        )}
       </div>
 
       <div className="graphlens-canvas-wrapper">
@@ -431,6 +691,7 @@ export default function App() {
           onSelectEdge={(id) => actions.selectEdge(id)}
           onClearSelection={() => actions.clearSelection()}
           onExpandNode={handleExpandNode}
+          onMultiSelectNodes={setMultiSelectedNodeIds}
           onCyReady={(cy) => { cyRef.current = cy; }}
         />
         <GraphLimitBanner
@@ -443,26 +704,39 @@ export default function App() {
       </div>
 
       <div className="graphlens-details">
-        {selectedNode && (
-          <NodeDetailsPanel
-            node={selectedNode}
-            isExpanded={isNodeExpanded(selectedNode.id)}
-            isPinned={isNodePinned(selectedNode.id)}
-            onExpand={handleExpandNode}
-            onCollapse={handleCollapseNode}
-            onHide={(id) => actions.hideNode(id)}
-            onPin={(id) => actions.pinNode(id)}
-            onUnpin={(id) => actions.unpinNode(id)}
-            onViewEvidence={handleViewEvidence}
-            onSetPathEndpoint={handleSetPathEndpoint}
+        {multiSelectedNodeIds.length > 1 ? (
+          <BulkActionsPanel
+            count={multiSelectedNodeIds.length}
+            onPinAll={handleBulkPin}
+            onUnpinAll={handleBulkUnpin}
+            onHideAll={handleBulkHide}
+            onExpandAll={handleBulkExpand}
+            onClear={handleBulkClear}
           />
-        )}
-        {selectedEdge && <EdgeDetailsPanel edge={selectedEdge} onViewEvidence={handleViewEvidence} />}
-        {!selectedNode && !selectedEdge && (
-          <div className="graphlens-section">
-            <h3>Details</h3>
-            <p style={{ fontSize: 12, color: '#8a8a8a' }}>Select a node or relationship to see its properties and actions.</p>
-          </div>
+        ) : (
+          <>
+            {selectedNode && (
+              <NodeDetailsPanel
+                node={selectedNode}
+                isExpanded={isNodeExpanded(selectedNode.id)}
+                isPinned={isNodePinned(selectedNode.id)}
+                onExpand={handleExpandNode}
+                onCollapse={handleCollapseNode}
+                onHide={(id) => actions.hideNode(id)}
+                onPin={(id) => actions.pinNode(id)}
+                onUnpin={(id) => actions.unpinNode(id)}
+                onViewEvidence={handleViewEvidence}
+                onSetPathEndpoint={handleSetPathEndpoint}
+              />
+            )}
+            {selectedEdge && <EdgeDetailsPanel edge={selectedEdge} onViewEvidence={handleViewEvidence} />}
+            {!selectedNode && !selectedEdge && (
+              <div className="graphlens-section">
+                <h3>Details</h3>
+                <p style={{ fontSize: 12, color: '#8a8a8a' }}>Select a node or relationship to see its properties and actions.</p>
+              </div>
+            )}
+          </>
         )}
       </div>
 

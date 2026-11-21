@@ -113,7 +113,14 @@ instance's configured home) to switch away from GraphLens entirely.
     expansion** (there is no standalone "fetch a node's own metadata"
     search wired into the app - see `buildNodeDetailsSpl`'s comment in
     `splTemplates.js`), so a node with zero relationships cannot be
-    resolved by `id`, even if it exists.
+    resolved by `id`, even if it exists. A side effect of resolving it
+    this way: the root node's own `riskScore`/`eventCount` come back `0`
+    rather than its true aggregate, since those two fields live on the
+    *edge* rows this expansion returns, not on a row for the node itself
+    - a neighbour reached by following a relationship *from* that root
+      still shows its correct values. The same is true of a **saved
+      view's** starting node on load, for the identical reason (see
+      below).
   - A field with no nested selection set must be one of the fixed scalar
     names (`id`, `label`, `type`, `group`, `description`, `riskScore`,
     `eventCount`, `firstSeen`, `lastSeen`, `sourceIndex`,
@@ -146,6 +153,46 @@ instance's configured home) to switch away from GraphLens entirely.
     event count and time-range filtering remain the separate Risk filter/
     time range controls, applied to whatever the query loads onto the
     canvas.
+- **Multi-select requires holding Shift while dragging a box.** An
+  ordinary click-and-drag still pans the canvas, exactly as before this
+  was added - box/lasso-select was deliberately kept off a plain drag so
+  it could never regress that. Clicking a node type in the legend selects
+  every *currently visible* node of that type; it has no equivalent for
+  relationship types, since the existing relationship-type filter
+  (hide/show by type) already covers the one bulk action that would make
+  sense for an edge.
+- **The time slicer and session style overrides are both purely
+  client-side and apply to the whole visible graph** - there is no way to
+  slice or restyle only part of it, and neither is remembered anywhere
+  once the page reloads (the time slicer's window resets to "no window",
+  and every style override is gone).
+- **Saved views only work for a graph that started from a single search
+  result.** A graph built via Import or the graph query panel's "Load
+  onto canvas" can have several starting nodes at once (or none), and the
+  `graphlens_saved_views` schema's `initial_node_id` column can only name
+  one - saving such a graph is refused with a clear error rather than
+  silently picking one of several equally-plausible starting points.
+  Loading a view re-dispatches a live search for the same nodes rather
+  than restoring a frozen snapshot (see ARCHITECTURE.md) - a node that no
+  longer has any relationships, or has lost the specific relationship
+  that was expanded before, is handled the same way an ordinary live
+  expansion of it would be, not specially. The starting node is resolved
+  the same way an `id`-rooted graph query is, so the same caveat applies:
+  its own `riskScore`/`eventCount` come back `0` on load rather than its
+  true aggregate (see "Functional scope" above) - every other node in
+  the view shows its correct values. A saved view also does not
+  remember which individual nodes were **Hidden** (as opposed to pinned,
+  type-filtered, or expanded) - that action is a temporary declutter
+  distinct from the rest of a view's state (see "Interacting with the
+  graph" in USER_GUIDE.md), and the collection's schema has no column for
+  it. Saving a view always creates a new entry, even under a name you
+  already used - there is no "overwrite the existing view with this
+  name" action yet; delete the old one if you want to replace it. Saved
+  views are private to the user who created them in this release - the
+  underlying KV Store collection already has a `sharing` column for a
+  future shared-views release, but nothing in the current UI ever sets it
+  to anything but `"private"` (see SECURITY.md for what "private" does
+  and does not guarantee).
 
 ## Packaging / environment
 

@@ -231,3 +231,55 @@ describe('selectRenderableElements - risk and event-count filters', () => {
     expect(renderable.nodes.map((n) => n.id)).toEqual(['B']);
   });
 });
+
+describe('selectRenderableElements - time window filter', () => {
+  function withSpan(n, firstSeen, lastSeen) {
+    return { ...n, firstSeen, lastSeen };
+  }
+
+  test('with no window set, elements with and without time data are all shown', () => {
+    let state = createEmptyGraphState();
+    state = setInitialNode(state, withSpan(node('A'), '2026-01-01T00:00:00Z', '2026-01-02T00:00:00Z'));
+    state = mergeExpansion(state, 'A', cyEls([node('B')], [edge('ab', 'A', 'B')]), state.graphLimits).nextState;
+    const renderable = selectRenderableElements(state);
+    expect(renderable.nodes.map((n) => n.id).sort()).toEqual(['A', 'B']);
+  });
+
+  test('excludes a node whose [firstSeen, lastSeen] span does not overlap the window', () => {
+    let state = createEmptyGraphState();
+    state = setInitialNode(state, withSpan(node('A'), '2026-01-01T00:00:00Z', '2026-01-02T00:00:00Z'));
+    state = mergeExpansion(
+      state,
+      'A',
+      cyEls([withSpan(node('B'), '2026-06-01T00:00:00Z', '2026-06-02T00:00:00Z')], [edge('ab', 'A', 'B')]),
+      state.graphLimits,
+    ).nextState;
+    state = setActiveFilters(state, {
+      timeFilterMin: Date.parse('2025-12-01T00:00:00Z'),
+      timeFilterMax: Date.parse('2026-01-15T00:00:00Z'),
+    });
+    const renderable = selectRenderableElements(state);
+    expect(renderable.nodes.map((n) => n.id)).toEqual(['A']);
+    // B's only edge is dropped too, since one of its endpoints is now hidden.
+    expect(renderable.edges).toHaveLength(0);
+  });
+
+  test('includes a node whose span merely overlaps the window, not just one fully inside it', () => {
+    let state = createEmptyGraphState();
+    state = setInitialNode(state, withSpan(node('A'), '2026-01-01T00:00:00Z', '2026-02-01T00:00:00Z'));
+    state = setActiveFilters(state, {
+      timeFilterMin: Date.parse('2026-01-15T00:00:00Z'),
+      timeFilterMax: Date.parse('2026-01-20T00:00:00Z'),
+    });
+    const renderable = selectRenderableElements(state);
+    expect(renderable.nodes.map((n) => n.id)).toEqual(['A']);
+  });
+
+  test('never filters out an element that has no parseable time data of its own', () => {
+    let state = createEmptyGraphState();
+    state = setInitialNode(state, node('A')); // no firstSeen/lastSeen at all
+    state = setActiveFilters(state, { timeFilterMin: Date.parse('2026-01-01T00:00:00Z'), timeFilterMax: Date.parse('2026-01-02T00:00:00Z') });
+    const renderable = selectRenderableElements(state);
+    expect(renderable.nodes.map((n) => n.id)).toEqual(['A']);
+  });
+});

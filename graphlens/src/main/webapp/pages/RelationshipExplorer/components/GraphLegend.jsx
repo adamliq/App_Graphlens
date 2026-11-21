@@ -9,16 +9,22 @@ const INDICATORS = [
   { key: 'pathHighlight', label: 'On highlighted path (dashed border)', color: STATUS_COLORS.pathHighlight },
 ];
 
-export default function GraphLegend({ nodeTypes, relationshipTypes }) {
+export default function GraphLegend({ nodeTypes, relationshipTypes, onSelectNodeType }) {
   return (
     <div className="graphlens-section">
       <h3 id="graphlens-legend-heading">Legend</h3>
       <div aria-labelledby="graphlens-legend-heading">
         {nodeTypes.slice(0, 12).map((nt) => (
-          <div className="graphlens-legend-item" key={nt.node_type}>
+          <button
+            key={nt.node_type}
+            type="button"
+            className="graphlens-legend-item graphlens-legend-item-button"
+            onClick={() => onSelectNodeType(nt.node_type)}
+            title={`Select every visible ${nt.display_label || nt.node_type} node`}
+          >
             <span className="graphlens-legend-swatch" style={{ backgroundColor: nt.color }} />
             <span>{nt.display_label || nt.node_type}</span>
-          </div>
+          </button>
         ))}
         {relationshipTypes.slice(0, 8).map((rt) => (
           <div className="graphlens-legend-item" key={rt.relationship_type}>
@@ -43,4 +49,5 @@ export default function GraphLegend({ nodeTypes, relationshipTypes }) {
 GraphLegend.propTypes = {
   nodeTypes: PropTypes.array.isRequired,
   relationshipTypes: PropTypes.array.isRequired,
+  onSelectNodeType: PropTypes.func.isRequired,
 };

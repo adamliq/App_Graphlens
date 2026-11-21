@@ -82,6 +82,20 @@ enable_graph_query = <true|false>
   bounded SPL templates used elsewhere in the app - see SECURITY.md).
 * Default: true
 
+enable_time_slicer = <true|false>
+* Enables the Relationship Explorer's time-window filter, which hides
+  (client-side, no new search) nodes/edges whose first_seen/last_seen
+  span falls entirely outside the selected window.
+* Default: true
+
+enable_style_overrides = <true|false>
+* Enables the Relationship Explorer's session-only per-type colour
+  override panel. Purely a local display preference - never written
+  anywhere, never visible to any other user or session, and gone on
+  reload. Does not change the curated colours in
+  graphlens_node_types/graphlens_relationship_types.
+* Default: true
+
 [allowlist]
 allowed_node_types = <comma-separated list, or empty>
 * When empty, allowed node types are governed entirely by the enabled flag

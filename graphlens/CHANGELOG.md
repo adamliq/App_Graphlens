@@ -2,6 +2,65 @@
 
 All notable changes to GraphLens are documented in this file.
 
+## [1.8.0] - 2026-11-21
+
+### Added
+
+- **Multi-select and bulk actions.** Hold Shift and drag a box around
+  several nodes, or click a node type in the legend to select every
+  visible node of that type - either way, the details panel is replaced
+  by a new bulk-actions panel (Pin all, Unpin all, Hide all, Expand all,
+  Clear selection), each one just the identical single-node action
+  already used elsewhere, looped over the selection. An ordinary
+  click-and-drag still pans the canvas exactly as before; box-selection
+  is opt-in via Shift specifically so it could never regress that.
+- **Time slicer**: a new filter in the left-hand panel - two sliders
+  bounding which nodes/edges are shown by their own first-seen/last-seen
+  span, over whatever is already loaded. Purely a client-side filter,
+  identical in kind to the existing Risk filter; it never changes what
+  gets searched, and an element with no time data of its own is never
+  hidden by it. Gated by a new `enable_time_slicer` setting (default
+  `true`).
+- **Session-only colour overrides**: a new left-hand panel lets you
+  restyle a node or relationship type's colour for the current browser
+  tab only - never written to KV Store or browser storage, never visible
+  to anyone else, gone on reload, and never affecting the curated
+  colours an administrator maintains. Gated by a new
+  `enable_style_overrides` setting (default `true`).
+- **Saved views**, fully implemented for the first time (the setting,
+  capability and KV Store collection already existed as unused
+  scaffolding before this release - see below). The left-hand panel's
+  new **Saved views** section saves the current graph as a named
+  "recipe" - which single node it started from and which of its
+  neighbours were expanded, in order - and loads it back later by
+  re-dispatching the same `buildExpandNodeSpl` searches a live
+  exploration already uses, so a loaded view always shows current data
+  rather than a frozen picture (Export/Import remains the way to keep an
+  exact, unchanging copy). Only works for a graph that started from a
+  single search result - one built via Import or the query panel's "Load
+  onto canvas" has no single starting node this feature's schema could
+  name, and is refused with a clear message. Private to the user who
+  saved it in this release (the collection's `sharing` column exists for
+  a future shared-views release, but nothing here sets it to anything but
+  `"private"` - a UI convention, not a KV Store ACL, the same as the
+  audit log's existing precedent).
+- New `shared/services/savedViewsService.js` (the KV Store CRUD plus the
+  pure, independently-tested `findSingleRootNodeId`/`encodeSavedView`/
+  `decodeSavedView` functions) and a narrow `replaceState` escape hatch
+  added to `useGraphState.js`, used only by the saved-view replay (which
+  must compose several `mergeExpansion` steps itself before any one of
+  them can safely reach React state, then commit the whole result in one
+  dispatch - see ARCHITECTURE.md for why).
+- New `run_graph_query`-style audit action `load_view`, alongside the
+  pre-existing (previously unused) `save_view`/`delete_view`.
+- 11 new unit tests (355 total): `savedViewsService.test.js` plus new
+  `selectRenderableElements` time-window cases in
+  `graphStateReducer.test.js`.
+
+Version bumped to 1.8.0 (new features). Full npm test (355 tests) and
+lint (0 warnings) pass; AppInspect re-run clean (0 errors/failures, same
+7-warning profile as prior releases).
+
 ## [1.7.3] - 2026-11-21
 
 ### Fixed

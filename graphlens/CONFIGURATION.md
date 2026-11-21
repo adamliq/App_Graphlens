@@ -55,6 +55,31 @@ off removes the panel from the UI; it adds no capability or permission of
 its own, since every search it can run is one a user's existing
 permissions already allow them to run by hand.
 
+## Multi-select, time slicer and style overrides
+
+`enable_time_slicer` and `enable_style_overrides` (above) each gate one
+small, purely client-side panel - a time-window filter over data already
+loaded, and a per-type colour override kept in that browser tab's memory
+only, never written anywhere (see SECURITY.md). Turning either off
+removes its panel from the UI only; neither adds a capability, a search,
+or a setting written anywhere else. Multi-select (Shift-drag box-select,
+or clicking a type in the legend) and its bulk actions have no separate
+toggle - they reuse the same pin/hide/expand actions available to a
+single node, just applied to several at once.
+
+## Saved views
+
+The Relationship Explorer's Saved views panel (`enable_saved_views`,
+above) stores a named starting-point-plus-expansion "recipe" per user in
+the `graphlens_saved_views` KV Store collection - see ARCHITECTURE.md
+("Multi-select, the time slicer, style overrides and saved views") for
+how loading one replays live searches rather than restoring a frozen
+snapshot, and why only a graph with a single starting node can be saved
+this way. Private to the current user in this release, as a UI
+convention rather than a KV Store ACL (see SECURITY.md) - the
+collection's `sharing` column exists for a future shared-views release
+but nothing in the current UI sets it to anything but `"private"`.
+
 ## Roles and capabilities
 
 See ADMIN_GUIDE.md.
