@@ -214,6 +214,24 @@ otherwise accept. Only CSV/PNG exports are one-way; CSV cannot be
 imported back, since it is a flat table and does not round-trip the
 node/edge/metadata structure JSON does.
 
+## Load from job
+
+Toolbar **Load from job** button: paste the job ID (sid) of a search you
+(or someone who shared it with you) already ran - in Splunk Web's own
+Search app, for example - and GraphLens loads that job's results onto
+the canvas, replacing whatever graph is currently shown. This does not
+run a new search; it only reads a job that already exists, so it can
+never show you anything that job's own search permissions wouldn't
+already have let you see. The job's results must already be shaped to
+the relationship schema (see the Help page) - a one-hop expansion's edge
+rows, a plain entity list's node rows, or a mix of both; rows matching
+neither shape are silently skipped. A job only exists for a limited time
+after it finishes (a few minutes by Splunk's own default, unless it has
+been pinned or scheduled), so this only works while it still does. Every
+row is re-validated exactly the same way a live search result would be
+(invalid identifiers are silently dropped, labels are HTML-escaped) - it
+can never add anything GraphLens would not otherwise accept.
+
 ## Graph limits
 
 If you see a banner reading "Graph size limit reached", the graph has hit

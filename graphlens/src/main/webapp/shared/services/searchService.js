@@ -167,6 +167,28 @@ export function dispatchAdHocSearch(searchString, options = {}) {
   }, options);
 }
 
+/**
+ * Attaches to a search job that was already dispatched - by this user, in
+ * Splunk Web's own Search app, or anywhere else - rather than starting a
+ * new one, identified only by its job id (sid). Reuses the exact same
+ * poll/results/cancel machinery dispatchAdHocSearch/dispatchSavedSearch
+ * use; the only difference is that `startJob` here returns the given sid
+ * immediately instead of POSTing to create a new job. Used by "Load from
+ * job" (RelationshipExplorer/App.jsx) - a one-time action, not a
+ * persistent relationship data source: a job's results are themselves
+ * ephemeral (Splunk expires them on its own TTL), unlike an index, a
+ * lookup, a saved search or a Table Dataset's name.
+ *
+ * This does not, and cannot, grant access to a job the current user could
+ * not already see: the status/results endpoints below enforce Splunk's
+ * own job-level sharing ACL exactly as they would for any other REST
+ * caller, the same "UI convenience, not the security boundary" pattern
+ * used throughout this app.
+ */
+export function attachToJob(sid, options = {}) {
+  return createJobHandle(async () => sid, options);
+}
+
 export async function cancelJob(sid, { fetchImpl } = {}) {
   if (!sid) return;
   try {

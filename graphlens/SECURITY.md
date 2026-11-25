@@ -161,6 +161,52 @@ treated as fully untrusted, exactly like a Splunk search result:
   `graphlens_audit_log`), including on failure (malformed file, rejected
   rows), with the node/edge counts only - never the file's raw content.
 
+## Load from job handling
+
+The toolbar **Load from job** button (1.17.0) is the live-search
+counterpart to Import above: instead of reading a user-selected file, it
+reads the results of a Splunk search job that already exists, identified
+only by its job id (sid) - one the current user dispatched themselves, or
+one shared with them, in Splunk Web's own Search app or anywhere else.
+
+- It does not, and cannot, dispatch a new search or grant access to a job
+  the current user could not already see. `searchService.js`'s
+  `attachToJob` reuses the exact same poll/results/cancel machinery
+  `dispatchSavedSearch`/`dispatchAdHocSearch` already use, skipping only
+  the "start a new job" step - the status and results REST endpoints it
+  then calls (`/services/search/jobs/<sid>` and `.../results`) enforce
+  Splunk's own job-level sharing ACL exactly as they would for any other
+  REST caller. This is the same "UI convenience, not the security
+  boundary" pattern used throughout this app (see "Saved search as a
+  relationship data source" below for the lookup/saved-search/dataset
+  analogue).
+- A job's results are treated as fully untrusted, exactly like Import's
+  file content or a live search's own results: `jobResultsService.js`'s
+  `classifyJobResultRows` inspects each raw row's own fields to split
+  them into node rows / edge rows (a job might hold a one-hop expansion's
+  edge rows, a plain entity list's node rows, or a mix of both), silently
+  dropping and counting any row matching neither shape. The classified
+  rows are then run through the same `graphTransformer.transformRowsToGraph`
+  validation, escaping, deduplication and `maxVisibleNodes`/
+  `maxVisibleEdges` enforcement every other relationship source goes
+  through - a job's results can never cause GraphLens to accept or
+  display anything a live search's results would not otherwise accept.
+- Gated by the same `enableExport` feature flag as Import/Export (no
+  separate setting or capability) - it is thematically a sibling "bring
+  external data onto canvas" action, and the graph limits/validation
+  above are the actual boundary, not a capability check.
+- A job is not a persistent relationship data source the way
+  index/lookup/saved_search/dataset are (see "Saved search as a
+  relationship data source" below): a job's results are themselves
+  ephemeral, expired by Splunk on its own TTL once the job finishes
+  unless it has been pinned or scheduled, so this is a one-time action
+  only, never a `relationship_source_type` value.
+- Audited the same way as Import (`load_from_job` in
+  `graphlens_audit_log`), including on failure (invalid job id, job not
+  found/expired/failed, rows not matching the relationship schema), with
+  the job id and node/edge counts only - never the job's raw result
+  content.
+
 ## Multi-select, the time slicer, style overrides and saved views
 
 - **Multi-select and bulk actions** run no search of their own at all -

@@ -1,7 +1,7 @@
 /**
  * @jest-environment jsdom
  */
-import { dispatchSavedSearch, cancelJob } from '../../src/main/webapp/shared/services/searchService';
+import { dispatchSavedSearch, attachToJob, cancelJob } from '../../src/main/webapp/shared/services/searchService';
 
 function jsonResponse(body, ok = true, status = 200) {
   return Promise.resolve({
@@ -67,4 +67,21 @@ test('cancel() stops polling and calls the control endpoint', async () => {
 
 test('cancelJob is a safe no-op when sid is falsy', async () => {
   await expect(cancelJob(undefined)).resolves.toBeUndefined();
+});
+
+test('attachToJob reuses an existing sid without dispatching a new search', async () => {
+  const calledUrls = [];
+  const fetchImpl = jest.fn((url) => {
+    calledUrls.push(url);
+    if (url.includes('/results')) {
+      return jsonResponse({ results: [{ node_id: 'user:jsmith' }], fields: [{ name: 'node_id' }] });
+    }
+    return jsonResponse({ entry: [{ content: { dispatchState: 'DONE', isFailed: false } }] });
+  });
+
+  const job = attachToJob('1795637807.16', { fetchImpl, maxWaitMs: 5000 });
+  const { rows } = await job.waitForResults();
+  expect(job.sid).toBe('1795637807.16');
+  expect(rows).toEqual([{ node_id: 'user:jsmith' }]);
+  expect(calledUrls.some((u) => u.includes('/dispatch'))).toBe(false);
 });

@@ -25,6 +25,7 @@ export const AUDIT_ACTIONS = Object.freeze({
   DELETE_VIEW: 'delete_view',
   CONFIG_CHANGE: 'config_change',
   LOAD_DEMO_DATA: 'load_demo_data',
+  LOAD_FROM_JOB: 'load_from_job',
   GRAPH_LIMIT_REACHED: 'graph_limit_reached',
   CLIENT_ERROR: 'client_error',
 });

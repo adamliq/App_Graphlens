@@ -103,6 +103,15 @@ instance's configured home) to switch away from GraphLens entirely.
   edges exports are flat tables and do not round-trip the structure JSON
   does) or to merge an imported file into the graph already on screen.
   Import a file first, then expand further, if you want to combine them.
+- **Load from job (1.17.0) always replaces the whole current graph, same
+  as Import, and only works while the job's results still exist** -
+  Splunk expires a job's results on its own TTL (a few minutes by
+  default) once it finishes, unless the job has been pinned or
+  scheduled; there is no way to extend that from GraphLens. It also
+  requires the job's results already be shaped to the relationship
+  schema - GraphLens classifies each row by its own fields
+  (`jobResultsService.js`) but cannot reshape data that does not already
+  carry `node_id` or `source_id`/`target_id`/`relationship_type`.
 - **The query language (`graphQueryLanguage.js`) supports a deliberately
   small, fixed grammar** - one document, one root field always named
   `node`, no fragments, variables, aliases or directives. Concretely:

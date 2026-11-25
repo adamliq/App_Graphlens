@@ -212,6 +212,40 @@ browser's `FileReader` API and never uploaded anywhere; import is a
 convenience for resuming or sharing a graph snapshot, not a path for
 bringing Splunk data into GraphLens (see DATA_INGESTION.md for that).
 
+## How "Load from job" attaches to an already-dispatched search (1.17.0)
+
+The toolbar **Load from job** action takes a user-supplied job id (sid)
+and loads that job's results onto the canvas, replacing the whole graph -
+the live-search counterpart to Import above, for a search the user (or
+someone who shared it with them) already ran, in Splunk Web's own Search
+app or anywhere else. It deliberately reuses two existing abstractions
+rather than introducing new ones:
+
+- `searchService.js`'s `attachToJob(sid, options)` calls the same shared
+  `createJobHandle` helper `dispatchSavedSearch`/`dispatchAdHocSearch`
+  already use, with a `startJob` that simply returns the given sid
+  instead of POSTing to create a new job. It exposes the identical
+  `{sid, waitForResults(), cancel()}` handle, so polling, timeout and
+  result-fetching behave exactly as they do for a search GraphLens
+  dispatched itself.
+- `jobResultsService.js`'s `classifyJobResultRows(rows)` inspects each
+  raw result row's own fields to split them into node rows (`node_id`)
+  and edge rows (`source_id`+`target_id`+`relationship_type`), since
+  GraphLens cannot know in advance whether an arbitrary job's results
+  look like a one-hop expansion, a plain entity list, or a mix of both -
+  mirroring `importService.js`'s same defensive stance toward a parsed
+  file. Rows matching neither shape are silently dropped and counted.
+
+The classified rows are then fed through the same
+`graphTransformer.transformRowsToGraph` every other relationship source
+uses, and loaded via `loadGraphSnapshot` exactly as Import does - so a
+job's results are validated, escaped and limit-enforced identically to a
+live search's own results. This is a one-time action, not a fifth
+`relationship_source_type`: a job's results are themselves ephemeral
+(Splunk expires them on its own TTL once the job finishes, unless pinned
+or scheduled), unlike an index, lookup, saved search or dataset's name,
+which is why it has no corresponding persistent setting.
+
 ## How the query language compiles to existing searches
 
 `shared/services/graphQueryLanguage.js` and `graphQueryExecutor.js`
@@ -316,9 +350,9 @@ shape (the first three and the last run no search of their own at all;
   `TimeRangeSelector`'s preset options (`Clock`), `GraphToolbar`'s
   layout options (`Layout`), Recalculate layout (`ArrowClockwise`), Fit
   to screen (`ArrowsFourCorners`), Centre selected (`NodesCentered`),
-  Reset graph (`TrashCanCross`), Import (`ArrowCircleInRight`) and
-  Export (`ArrowCircleOutRight`) - purely cosmetic, no behaviour
-  change.
+  Reset graph (`TrashCanCross`), Import (`ArrowCircleInRight`),
+  Export (`ArrowCircleOutRight`) and, since 1.17.0, Load from job
+  (`MagnifierClock`) - purely cosmetic, no behaviour change.
 - **Multi-select and bulk actions.** `GraphCanvas.jsx` leaves
   `boxSelectionEnabled` off by default (so ordinary click-and-drag still
   pans, as every earlier version of the app has) and toggles it on only

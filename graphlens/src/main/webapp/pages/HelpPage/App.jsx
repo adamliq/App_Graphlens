@@ -1,7 +1,7 @@
 import React from 'react';
 import PageNav from '../../shared/components/PageNav';
 
-const APP_VERSION = '1.16.0';
+const APP_VERSION = '1.17.0';
 
 /**
  * Static, no-dependency reference page - unlike the other three pages,
@@ -277,6 +277,19 @@ export default function App() {
           Store metadata (<code>graphlens_nodes</code> /
           <code> graphlens_edges</code>) rather than observed relationship
           rows.
+        </p>
+        <p style={{ fontSize: 12, color: '#5c5c5c' }}>
+          The toolbar&apos;s <strong>Load from job</strong> button is a
+          fifth, one-time way to get rows matching this same schema onto
+          the canvas: paste the job ID (sid) of a search you already ran
+          anywhere in Splunk - Splunk Web&apos;s own Search app, for
+          example - and GraphLens loads that job&apos;s results directly,
+          without changing the Configuration page&apos;s relationship
+          data source. Unlike the four sources above, this is not a
+          persistent setting: a job&apos;s results are themselves
+          ephemeral, expired by Splunk once the job finishes unless
+          pinned or scheduled, so it only works for a limited time after
+          the search completes.
         </p>
       </section>
 

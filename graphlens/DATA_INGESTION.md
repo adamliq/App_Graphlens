@@ -221,6 +221,28 @@ administrator who wants point-and-click column selection over raw SPL
 authoring, but still carries the same trust caveat as option E: GraphLens
 does not review what the dataset actually computes.
 
+**G. Just want to try a one-off search's results, without changing any
+configuration at all.** If you already have, or just ran, an ad hoc or
+scheduled search whose results happen to be shaped to the relationship
+schema - and you just want to see them on the canvas once, not wire up a
+persistent relationship data source - use the toolbar's **Load from
+job** button (not the Configuration page) instead of options A-F:
+
+1. Run your search in Splunk Web's own Search app (or anywhere else) as
+   you normally would, shaped to the relationship schema above.
+2. Copy its job ID (sid) - visible in the Search app's Job Inspector, or
+   in the URL while the job is open.
+3. In GraphLens's Relationship Explorer, click toolbar **Load from job**
+   and paste it in.
+
+This is a one-time action, not a fifth `relationship_source_type`: it
+does not touch the Configuration page, requires no capability beyond
+ordinary toolbar access, and only works while the job's results still
+exist (Splunk expires them on its own TTL - a few minutes by default -
+once the job finishes, unless it has been pinned or scheduled). Reach
+for one of options A-F instead once you want this to be the graph's
+actual, persistent relationship data source.
+
 ## 3. Register your types
 
 Node/relationship type colours, icons, shapes, and enabled flags live in

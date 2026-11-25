@@ -2,6 +2,42 @@
 
 All notable changes to GraphLens are documented in this file.
 
+## [1.17.0] - 2026-11-25
+
+### Added
+
+- **"Load from job" toolbar action** - loads the results of a search job
+  that already exists (one you dispatched, or one shared with you - in
+  Splunk Web's own Search app, for example) onto the canvas, given only
+  its job id (sid). Unlike index/lookup/saved_search/dataset, this is a
+  one-time action, not a persistent relationship data source: a job's
+  results are themselves ephemeral (Splunk expires them on its own TTL
+  once a job finishes, unless pinned or scheduled), unlike an index, a
+  lookup, a saved search or a dataset's name. Reuses the exact same
+  poll/results/cancel machinery `dispatchSavedSearch`/`dispatchAdHocSearch`
+  already use (`searchService.js`'s new `attachToJob`), just skipping the
+  "start a new job" step - and reuses the same "classify raw rows, then
+  hand them to `transformRowsToGraph`" pipeline `importService.js`
+  already uses for an imported file - so this does not add a new SPL
+  template, server-side component, or bypass the existing row-validation
+  pipeline.
+- Does not grant access to any job the current user could not already
+  see: GraphLens never dispatches anything here, it only reads the
+  status/results endpoints of a job id you give it, which enforce
+  Splunk's own job-level sharing ACL exactly as they would for any other
+  REST caller - the same "UI convenience, not the security boundary"
+  pattern used throughout this app.
+- Gated by the same `settings.enableExport` flag Import/Export already
+  share (not a new capability or setting) - "Load from job" is
+  thematically a sibling "bring external data onto canvas" action.
+- A job's results can be shaped either as a one-hop expansion's edge rows
+  or a plain entity list's node rows, or a mix of both run together - the
+  new `jobResultsService.js`'s `classifyJobResultRows` inspects each raw
+  row's own fields to split them accordingly (mirroring
+  `importService.js`'s defensive stance toward a parsed JSON file: rows
+  matching neither shape are silently dropped and counted, never passed
+  through partially.
+
 ## [1.16.0] - 2026-11-25
 
 ### Added
