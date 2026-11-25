@@ -57,6 +57,13 @@ document remains the fuller, authoritative version.
   **bulk actions**: Pin all, Unpin all, Hide all, Expand all, or Clear
   selection - each one is exactly the same action a single node already
   has, just applied to every selected node at once.
+- **Right-click a node** (1.20.0): opens a context menu with the same
+  actions the details panel already offers for that node - Expand/
+  Collapse, Pin/Unpin, Hide, Centre on screen, View supporting events,
+  Use as path endpoint - without leaving the canvas or scrolling to the
+  details panel first. Right-clicking also selects the node, so the
+  details panel updates to match. Right-clicking an edge or empty canvas
+  shows no menu.
 
 ## Filters
 

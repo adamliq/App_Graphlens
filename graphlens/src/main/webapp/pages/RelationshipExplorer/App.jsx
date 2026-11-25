@@ -43,7 +43,7 @@ import ErrorNotification from './components/ErrorNotification';
 import EmptyState from './components/EmptyState';
 import PageNav from '../../shared/components/PageNav';
 
-const APP_VERSION = '1.19.0';
+const APP_VERSION = '1.20.0';
 
 function downloadBlob(blob, filename) {
   const url = URL.createObjectURL(blob);
@@ -823,11 +823,18 @@ export default function App() {
             layoutName={state.currentLayout}
             layoutToken={layoutToken}
             pinnedNodeIds={state.pinnedNodeIds}
+            expandedNodeIds={state.expandedNodeIds}
             highlightedPath={path}
             onSelectNode={(id) => actions.selectNode(id)}
             onSelectEdge={(id) => actions.selectEdge(id)}
             onClearSelection={() => actions.clearSelection()}
             onExpandNode={handleExpandNode}
+            onCollapseNode={handleCollapseNode}
+            onHideNode={(id) => actions.hideNode(id)}
+            onPinNode={(id) => actions.pinNode(id)}
+            onUnpinNode={(id) => actions.unpinNode(id)}
+            onViewEvidence={handleViewEvidence}
+            onSetPathEndpoint={handleSetPathEndpoint}
             onMultiSelectNodes={setMultiSelectedNodeIds}
             onCyReady={(cy) => { cyRef.current = cy; }}
           />

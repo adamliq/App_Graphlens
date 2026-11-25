@@ -166,6 +166,33 @@ survive ordinary updates. Layout is only re-run when an explicit
 "Recalculate layout"), never on selection or hover, per the performance
 requirement to avoid expensive relayout on every interaction.
 
+### Right-click context menu (1.20.0)
+
+`GraphCanvas.jsx` listens for Cytoscape's `cxttap` event on a node (a
+right-click or long-press) and opens `NodeContextMenu.jsx` - a
+`@splunk/react-ui` `Popover`+`Menu` anchored to the canvas container
+element itself, positioned with `pointTo` at the click's own
+`renderedPosition` (already in the container's coordinate space, so no
+separate conversion is needed). The container's native `contextmenu`
+DOM event is unconditionally `preventDefault()`-ed for the canvas's
+whole lifetime, so the browser's own right-click menu never appears
+over the canvas at all - node, edge, or empty background alike -
+leaving only GraphLens's own menu for a node. The menu closes itself on
+any ordinary `tap`, `pan` or `zoom`, so it never floats disconnected
+from the node it was opened for.
+
+This is deliberately a thin UI convenience, not a second implementation
+of anything: every item in the menu (Expand/Collapse, Pin/Unpin, Hide,
+Centre on screen, View supporting events, Use as path endpoint) is the
+exact same handler `RelationshipExplorer/App.jsx` already passes to
+`NodeDetailsPanel.jsx` for that same action, now also threaded down to
+`GraphCanvas.jsx` as props. A right-click first selects the node (the
+same `onSelectNode` a left click already triggers), so the details
+panel and the context menu always agree on which node is being acted on.
+No new capability: every action offered is already available to any
+viewer-tier user from the details panel with no capability check of its
+own, so the menu adds none either.
+
 ## How expansion and collapse operate
 
 Graph state is a plain, framework-agnostic reducer
