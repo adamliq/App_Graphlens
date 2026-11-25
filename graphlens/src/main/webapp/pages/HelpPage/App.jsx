@@ -1,7 +1,7 @@
 import React from 'react';
 import PageNav from '../../shared/components/PageNav';
 
-const APP_VERSION = '1.14.0';
+const APP_VERSION = '1.15.0';
 
 /**
  * Static, no-dependency reference page - unlike the other three pages,
@@ -209,19 +209,68 @@ export default function App() {
         <p>
           GraphLens is a visualization layer over data already in Splunk -
           it has no file-upload feature of its own. Relationships are
-          brought in shaped to GraphLens&apos;s schema (<code>source_id</code>,
-          <code> target_id</code>, <code>relationship_type</code>, and so
-          on - see DATA_MODEL.md), either as indexed events (via a
-          scheduled search transforming existing events, a one-off file
-          upload, or a live HTTP Event Collector source) or, with no index
-          at all, as a lookup table in lookup mode (see above). Either way,
-          afterwards you register your node/relationship types in the
-          <code> graphlens_node_types</code> / <code>graphlens_relationship_types</code>
-          {' '}KV Store collections - an unregistered type still renders,
-          with a default colour - and optionally wire up
-          <code> evidence_reference</code> so <strong>View supporting
-          events</strong> works for an edge. See DATA_INGESTION.md in the
-          installed package for the complete, step-by-step guide.
+          brought in shaped to the schema below, either as indexed events
+          (via a scheduled search transforming existing events, a one-off
+          file upload, or a live HTTP Event Collector source), as a lookup
+          table in lookup mode, or as the results of an already-authored
+          search in saved-search mode (see &quot;Where the relationship
+          data comes from&quot; above) - the same shape is required
+          regardless of which of the three you use; GraphLens applies no
+          transformation of its own. Afterwards you register your
+          node/relationship types in the <code>graphlens_node_types</code>
+          {' '}/ <code>graphlens_relationship_types</code> KV Store
+          collections - an unregistered type still renders, with a default
+          colour - and optionally wire up <code>evidence_reference</code>
+          {' '}so <strong>View supporting events</strong> works for an
+          edge. See DATA_INGESTION.md and DATA_MODEL.md in the installed
+          package for the complete, step-by-step guide and the full data
+          model (including the separate node/edge JSON shapes used
+          elsewhere, e.g. curated KV Store metadata).
+        </p>
+        <table style={{ width: '100%', fontSize: 12, borderCollapse: 'collapse', marginBottom: 12 }}>
+          <thead>
+            <tr>
+              <th style={{ textAlign: 'left', borderBottom: '1px solid #ccc', padding: '4px 8px' }}>Field</th>
+              <th style={{ textAlign: 'left', borderBottom: '1px solid #ccc', padding: '4px 8px' }}>Required</th>
+              <th style={{ textAlign: 'left', borderBottom: '1px solid #ccc', padding: '4px 8px' }}>Notes</th>
+            </tr>
+          </thead>
+          <tbody>
+            {[
+              ['edge_id', 'no', 'Derived deterministically from source_id + relationship_type + target_id if omitted.'],
+              ['source_id', 'yes', 'Namespaced, stable identifier, e.g. user:jsmith. Must match ^[A-Za-z0-9][A-Za-z0-9:_\\-.@/]{0,254}$ - no quotes, backslashes, pipes, wildcards, spaces or control characters.'],
+              ['source_type', 'yes', 'Short type token, e.g. user, host, ip. Governed by graphlens_node_types.'],
+              ['source_label', 'yes', 'Display label for the source node. Treated as untrusted; HTML-escaped on render.'],
+              ['target_id', 'yes', 'Same identifier grammar as source_id.'],
+              ['target_type', 'yes', 'Same as source_type, for the target node.'],
+              ['target_label', 'yes', 'Same as source_label, for the target node.'],
+              ['relationship_type', 'yes', 'Short type token, e.g. AUTHENTICATED_TO. Governed by graphlens_relationship_types.'],
+              ['relationship_label', 'no', 'Display label; defaults to relationship_type.'],
+              ['event_count', 'no', 'Number. Summed across duplicate rows when merged.'],
+              ['first_seen / last_seen', 'no', 'ISO-8601 timestamps, e.g. 2026-07-15T08:00:00Z. Widened (min/max) across duplicate rows when merged. Ignored entirely in lookup/saved-search mode (neither is a time series).'],
+              ['risk_score', 'no', 'Number, clamped to 0-100.'],
+              ['source_index / source_sourcetype', 'no', 'Where the backing raw event actually lives - drives View supporting events. Should name real, existing index/sourcetype values.'],
+              ['evidence_reference', 'no', 'Opaque key joined against a raw evidence event’s own evidence_reference field for View supporting events. Must be a valid identifier if set.'],
+            ].map(([field, required, notes]) => (
+              <tr key={field}>
+                <td style={{ padding: '4px 8px', borderBottom: '1px solid #eee', whiteSpace: 'nowrap', fontFamily: 'monospace' }}>{field}</td>
+                <td style={{ padding: '4px 8px', borderBottom: '1px solid #eee' }}>{required}</td>
+                <td style={{ padding: '4px 8px', borderBottom: '1px solid #eee' }}>{notes}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+        <p style={{ fontSize: 12, color: '#5c5c5c' }}>
+          This is the flat row/event shape every relationship source
+          (index, lookup, saved search) must already produce - the same
+          one <code>sample_data/graphlens_relationships_sample.csv</code>
+          {' '}and <code>lookups/graphlens_sample_relationships.csv</code>
+          {' '}use, and the one the Configuration page&apos;s Load demo
+          data button loads. It is distinct from the nested node/edge JSON
+          objects DATA_MODEL.md also documents, which describe curated KV
+          Store metadata (<code>graphlens_nodes</code> /
+          <code> graphlens_edges</code>) rather than observed relationship
+          rows.
         </p>
       </section>
 

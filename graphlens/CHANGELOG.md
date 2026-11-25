@@ -2,6 +2,29 @@
 
 All notable changes to GraphLens are documented in this file.
 
+## [1.15.0] - 2026-11-25
+
+### Added
+
+- **Relationship row/event schema table on the Help page**, under
+  "Loading your own data": the full flat field list (`edge_id`,
+  `source_id`/`source_type`/`source_label`, `target_id`/`target_type`/
+  `target_label`, `relationship_type`/`relationship_label`, `event_count`,
+  `first_seen`/`last_seen`, `risk_score`, `source_index`/
+  `source_sourcetype`, `evidence_reference`), each marked required or
+  not, with notes - the same shape every relationship source (index,
+  lookup, saved search) must already produce, previously only documented
+  in DATA_MODEL.md outside the app. Explicitly distinguished from the
+  separate nested node/edge JSON shapes DATA_MODEL.md also documents for
+  curated KV Store metadata, to avoid conflating the two.
+- "Where the relationship data comes from" and "Loading your own data"
+  reworded to cover all three relationship-source modes evenly (index,
+  lookup, saved search) now that saved-search mode exists (1.14.0).
+
+Full npm test (386 tests) and lint (0 warnings) pass; AppInspect re-run
+clean (0 errors/failures, same 8-warning profile as 1.13.0/1.14.0).
+Version bumped to 1.15.0.
+
 ## [1.14.0] - 2026-11-25
 
 ### Added
