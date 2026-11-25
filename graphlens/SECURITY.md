@@ -211,7 +211,7 @@ checks, as the authority (`default/authorize.conf`):
 | `graphlens_save_view` | Save a graph view |
 | `graphlens_manage_shared_view` | Manage shared saved views |
 | `graphlens_manage_config` | Edit `graphlens_settings.conf` |
-| `graphlens_manage_collections` | Curate node/edge/type KV Store data |
+| `graphlens_manage_collections` | Curate node/edge/type KV Store data; also gates the Configuration page's "Load demo data" button (see ARCHITECTURE.md) |
 | `graphlens_view_health` | View the Health page and audit log |
 
 The React frontend calls
@@ -236,6 +236,17 @@ underlying REST endpoint:
   `restmap.conf` pattern for restricting a generic custom-conf endpoint
   has changed across Splunk versions and must be verified against current
   documentation for your target version before relying on it.
+- "Load demo data" in index mode (see ARCHITECTURE.md) writes new events
+  via a dispatched `| collect` search, using the current user's own
+  session and normal search dispatch permissions - no HEC token, no
+  credential of GraphLens's own, no new REST surface beyond search
+  dispatch. Splunk enforces whatever write permission `collect` normally
+  requires for the target index; GraphLens neither grants nor bypasses it.
+  Every call this button makes - the type-lookup seeding, the
+  relationship-data write, and the resulting audit log entry
+  (`load_demo_data`, same KV Store write path as every other tracked
+  action) - is also gated by `graphlens_manage_collections` in the UI, per
+  the convention above.
 
 ### Known limitation: KV Store is collection-level, not row-level
 

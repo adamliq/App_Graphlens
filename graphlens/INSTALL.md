@@ -69,10 +69,16 @@ adapt those templates to your own data source.
 
 ## 4. Load sample/starting data (optional, recommended for evaluation)
 
-To try GraphLens with the bundled synthetic sample data:
+The fastest way to try GraphLens with the bundled synthetic sample data:
+as a user with the `graphlens_manage_collections` capability, open the
+Configuration page and click **Load demo data**. See CONFIGURATION.md's
+"Demo data" section for exactly what that does and its one caveat (the
+`graphlens_relationships` index must already exist first - step 3 above).
+
+To do the same thing manually instead:
 
 1. Regenerate the CSVs if needed: `python3 scripts/generate_sample_data.py`
-   (they are already committed under `sample_data/`).
+   (they are already committed under `sample_data/` and `lookups/`).
 2. Index `sample_data/graphlens_relationships_sample.csv` into the
    `graphlens_relationships` index with sourcetype
    `graphlens:relationship` (Splunk Web > Add Data > Upload works for a

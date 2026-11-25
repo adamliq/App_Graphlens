@@ -272,30 +272,39 @@ in one request instead of clicking Expand repeatedly.
   CONFIGURATION.md). See KNOWN_LIMITATIONS.md for the grammar's
   restrictions.
 
-## Multi-select, the time slicer, style overrides, saved views and the diagram/text toggle
+## Multi-select, the time slicer, style overrides, saved views and the Graph/Table toggle
 
 Five smaller additions, all client-side, each introducing no new SPL
 shape (the first three and the last run no search of their own at all;
 "saved views" only ever reuses `buildExpandNodeSpl`):
 
-- **The diagram/text toggle.** Two buttons in the toolbar
-  (`GraphToolbar.jsx`'s `viewMode`/`onViewModeChange`) switch
+- **The Graph/Table toggle.** Two buttons in the toolbar, each with a
+  `@splunk/react-icons` glyph (`ChartLinkGraph`, `Table`) alongside its
+  label (`GraphToolbar.jsx`'s `viewMode`/`onViewModeChange`), switch
   `RelationshipExplorer/App.jsx`'s `canvasViewMode` state between
-  `'diagram'` (the existing `GraphCanvas`) and `'text'`
+  `'graph'` (the existing `GraphCanvas`) and `'table'`
   (`GraphTableView.jsx`, two plain HTML tables - Nodes, Relationships).
   Both read the identical `renderable.nodes`/`renderable.edges` - the
   same already-filtered data the canvas itself renders - so the two
   views can never disagree about what counts as "in" the graph right
-  now. Switching away from Diagram unmounts `GraphCanvas` (destroying
-  its Cytoscape instance) rather than merely hiding it, both to avoid
+  now. Switching away from Graph unmounts `GraphCanvas` (destroying its
+  Cytoscape instance) rather than merely hiding it, both to avoid
   running a layout against a zero-size hidden container and to keep the
   two views' DOM entirely separate; `App.jsx` clears its own `cyRef` at
   the same time so every `cyRef.current`-dependent action (legend
   click-to-select, Fit to screen, Centre selected, PNG export) sees "no
   canvas" instead of a stale handle to a destroyed instance - the
   toolbar also disables the layout-specific buttons outright while in
-  Text view. The table view is read-only: selecting, expanding, pinning
-  etc. remain canvas-only actions.
+  Table view. The table view is read-only: selecting, expanding, pinning
+  etc. remain canvas-only actions. Since 1.12.0 every other toolbar
+  control also carries a `@splunk/react-icons` glyph alongside its
+  label or option text: `EntitySearch`'s Search button (`Magnifier`),
+  `TimeRangeSelector`'s preset options (`Clock`), `GraphToolbar`'s
+  layout options (`Layout`), Recalculate layout (`ArrowClockwise`), Fit
+  to screen (`ArrowsFourCorners`), Centre selected (`NodesCentered`),
+  Reset graph (`TrashCanCross`), Import (`ArrowCircleInRight`) and
+  Export (`ArrowCircleOutRight`) - purely cosmetic, no behaviour
+  change.
 - **Multi-select and bulk actions.** `GraphCanvas.jsx` leaves
   `boxSelectionEnabled` off by default (so ordinary click-and-drag still
   pans, as every earlier version of the app has) and toggles it on only
@@ -350,6 +359,67 @@ shape (the first three and the last run no search of their own at all;
     read filters to it - a UI convention, not a hard access-control
     boundary, the same as the audit log's precedent (see SECURITY.md).
 
+## How "Load demo data" works
+
+The Configuration page's "Load demo data" button (`demoDataService.js`)
+automates the manual steps DATA_INGESTION.md/INSTALL.md already document,
+rather than inventing a new one. Every value it sends is either a fixed
+literal or an administrator-configured setting validated exactly the way
+`relationship_index`/`relationship_lookup` already are elsewhere in this
+module (`safeIndexNameOrFallback`/`safeLookupNameOrFallback`) - nothing
+here accepts end-user input.
+
+- **Type lookups**: dispatches the exact two `| inputlookup ... |
+  outputlookup ...` lines DATA_INGESTION.md's section 3 already tells
+  administrators to paste in by hand (`splTemplates.js`'s
+  `buildSeedNodeTypesSpl`/`buildSeedRelationshipTypesSpl` - zero dynamic
+  tokens).
+- **Sample relationships, lookup mode**: the same `| inputlookup
+  graphlens_sample_relationships | outputlookup <configured lookup>`
+  shape, with only the already-validated lookup name as a token
+  (`buildSeedRelationshipsLookupSpl`).
+- **Sample relationships, index mode**: `buildSeedRelationshipsIndexSpl`
+  uses `| collect` to write the looked-up rows into the configured index
+  as real events. Two designs were tried and rejected first, both
+  confirmed against a live instance rather than assumed:
+  - Posting the sample data as raw CSV text to Splunk's `receivers/simple`
+    REST endpoint (matching how a real file upload is ingested) seemed
+    like the obvious way to get the target sourcetype's own index-time
+    `INDEXED_EXTRACTIONS = csv` (default/props.conf) to apply the same way
+    it does for a real file. It does not: a multi-line POST to that
+    endpoint does not reliably line-break into one event per row the way
+    a monitored file does (confirmed live - 39 rows in, 2 events out), and
+    even a single well-formed event posted this way was not reliably
+    found afterwards either.
+  - `| collect` directly into `graphlens:relationship` was tried next and
+    also rejected: that stanza's `KV_MODE = none` (it relies on
+    `INDEXED_EXTRACTIONS = csv` instead, which never applies to
+    `collect`'s own output) suppresses the ordinary automatic key=value
+    extraction `collect`'s output format depends on, so none of the
+    fields would become searchable - also confirmed live, not assumed
+    from the first rejection's reasoning alone.
+  - The working design: `| collect` into a *dedicated*
+    `graphlens:relationship:demo` sourcetype (default/props.conf,
+    `KV_MODE = auto`, deliberately no `TIMESTAMP_FIELDS` - see that
+    stanza's own comment for why) instead of `graphlens:relationship`
+    itself. `collect`'s key="value" output format is then extracted
+    correctly by ordinary automatic KV extraction, confirmed live (all 39
+    rows, every field, including a `source_id`/`target_id` search for
+    "jsmith"). The live search templates above never filter by
+    sourcetype (only by index), so these demo events are found
+    transparently alongside everything else once loaded - nothing in
+    `buildRelationshipSourceLines`/`buildExpandNodeSpl`/etc. needed to
+    change.
+
+Each bundled sample row's `source_index`/`source_sourcetype` columns are
+rewritten at load time to the administrator's actually-configured index
+(rather than the sample CSV's literal default), so "View supporting
+events" resolves correctly for the demo data even when that setting has
+been changed from its default - `buildEvidenceSpl` always reads
+`source_index`/`source_sourcetype` from the row itself, regardless of
+`relationship_source_type` (see "How searches retrieve relationships"
+above).
+
 ## How permissions are enforced
 
 See SECURITY.md, "Access control". In summary: Splunk's own role-based
@@ -375,7 +445,8 @@ graphlens/
 │   │   │                     configService, capabilityService,
 │   │   │                     graphTransformer, graphStateReducer,
 │   │   │                     pathFinder, exportService,
-│   │   │                     evidenceQueryBuilder, typeConfigService
+│   │   │                     evidenceQueryBuilder, typeConfigService,
+│   │   │                     demoDataService
 │   │   ├── hooks/             useGraphState
 │   │   ├── models/            graphModel (state shape, constants)
 │   │   ├── components/        PageNav (in-app nav - see KNOWN_LIMITATIONS.md,

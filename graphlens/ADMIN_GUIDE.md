@@ -51,7 +51,9 @@ Splunk instance.
 
 - **Type display config**: edit `graphlens_node_types` /
   `graphlens_relationship_types` via the KV Store REST API, or seed/reset
-  from the bundled CSVs (see INSTALL.md step 4).
+  from the bundled CSVs (see INSTALL.md step 4, or the Configuration
+  page's "Load demo data" button - CONFIGURATION.md's "Demo data"
+  section).
 - **Curated node/edge metadata**: edit `graphlens_nodes` / `graphlens_edges`
   the same way, to add descriptions/groups/risk scores that aren't derived
   from indexed events.

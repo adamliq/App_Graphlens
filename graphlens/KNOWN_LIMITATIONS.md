@@ -161,13 +161,13 @@ instance's configured home) to switch away from GraphLens entirely.
   relationship types, since the existing relationship-type filter
   (hide/show by type) already covers the one bulk action that would make
   sense for an edge.
-- **The toolbar's Text view is read-only and replaces the canvas rather
+- **The toolbar's Table view is read-only and replaces the canvas rather
   than sitting alongside it.** Switching to it unmounts the Cytoscape
   canvas entirely (rather than only hiding it), so your current pan/zoom
-  position is not kept when you switch back to Diagram - the layout
+  position is not kept when you switch back to Graph - the layout
   simply re-runs, exactly as it would after any other full graph reload.
   Selecting, expanding, pinning, and multi-select are all canvas-only;
-  Text is a different way to look at the identical, already-filtered
+  Table is a different way to look at the identical, already-filtered
   node/edge data, not a second way to act on it.
 - **The time slicer and session style overrides are both purely
   client-side and apply to the whole visible graph** - there is no way to
@@ -236,3 +236,20 @@ instance's configured home) to switch away from GraphLens entirely.
   for a recommended cleanup approach; GraphLens does not ship a scheduled
   cleanup search by default (deliberately - to avoid introducing an
   always-on scheduled search customers did not opt into).
+- **"Load demo data" (Configuration page) is destructive to existing type
+  curation.** It always replaces the entire contents of
+  `graphlens_node_types`/`graphlens_relationship_types` with the bundled
+  sample values - re-curate your own types afterwards if you had already
+  set them up. In lookup mode it is additionally destructive to the
+  configured relationship lookup itself (`| outputlookup` always replaces
+  the whole file) and requires the configured lookup *definition* to
+  already exist (Settings > Lookups > Lookup table definitions, or
+  DATA_INGESTION.md's section D step 2) - confirmed live that
+  `| outputlookup` fails with "the lookup table ... is invalid" against a
+  name with no registered definition yet, the same precondition
+  DATA_INGESTION.md already documents for setting up lookup mode
+  manually; in index mode it only adds new events and requires the
+  configured index to already exist (it does not create one). "View
+  supporting events" only resolves for demo data loaded in index mode -
+  lookup mode writes no backing raw events for it to find, since lookup
+  mode never ingests events in the first place.

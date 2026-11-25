@@ -190,6 +190,63 @@ export function buildEvidenceSpl(tokens, limit) {
 
 /** Aggregate counts for the graph-limit banner and health reporting. No dynamic tokens - still dispatched as the named `graphlens_graph_statistics` saved search. */
 
+/**
+ * Demo data (Configuration page "Load demo data"). All three have zero
+ * dynamic tokens except the lookup-mode target name, which - like
+ * `relationship_lookup` elsewhere in this module - is an
+ * administrator-configured setting, not end-user input, and is still
+ * validated via safeLookupNameOrFallback per this module's defence-in-depth
+ * convention. These mirror the two-line SPL INSTALL.md already told
+ * administrators to paste in by hand; demoDataService.js just dispatches
+ * the identical commands instead of requiring that manual step.
+ */
+export function buildSeedNodeTypesSpl() {
+  return '| inputlookup graphlens_sample_node_types | outputlookup graphlens_node_types';
+}
+
+export function buildSeedRelationshipTypesSpl() {
+  return '| inputlookup graphlens_sample_relationship_types | outputlookup graphlens_relationship_types';
+}
+
+/** Demo data, lookup mode only: replaces the configured relationship lookup's entire contents with the bundled sample data - the same destructive-by-design behaviour `| outputlookup` always has (see CONFIGURATION.md). */
+export function buildSeedRelationshipsLookupSpl(lookupName) {
+  const safeLookupName = safeLookupNameOrFallback(lookupName, DEFAULT_LOOKUP);
+  return `| inputlookup graphlens_sample_relationships | outputlookup ${safeLookupName}`;
+}
+
+// Sourcetype used only for demo data re-ingested in index mode - deliberately
+// distinct from `graphlens:relationship` (default/props.conf sets that one's
+// KV_MODE=none, since it relies on index-time INDEXED_EXTRACTIONS=csv
+// instead, which only applies to events arriving through a real file/monitor
+// input - confirmed against a live instance that `| collect`'s own output
+// events never pass through that index-time extraction, so none of the
+// fields would become searchable under `graphlens:relationship` itself).
+// This sourcetype instead relies on Splunk's ordinary default KV_MODE=auto,
+// which does correctly extract `collect`'s own key="value" output format -
+// also confirmed live. The live search templates above never filter by
+// sourcetype (only by index), so this is transparently found alongside
+// everything else once loaded.
+export const DEMO_RELATIONSHIP_SOURCETYPE = 'graphlens:relationship:demo';
+
+/**
+ * Demo data, index mode only: re-ingests the bundled sample relationships as
+ * real events in the configured index via `| collect` (not `| outputlookup`
+ * - there is no lookup involved here). `source_index`/`source_sourcetype`
+ * are overwritten to match where this actually lands (rather than the
+ * sample data's literal default), so `buildEvidenceSpl` - which always reads
+ * an edge's own source_index/source_sourcetype fields - resolves correctly
+ * even when the configured index differs from the default.
+ */
+export function buildSeedRelationshipsIndexSpl(indexName) {
+  const safeIndex = safeIndexNameOrFallback(indexName, DEFAULT_INDEX);
+  return [
+    '| inputlookup graphlens_sample_relationships',
+    `| eval source_index="${safeIndex}", source_sourcetype="${DEMO_RELATIONSHIP_SOURCETYPE}"`,
+    `| collect index=${safeIndex} sourcetype=${DEMO_RELATIONSHIP_SOURCETYPE} testmode=false`,
+    '| stats count',
+  ].join('\n');
+}
+
 /** Optional bounded expansion of a collapsed cluster/group node. `clusterField` must be one of a small allowlisted set of field names (never raw user input). */
 export function buildClusterExpandSpl(clusterField, splSafeClusterValue, limit, source) {
   const boundedLimit = clampInteger(limit, { min: 1, max: 1000, fallback: 100 });

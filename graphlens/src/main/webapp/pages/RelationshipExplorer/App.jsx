@@ -39,7 +39,7 @@ import ErrorNotification from './components/ErrorNotification';
 import EmptyState from './components/EmptyState';
 import PageNav from '../../shared/components/PageNav';
 
-const APP_VERSION = '1.10.0';
+const APP_VERSION = '1.13.0';
 
 function downloadBlob(blob, filename) {
   const url = URL.createObjectURL(blob);
@@ -60,7 +60,7 @@ export default function App() {
   const [isSearching, setIsSearching] = useState(false);
   const [searchResults, setSearchResults] = useState([]);
   const [layoutToken, setLayoutToken] = useState(0);
-  const [canvasViewMode, setCanvasViewMode] = useState('diagram');
+  const [canvasViewMode, setCanvasViewMode] = useState('graph');
   const [exportDialogOpen, setExportDialogOpen] = useState(false);
   const [evidence, setEvidence] = useState({ isLoading: false, error: null, rows: [], fieldOrder: [], targetLabel: null });
   const [pathEndpoints, setPathEndpoints] = useState({ startNodeId: null, endNodeId: null });
@@ -255,12 +255,12 @@ export default function App() {
 
   const handleCanvasViewModeChange = useCallback((mode) => {
     setCanvasViewMode(mode);
-    // Switching away from Diagram unmounts GraphCanvas (see render below),
+    // Switching away from Graph unmounts GraphCanvas (see render below),
     // which destroys its Cytoscape instance - clear the ref so every
     // cyRef.current-dependent action (legend click-to-select, Fit to
     // screen, PNG export, ...) sees "no canvas" rather than a stale handle
     // to an instance that no longer exists.
-    if (mode !== 'diagram') cyRef.current = null;
+    if (mode !== 'graph') cyRef.current = null;
   }, []);
 
   const handleSelectNodeType = useCallback((nodeType) => {
@@ -694,7 +694,7 @@ export default function App() {
 
       <div className="graphlens-canvas-wrapper">
         {!hasGraph && <EmptyState />}
-        {canvasViewMode === 'diagram' ? (
+        {canvasViewMode === 'graph' ? (
           <GraphCanvas
             nodes={renderable.nodes.map((n) => ({ data: { ...n, color: nodeColorByType[n.type] || n.color } }))}
             edges={renderable.edges.map((e) => ({ data: { ...e, color: relationshipColorByType[e.relationship] || e.color } }))}

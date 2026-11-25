@@ -5,6 +5,10 @@ import {
   buildEdgeDetailsSpl,
   buildEvidenceSpl,
   buildClusterExpandSpl,
+  buildSeedNodeTypesSpl,
+  buildSeedRelationshipTypesSpl,
+  buildSeedRelationshipsLookupSpl,
+  buildSeedRelationshipsIndexSpl,
 } from '../../src/main/webapp/shared/services/splTemplates';
 import { GraphLensValidationError } from '../../src/main/webapp/shared/utilities/splSafety';
 
@@ -183,5 +187,37 @@ describe('splTemplates - evidence search interpolates only pre-validated tokens'
     }, 50);
     expect(spl).toContain('index=graphlens_relationships sourcetype=graphlens:relationship src_user="jsmith"');
     expect(spl).toContain('| head 50');
+  });
+});
+
+describe('splTemplates - demo data (Configuration page "Load demo data")', () => {
+  test('buildSeedNodeTypesSpl and buildSeedRelationshipTypesSpl have zero dynamic tokens', () => {
+    expect(buildSeedNodeTypesSpl()).toBe('| inputlookup graphlens_sample_node_types | outputlookup graphlens_node_types');
+    expect(buildSeedRelationshipTypesSpl()).toBe('| inputlookup graphlens_sample_relationship_types | outputlookup graphlens_relationship_types');
+  });
+
+  test('buildSeedRelationshipsLookupSpl interpolates a validated lookup name', () => {
+    expect(buildSeedRelationshipsLookupSpl('my_custom_lookup'))
+      .toBe('| inputlookup graphlens_sample_relationships | outputlookup my_custom_lookup');
+  });
+
+  test('buildSeedRelationshipsLookupSpl falls back to the default rather than embedding an invalid name', () => {
+    const spl = buildSeedRelationshipsLookupSpl('../etc/passwd');
+    expect(spl).toContain('| outputlookup graphlens_relationships_lookup');
+    expect(spl).not.toContain('../etc/passwd');
+  });
+
+  test('buildSeedRelationshipsIndexSpl interpolates a validated index name into both eval and collect', () => {
+    const spl = buildSeedRelationshipsIndexSpl('my_custom_index');
+    expect(spl).toContain('| inputlookup graphlens_sample_relationships');
+    expect(spl).toContain('source_index="my_custom_index"');
+    expect(spl).toContain('| collect index=my_custom_index sourcetype=graphlens:relationship:demo testmode=false');
+    expect(spl).toContain('source_sourcetype="graphlens:relationship:demo"');
+  });
+
+  test('buildSeedRelationshipsIndexSpl falls back to the default rather than embedding an invalid index name', () => {
+    const spl = buildSeedRelationshipsIndexSpl('../etc/passwd');
+    expect(spl).toContain('index=graphlens_relationships');
+    expect(spl).not.toContain('../etc/passwd');
   });
 });

@@ -2,6 +2,92 @@
 
 All notable changes to GraphLens are documented in this file.
 
+## [1.13.0] - 2026-11-25
+
+### Added
+
+- **"Load demo data" button on the Configuration page**, gated by the
+  `graphlens_manage_collections` capability. Seeds the bundled sample
+  node/relationship type KV Store collections and a small set of sample
+  relationships, automating the manual steps DATA_INGESTION.md/INSTALL.md
+  already documented rather than introducing a new one:
+  - Type lookups: the same `| inputlookup ... | outputlookup ...` lines
+    an administrator previously had to paste in by hand.
+  - Relationships, lookup mode: `| outputlookup` into the configured
+    relationship lookup (replaces its entire contents, same as that
+    command always does).
+  - Relationships, index mode: re-ingested as real events into the
+    configured index via `| collect`, under a dedicated
+    `graphlens:relationship:demo` sourcetype (`default/props.conf`,
+    `KV_MODE=auto`) rather than `graphlens:relationship` itself - two
+    other designs (posting raw CSV text to Splunk's `receivers/simple`
+    endpoint; `| collect` straight into `graphlens:relationship`) were
+    each tried and rejected after live testing showed neither actually
+    produced searchable fields. The live search templates never filter by
+    sourcetype, only index, so this is found transparently alongside
+    everything else.
+  - Each sample row's `source_index`/`source_sourcetype` are rewritten to
+    the administrator's actually-configured index at load time, so "View
+    supporting events" resolves correctly even when that default has been
+    changed.
+  - Writes one `load_demo_data` audit log entry, same as every other
+    tracked action.
+  - New `lookups/graphlens_sample_relationships.csv` (also written by
+    `scripts/generate_sample_data.py`, so it can never drift from
+    `sample_data/graphlens_relationships_sample.csv`) and a matching
+    `transforms.conf` stanza.
+  - See CONFIGURATION.md's new "Demo data" section and
+    ARCHITECTURE.md's new "How 'Load demo data' works" section.
+
+Full npm test (364 tests) and lint (0 warnings) pass; AppInspect re-run
+clean (0 errors/failures), 8 warnings (one new: `check_hostnames_and_ips`
+on the new bundled `lookups/graphlens_sample_relationships.csv` - a
+documentation-range IP already shipped harmlessly elsewhere in this app;
+see APPINSPECT.md). Version bumped to 1.13.0.
+
+## [1.12.0] - 2026-11-21
+
+### Changed
+
+- **Added icons to the rest of the toolbar's buttons and dropdowns**,
+  matching the Graph/Table toggle's icons added in 1.11.0:
+  `EntitySearch`'s Search button, the time range dropdown's presets,
+  the layout dropdown's options, Recalculate layout, Fit to screen,
+  Centre selected, Reset graph, Import and Export each now carry a
+  `@splunk/react-icons` glyph alongside their existing label. Purely
+  cosmetic - no behaviour change, no new dependency (same
+  `@splunk/react-icons` package declared in 1.11.0).
+
+Full npm test (355 tests) and lint (0 warnings) pass; AppInspect
+re-run clean (0 errors/failures, same 7-warning profile as prior
+releases). Version bumped to 1.12.0.
+
+## [1.11.0] - 2026-11-21
+
+### Changed
+
+- **Renamed the toolbar's Diagram/Text toggle to Graph/Table** (matching
+  Neo4j Bloom's own naming more closely) and gave each button an icon
+  (`@splunk/react-icons`'s `ChartLinkGraph` and `Table`) alongside its
+  label. Purely a rename/polish of 1.10.0's toggle - the underlying
+  `canvasViewMode` state values changed from `'diagram'`/`'text'` to
+  `'graph'`/`'table'` to match, with no behaviour change.
+- `@splunk/react-icons` is now a declared direct dependency (it was
+  already bundled as a transitive dependency of `@splunk/react-ui`
+  before this release, so this adds no new code to the bundle - just a
+  direct import of two icons already shipping). THIRDPARTY.md updated
+  accordingly.
+- Refreshed `npm audit`: 0 known vulnerabilities in the runtime
+  dependency set (patched transitive `browserslist`/
+  `baseline-browser-mapping`/`moment` versions picked up via `npm audit
+  fix`); 3 moderate, dev-only findings remain in `rimraf`'s own
+  transitive `glob`/`minimatch`, fixable only via a breaking `rimraf`
+  major-version bump, deferred - see THIRDPARTY.md.
+
+Full npm test (355 tests) and lint (0 warnings) pass; AppInspect re-run
+clean (0 errors/failures, same 7-warning profile as prior releases).
+Version bumped to 1.11.0.
+
 ## [1.10.0] - 2026-11-21
 
 ### Changed

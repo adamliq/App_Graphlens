@@ -37,13 +37,13 @@ document remains the fuller, authoritative version.
 - **Pin / unpin a node**: keeps a node visible even if the expansion that
   introduced it is later collapsed. Pinned nodes have a double border.
 - **Zoom / pan**: mouse wheel / drag, standard Cytoscape.js interaction.
-- **Diagram / Text**: toolbar buttons. Diagram is the usual interactive
-  canvas; Text shows the identical, already-filtered set of nodes and
+- **Graph / Table**: toolbar buttons. Graph is the usual interactive
+  canvas; Table shows the identical, already-filtered set of nodes and
   relationships as two plain tables instead - useful for scanning or
   copying values you can't easily read off the canvas. It's read-only:
-  switch back to Diagram to select, expand, pin, or hide anything. The
+  switch back to Graph to select, expand, pin, or hide anything. The
   other toolbar buttons below (layout, Fit to screen, Centre selected)
-  only apply to the Diagram view and are disabled while Text is shown.
+  only apply to the Graph view and are disabled while Table is shown.
 - **Fit to screen**: toolbar button - frames the whole visible graph.
 - **Centre selected**: toolbar button - pans/zooms to the selected node.
 - **Change layout**: toolbar dropdown (cose, concentric, breadthfirst,

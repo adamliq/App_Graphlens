@@ -4,6 +4,7 @@ import Button from '@splunk/react-ui/Button';
 import Text from '@splunk/react-ui/Text';
 import Menu from '@splunk/react-ui/Menu';
 import WaitSpinner from '@splunk/react-ui/WaitSpinner';
+import Magnifier from '@splunk/react-icons/Magnifier';
 
 /**
  * Free-text entity search box. Validation/escaping of the term happens in
@@ -39,7 +40,7 @@ export default function EntitySearch({ isLoading, results, onSearch, onPickResul
           onKeyDown={handleKeyDown}
           placeholder="Search for a user, host, IP, application..."
         />
-        <Button label="Search" appearance="primary" onClick={submit} disabled={term.trim().length === 0} />
+        <Button label="Search" icon={<Magnifier />} appearance="primary" onClick={submit} disabled={term.trim().length === 0} />
         {isLoading && <WaitSpinner size="small" />}
       </div>
       {showResults && results.length > 0 && (

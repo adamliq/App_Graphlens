@@ -7,25 +7,29 @@ import Switch from '@splunk/react-ui/Switch';
 import Text from '@splunk/react-ui/Text';
 import WaitSpinner from '@splunk/react-ui/WaitSpinner';
 
-import { getSettings, updateSettingsStanza } from '../../shared/services/configService';
+import { getSettings, updateSettingsStanza, relationshipSourceFromSettings } from '../../shared/services/configService';
 import { hasCapability, CAPABILITIES } from '../../shared/services/capabilityService';
 import { recordAuditEvent, AUDIT_ACTIONS } from '../../shared/services/auditService';
+import { loadDemoData } from '../../shared/services/demoDataService';
 import { toUserFacingError } from '../../shared/utilities/restClient';
 import PageNav from '../../shared/components/PageNav';
 
 export default function App() {
   const [settings, setSettings] = useState(null);
   const [canManage, setCanManage] = useState(false);
+  const [canManageCollections, setCanManageCollections] = useState(false);
   const [status, setStatus] = useState(null);
   const [isSaving, setIsSaving] = useState(false);
 
   const reload = useCallback(async () => {
-    const [loadedSettings, allowed] = await Promise.all([
+    const [loadedSettings, allowed, allowedCollections] = await Promise.all([
       getSettings(),
       hasCapability(CAPABILITIES.MANAGE_CONFIG),
+      hasCapability(CAPABILITIES.MANAGE_COLLECTIONS),
     ]);
     setSettings(loadedSettings);
     setCanManage(allowed);
+    setCanManageCollections(allowedCollections);
   }, []);
 
   useEffect(() => { reload(); }, [reload]);
@@ -45,6 +49,26 @@ export default function App() {
       setIsSaving(false);
     }
   }, [reload]);
+
+  const handleLoadDemoData = useCallback(async () => {
+    setIsSaving(true);
+    setStatus(null);
+    try {
+      const result = await loadDemoData({ source: relationshipSourceFromSettings(settings) });
+      await recordAuditEvent(AUDIT_ACTIONS.LOAD_DEMO_DATA, {
+        detail: `Loaded demo node/relationship types and ${result.relationshipCount} relationships (${result.mode} mode)`,
+      });
+      setStatus({
+        type: 'success',
+        message: `Loaded demo node/relationship types and ${result.relationshipCount} relationships (${result.mode} mode).`,
+      });
+    } catch (err) {
+      const normalized = toUserFacingError(err);
+      setStatus({ type: 'error', message: normalized.message });
+    } finally {
+      setIsSaving(false);
+    }
+  }, [settings]);
 
   if (!settings) {
     return (
@@ -84,6 +108,16 @@ export default function App() {
       <section className="graphlens-section">
         <h2>Features</h2>
         <FeaturesForm settings={settings} disabled={!canManage || isSaving} onSave={(values) => save('features', values)} />
+      </section>
+
+      <section className="graphlens-section">
+        <h2>Demo data</h2>
+        <DemoDataSection
+          settings={settings}
+          disabled={!canManageCollections || isSaving}
+          canManageCollections={canManageCollections}
+          onLoad={handleLoadDemoData}
+        />
       </section>
     </div>
   );
@@ -181,6 +215,46 @@ function FeaturesForm({ settings, disabled, onSave }) {
   );
 }
 
+function DemoDataSection({ settings, disabled, canManageCollections, onLoad }) {
+  const isLookup = settings.relationshipSourceType === 'lookup';
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+      <p style={{ fontSize: 12, margin: 0 }}>
+        Loads the bundled sample node/relationship types and a small set of
+        sample relationships, so a fresh install can be explored
+        immediately. This is the same data and process DATA_INGESTION.md
+        and INSTALL.md describe for manual setup - this button just runs it
+        for you.{' '}
+        {isLookup ? (
+          <strong>
+            Lookup mode: this replaces the entire contents of the
+            configured relationship lookup (&quot;{settings.relationshipLookup}
+            &quot;), which must already exist as a registered lookup
+            definition (Settings &gt; Lookups &gt; Lookup table
+            definitions).
+          </strong>
+        ) : (
+          <strong>
+            Index mode: this adds the sample relationships as new events to
+            the configured index (&quot;{settings.relationshipIndex}
+            &quot;) - it does not remove any existing data there, and that
+            index must already exist.
+          </strong>
+        )}
+        {' '}It always replaces the current node/relationship type
+        configuration (graphlens_node_types / graphlens_relationship_types).
+      </p>
+      {!canManageCollections && (
+        <div className="graphlens-error-banner" role="status">
+          You do not hold the graphlens_manage_collections capability, so
+          this action is unavailable. Ask a GraphLens administrator.
+        </div>
+      )}
+      <Button label="Load demo data" appearance="destructive" disabled={disabled} onClick={onLoad} />
+    </div>
+  );
+}
+
 function NumberField({ label, value, disabled, onChange }) {
   const id = `graphlens-cfg-${label.replace(/\s+/g, '-').toLowerCase()}`;
   return (
@@ -214,4 +288,10 @@ const settingsShape = PropTypes.shape({
 LimitsForm.propTypes = { settings: settingsShape.isRequired, disabled: PropTypes.bool.isRequired, onSave: PropTypes.func.isRequired };
 SearchForm.propTypes = { settings: settingsShape.isRequired, disabled: PropTypes.bool.isRequired, onSave: PropTypes.func.isRequired };
 FeaturesForm.propTypes = { settings: settingsShape.isRequired, disabled: PropTypes.bool.isRequired, onSave: PropTypes.func.isRequired };
+DemoDataSection.propTypes = {
+  settings: settingsShape.isRequired,
+  disabled: PropTypes.bool.isRequired,
+  canManageCollections: PropTypes.bool.isRequired,
+  onLoad: PropTypes.func.isRequired,
+};
 NumberField.propTypes = { label: PropTypes.string.isRequired, value: PropTypes.number.isRequired, disabled: PropTypes.bool.isRequired, onChange: PropTypes.func.isRequired };
