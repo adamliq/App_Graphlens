@@ -308,6 +308,15 @@ loading straight onto the canvas.
   action (pin, unpin, hide, expand) dispatches exactly the same already-
   reviewed path the single-node version of that action already uses, just
   once per selected node.
+- **The right-click context menu (1.20.0)** adds no new action and no
+  new capability: every item it offers (Expand/Collapse, Pin/Unpin,
+  Hide, Centre on screen, View supporting events, Use as path endpoint)
+  dispatches the exact same handler the details panel's own button for
+  that action already uses, and every one of those actions is already
+  available to any viewer-tier user with no capability check of its
+  own. The menu itself is purely a UI convenience (a `@splunk/react-ui`
+  Popover anchored to the canvas) with no search or state of its own
+  beyond which node it is currently showing for.
 - **The time slicer** is a pure client-side filter over data already
   fetched (see ARCHITECTURE.md) - identical in kind to the existing Risk
   filter, just filtering on `firstSeen`/`lastSeen` instead of risk score.

@@ -2,6 +2,28 @@
 
 All notable changes to GraphLens are documented in this file.
 
+## [1.20.0] - 2026-11-25
+
+### Added
+
+- **Right-click context menu for a node.** GraphCanvas previously had no
+  response at all to a right-click; it now listens for Cytoscape's
+  `cxttap` event and opens a new `NodeContextMenu.jsx` (a
+  `@splunk/react-ui` Popover+Menu anchored to the canvas) with Expand/
+  Collapse, Pin/Unpin, Hide, Centre on screen, View supporting events
+  and Use as path endpoint - the exact same handlers `App.jsx` already
+  passes to `NodeDetailsPanel.jsx` for those actions, not a second
+  implementation of any of them. Right-clicking also selects the node,
+  so the details panel and the menu always agree on which node is being
+  acted on.
+- The canvas's native browser right-click menu is now suppressed
+  everywhere over it (node, edge, or empty background), not just where
+  our own menu appears, so right-clicking never shows a mismatched
+  browser menu alongside or instead of GraphLens's own.
+- No new capability: every action in the menu was already available to
+  any viewer-tier user from the details panel with no capability check
+  of its own.
+
 ## [1.19.0] - 2026-11-25
 
 ### Added

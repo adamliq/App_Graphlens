@@ -1,6 +1,7 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import PropTypes from 'prop-types';
 import cytoscape from 'cytoscape';
+import NodeContextMenu from './NodeContextMenu';
 
 const DEFAULT_NODE_COLOR = '#5A2BE2';
 const DEFAULT_EDGE_COLOR = '#9B9B9B';
@@ -157,16 +158,25 @@ export default function GraphCanvas({
   layoutName,
   layoutToken,
   pinnedNodeIds,
+  expandedNodeIds,
   highlightedPath,
   onSelectNode,
   onSelectEdge,
   onClearSelection,
   onExpandNode,
+  onCollapseNode,
+  onHideNode,
+  onPinNode,
+  onUnpinNode,
+  onViewEvidence,
+  onSetPathEndpoint,
   onMultiSelectNodes,
   onCyReady,
 }) {
   const containerRef = useRef(null);
   const cyRef = useRef(null);
+  const [contextMenu, setContextMenu] = useState({ open: false, nodeId: null, point: null });
+  const closeContextMenu = () => setContextMenu((s) => (s.open ? { ...s, open: false } : s));
 
   useEffect(() => {
     const cy = cytoscape({
@@ -200,6 +210,29 @@ export default function GraphCanvas({
     // still drives the details panel exactly as before.
     cy.on('select unselect', 'node', () => onMultiSelectNodes(cy.nodes(':selected').map((n) => n.id())));
 
+    // Right-click (cxttap) a node: select it exactly like a left click
+    // would (so the Details panel agrees with whatever the menu is
+    // about to act on), then open NodeContextMenu at the click's
+    // position relative to this canvas (renderedPosition, which is
+    // already in the same coordinate space Popover's `pointTo` expects
+    // relative to its anchor). The container's own native `contextmenu`
+    // listener below suppresses the browser's own right-click menu
+    // everywhere on the canvas, node or not, so right-clicking an edge
+    // or empty background never shows a mismatched browser menu next to
+    // ours.
+    cy.on('cxttap', 'node', (evt) => {
+      onSelectNode(evt.target.id());
+      setContextMenu({ open: true, nodeId: evt.target.id(), point: { x: evt.renderedPosition.x, y: evt.renderedPosition.y } });
+    });
+    // Close the menu on any ordinary tap (selection/deselection already
+    // handled by the listeners above) and whenever the viewport moves,
+    // so it never floats disconnected from the node it was opened for.
+    cy.on('tap pan zoom', () => closeContextMenu());
+
+    const containerEl = containerRef.current;
+    const preventNativeContextMenu = (evt) => evt.preventDefault();
+    containerEl.addEventListener('contextmenu', preventNativeContextMenu);
+
     const handleKeyDown = (evt) => { if (evt.key === 'Shift') cy.boxSelectionEnabled(true); };
     const handleKeyUp = (evt) => { if (evt.key === 'Shift') cy.boxSelectionEnabled(false); };
     document.addEventListener('keydown', handleKeyDown);
@@ -208,6 +241,7 @@ export default function GraphCanvas({
     if (onCyReady) onCyReady(cy);
 
     return () => {
+      containerEl.removeEventListener('contextmenu', preventNativeContextMenu);
       document.removeEventListener('keydown', handleKeyDown);
       document.removeEventListener('keyup', handleKeyUp);
       cy.destroy();
@@ -271,7 +305,32 @@ export default function GraphCanvas({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [layoutToken, layoutName]);
 
-  return <div ref={containerRef} className="graphlens-canvas" role="img" aria-label="Relationship graph canvas" />;
+  const contextMenuNode = contextMenu.nodeId
+    ? (nodes.find((n) => n.data.id === contextMenu.nodeId) || { data: { id: contextMenu.nodeId, label: contextMenu.nodeId } }).data
+    : null;
+
+  return (
+    <>
+      <div ref={containerRef} className="graphlens-canvas" role="img" aria-label="Relationship graph canvas" />
+      <NodeContextMenu
+        open={contextMenu.open}
+        anchor={containerRef.current}
+        point={contextMenu.point}
+        node={contextMenuNode}
+        isExpanded={contextMenu.nodeId ? expandedNodeIds.includes(contextMenu.nodeId) : false}
+        isPinned={contextMenu.nodeId ? pinnedNodeIds.includes(contextMenu.nodeId) : false}
+        onRequestClose={closeContextMenu}
+        onExpand={onExpandNode}
+        onCollapse={onCollapseNode}
+        onHide={onHideNode}
+        onPin={onPinNode}
+        onUnpin={onUnpinNode}
+        onViewEvidence={onViewEvidence}
+        onSetPathEndpoint={onSetPathEndpoint}
+        onCenter={(nodeId) => centerOnNode(cyRef.current, nodeId)}
+      />
+    </>
+  );
 }
 
 GraphCanvas.propTypes = {
@@ -280,11 +339,18 @@ GraphCanvas.propTypes = {
   layoutName: PropTypes.string.isRequired,
   layoutToken: PropTypes.number.isRequired,
   pinnedNodeIds: PropTypes.array.isRequired,
+  expandedNodeIds: PropTypes.array.isRequired,
   highlightedPath: PropTypes.shape({ nodeIds: PropTypes.array, edgeIds: PropTypes.array }),
   onSelectNode: PropTypes.func.isRequired,
   onSelectEdge: PropTypes.func.isRequired,
   onClearSelection: PropTypes.func.isRequired,
   onExpandNode: PropTypes.func.isRequired,
+  onCollapseNode: PropTypes.func.isRequired,
+  onHideNode: PropTypes.func.isRequired,
+  onPinNode: PropTypes.func.isRequired,
+  onUnpinNode: PropTypes.func.isRequired,
+  onViewEvidence: PropTypes.func.isRequired,
+  onSetPathEndpoint: PropTypes.func.isRequired,
   onMultiSelectNodes: PropTypes.func.isRequired,
   onCyReady: PropTypes.func,
 };

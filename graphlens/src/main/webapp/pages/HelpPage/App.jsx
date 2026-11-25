@@ -1,7 +1,7 @@
 import React from 'react';
 import PageNav from '../../shared/components/PageNav';
 
-const APP_VERSION = '1.19.0';
+const APP_VERSION = '1.20.0';
 
 /**
  * Static, no-dependency reference page - unlike the other three pages,
@@ -71,6 +71,14 @@ export default function App() {
             details panel shows <strong>bulk actions</strong> instead -
             Pin all, Unpin all, Hide all, Expand all - each the same action
             a single node already has.
+          </li>
+          <li>
+            <strong>Right-click a node</strong> (1.20.0): opens a context
+            menu with the same actions the details panel already offers -
+            Expand/Collapse, Pin/Unpin, Hide, Centre on screen, View
+            supporting events, Use as path endpoint. Right-clicking also
+            selects the node. Right-clicking an edge or empty canvas shows
+            no menu.
           </li>
         </ul>
       </section>
