@@ -18,18 +18,21 @@ export default function App() {
   const [settings, setSettings] = useState(null);
   const [canManage, setCanManage] = useState(false);
   const [canManageCollections, setCanManageCollections] = useState(false);
+  const [canUseSearchSource, setCanUseSearchSource] = useState(false);
   const [status, setStatus] = useState(null);
   const [isSaving, setIsSaving] = useState(false);
 
   const reload = useCallback(async () => {
-    const [loadedSettings, allowed, allowedCollections] = await Promise.all([
+    const [loadedSettings, allowed, allowedCollections, allowedSearchSource] = await Promise.all([
       getSettings(),
       hasCapability(CAPABILITIES.MANAGE_CONFIG),
       hasCapability(CAPABILITIES.MANAGE_COLLECTIONS),
+      hasCapability(CAPABILITIES.USE_SEARCH_SOURCE),
     ]);
     setSettings(loadedSettings);
     setCanManage(allowed);
     setCanManageCollections(allowedCollections);
+    setCanUseSearchSource(allowedSearchSource);
   }, []);
 
   useEffect(() => { reload(); }, [reload]);
@@ -102,7 +105,12 @@ export default function App() {
 
       <section className="graphlens-section">
         <h2>Search defaults</h2>
-        <SearchForm settings={settings} disabled={!canManage || isSaving} onSave={(values) => save('search', values)} />
+        <SearchForm
+          settings={settings}
+          disabled={!canManage || isSaving}
+          canUseSearchSource={canUseSearchSource}
+          onSave={(values) => save('search', values)}
+        />
       </section>
 
       <section className="graphlens-section">
@@ -143,14 +151,19 @@ function LimitsForm({ settings, disabled, onSave }) {
   );
 }
 
-function SearchForm({ settings, disabled, onSave }) {
+function SearchForm({ settings, disabled, canUseSearchSource, onSave }) {
   const [values, setValues] = useState({
     relationship_source_type: settings.relationshipSourceType,
     relationship_index: settings.relationshipIndex,
     relationship_lookup: settings.relationshipLookup,
+    relationship_saved_search: settings.relationshipSavedSearch,
+    relationship_dataset: settings.relationshipDataset,
     evidence_default_index: settings.evidenceDefaultIndex,
   });
   const isLookup = values.relationship_source_type === 'lookup';
+  const isSavedSearch = values.relationship_source_type === 'saved_search';
+  const isDataset = values.relationship_source_type === 'dataset';
+  const isSearchBacked = isSavedSearch || isDataset;
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
       <label htmlFor="graphlens-cfg-source-type" style={{ fontSize: 12 }}>
@@ -164,10 +177,29 @@ function SearchForm({ settings, disabled, onSave }) {
           >
             <Select.Option label="Index (time-series events)" value="index" />
             <Select.Option label="Lookup (static table)" value="lookup" />
+            <Select.Option
+              label="Saved search (pre-authored results)"
+              value="saved_search"
+              disabled={!canUseSearchSource}
+              description={canUseSearchSource ? undefined : 'Requires graphlens_use_search_source'}
+            />
+            <Select.Option
+              label="Table Dataset (Settings > Datasets)"
+              value="dataset"
+              disabled={!canUseSearchSource}
+              description={canUseSearchSource ? undefined : 'Requires graphlens_use_search_source'}
+            />
           </Select>
         </div>
       </label>
-      {!isLookup && (
+      {!canUseSearchSource && isSearchBacked && (
+        <div className="graphlens-error-banner" role="status">
+          This is already set to {isDataset ? 'Table Dataset' : 'Saved search'}, but you do not hold the
+          graphlens_use_search_source capability, so you cannot change it
+          further. Ask a GraphLens administrator.
+        </div>
+      )}
+      {values.relationship_source_type === 'index' && (
         <label htmlFor="graphlens-cfg-index" style={{ fontSize: 12 }}>
           Relationship index
           <Text inputId="graphlens-cfg-index" value={values.relationship_index} disabled={disabled} onChange={(e, { value }) => setValues((s) => ({ ...s, relationship_index: value }))} />
@@ -177,6 +209,32 @@ function SearchForm({ settings, disabled, onSave }) {
         <label htmlFor="graphlens-cfg-lookup" style={{ fontSize: 12 }}>
           Relationship lookup (lookup definition name, not a .csv filename)
           <Text inputId="graphlens-cfg-lookup" value={values.relationship_lookup} disabled={disabled} onChange={(e, { value }) => setValues((s) => ({ ...s, relationship_lookup: value }))} />
+        </label>
+      )}
+      {isSavedSearch && (
+        <label htmlFor="graphlens-cfg-saved-search" style={{ fontSize: 12 }}>
+          Relationship saved search (name, not SPL - results must already be
+          shaped to the relationship schema, see DATA_MODEL.md)
+          <Text
+            inputId="graphlens-cfg-saved-search"
+            value={values.relationship_saved_search}
+            disabled={disabled || !canUseSearchSource}
+            onChange={(e, { value }) => setValues((s) => ({ ...s, relationship_saved_search: value }))}
+          />
+        </label>
+      )}
+      {isDataset && (
+        <label htmlFor="graphlens-cfg-dataset" style={{ fontSize: 12 }}>
+          Relationship Table Dataset (the dataset&apos;s underlying model
+          name, not necessarily the display title shown in Settings &gt;
+          Datasets - results must already be shaped to the relationship
+          schema, see DATA_MODEL.md)
+          <Text
+            inputId="graphlens-cfg-dataset"
+            value={values.relationship_dataset}
+            disabled={disabled || !canUseSearchSource}
+            onChange={(e, { value }) => setValues((s) => ({ ...s, relationship_dataset: value }))}
+          />
         </label>
       )}
       <label htmlFor="graphlens-cfg-evidence-index" style={{ fontSize: 12 }}>
@@ -217,6 +275,9 @@ function FeaturesForm({ settings, disabled, onSave }) {
 
 function DemoDataSection({ settings, disabled, canManageCollections, onLoad }) {
   const isLookup = settings.relationshipSourceType === 'lookup';
+  const isSavedSearch = settings.relationshipSourceType === 'saved_search';
+  const isDataset = settings.relationshipSourceType === 'dataset';
+  const isSearchBacked = isSavedSearch || isDataset;
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
       <p style={{ fontSize: 12, margin: 0 }}>
@@ -225,7 +286,15 @@ function DemoDataSection({ settings, disabled, canManageCollections, onLoad }) {
         immediately. This is the same data and process DATA_INGESTION.md
         and INSTALL.md describe for manual setup - this button just runs it
         for you.{' '}
-        {isLookup ? (
+        {isSearchBacked ? (
+          <strong>
+            Not available in {isDataset ? 'Table Dataset' : 'Saved search'}
+            {' '}mode: there is no bundled relationship data to load into
+            {isDataset ? ' a dataset' : ' a search'} you authored yourself.
+            Switch Relationship data source above to Index or Lookup to use
+            this button.
+          </strong>
+        ) : isLookup ? (
           <strong>
             Lookup mode: this replaces the entire contents of the
             configured relationship lookup (&quot;{settings.relationshipLookup}
@@ -241,16 +310,20 @@ function DemoDataSection({ settings, disabled, canManageCollections, onLoad }) {
             index must already exist.
           </strong>
         )}
-        {' '}It always replaces the current node/relationship type
-        configuration (graphlens_node_types / graphlens_relationship_types).
+        {!isSearchBacked && (
+          <>
+            {' '}It always replaces the current node/relationship type
+            configuration (graphlens_node_types / graphlens_relationship_types).
+          </>
+        )}
       </p>
-      {!canManageCollections && (
+      {!canManageCollections && !isSearchBacked && (
         <div className="graphlens-error-banner" role="status">
           You do not hold the graphlens_manage_collections capability, so
           this action is unavailable. Ask a GraphLens administrator.
         </div>
       )}
-      <Button label="Load demo data" appearance="destructive" disabled={disabled} onClick={onLoad} />
+      <Button label="Load demo data" appearance="destructive" disabled={disabled || isSearchBacked} onClick={onLoad} />
     </div>
   );
 }
@@ -274,6 +347,8 @@ const settingsShape = PropTypes.shape({
   relationshipSourceType: PropTypes.string,
   relationshipIndex: PropTypes.string,
   relationshipLookup: PropTypes.string,
+  relationshipSavedSearch: PropTypes.string,
+  relationshipDataset: PropTypes.string,
   evidenceDefaultIndex: PropTypes.string,
   enableExport: PropTypes.bool,
   enableAnnotations: PropTypes.bool,
@@ -286,7 +361,12 @@ const settingsShape = PropTypes.shape({
 });
 
 LimitsForm.propTypes = { settings: settingsShape.isRequired, disabled: PropTypes.bool.isRequired, onSave: PropTypes.func.isRequired };
-SearchForm.propTypes = { settings: settingsShape.isRequired, disabled: PropTypes.bool.isRequired, onSave: PropTypes.func.isRequired };
+SearchForm.propTypes = {
+  settings: settingsShape.isRequired,
+  disabled: PropTypes.bool.isRequired,
+  canUseSearchSource: PropTypes.bool.isRequired,
+  onSave: PropTypes.func.isRequired,
+};
 FeaturesForm.propTypes = { settings: settingsShape.isRequired, disabled: PropTypes.bool.isRequired, onSave: PropTypes.func.isRequired };
 DemoDataSection.propTypes = {
   settings: settingsShape.isRequired,

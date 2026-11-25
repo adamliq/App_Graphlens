@@ -98,11 +98,30 @@ instance's configured home) to switch away from GraphLens entirely.
   extra layout dependency needs to be packaged/vetted. A future release
   could add `cytoscape-dagre`/`cytoscape-cola` if a customer need
   justifies the extra dependency surface.
-- **Import only accepts a GraphLens JSON export, and always replaces the
-  whole current graph** - there is no way to import a CSV file (nodes/
-  edges exports are flat tables and do not round-trip the structure JSON
-  does) or to merge an imported file into the graph already on screen.
-  Import a file first, then expand further, if you want to combine them.
+- **Import only accepts two specific file shapes, and always replaces
+  the whole current graph** - a GraphLens JSON export, or a CSV already
+  shaped to the relationship schema (1.18.0; see the Help page). There
+  is no way to merge an imported file into the graph already on screen
+  (import a file first, then expand further, if you want to combine
+  them), and the **exported** CSV files (nodes/edges) specifically
+  remain one-way - they are two separate flat tables with different
+  column names than the relationship schema, so they do not round-trip
+  the structure JSON does, and are not accepted back by Import.
+- **A CSV import's rows are classified by which fields they happen to
+  carry, the same way Load from job's are, and cannot be reshaped** -
+  `classifyJobResultRows` cannot turn an arbitrary CSV into the
+  relationship schema; a row without `node_id` or `source_id`+
+  `target_id`+`relationship_type` is silently skipped rather than
+  partially imported.
+- **Load from job (1.17.0) always replaces the whole current graph, same
+  as Import, and only works while the job's results still exist** -
+  Splunk expires a job's results on its own TTL (a few minutes by
+  default) once it finishes, unless the job has been pinned or
+  scheduled; there is no way to extend that from GraphLens. It also
+  requires the job's results already be shaped to the relationship
+  schema - GraphLens classifies each row by its own fields
+  (`jobResultsService.js`) but cannot reshape data that does not already
+  carry `node_id` or `source_id`/`target_id`/`relationship_type`.
 - **The query language (`graphQueryLanguage.js`) supports a deliberately
   small, fixed grammar** - one document, one root field always named
   `node`, no fragments, variables, aliases or directives. Concretely:
@@ -252,4 +271,24 @@ instance's configured home) to switch away from GraphLens entirely.
   configured index to already exist (it does not create one). "View
   supporting events" only resolves for demo data loaded in index mode -
   lookup mode writes no backing raw events for it to find, since lookup
-  mode never ingests events in the first place.
+  mode never ingests events in the first place. Not available at all in
+  saved-search mode (1.14.0+) or Table Dataset mode (1.16.0+) - there is
+  no bundled relationship data to load into a search or dataset you
+  authored yourself; the button is disabled in either mode.
+- **Saved search and Table Dataset as a relationship data source
+  (1.14.0+/1.16.0+) are not reviewed by GraphLens.** Unlike an index or a
+  lookup, GraphLens has no way to verify what a configured saved search or
+  Table Dataset actually does - it trusts the named object's author and
+  content entirely, the same way lookup mode already trusts a configured
+  lookup's content. See SECURITY.md, "Saved search as a relationship data
+  source." Table Dataset mode additionally only exposes one object's rows
+  if the underlying data model has more than one (an unusual shape for a
+  genuine Table Dataset, which is single-object by design, but possible
+  for a hand-authored multi-object data model) - point
+  `relationship_dataset` at a true single-table Table Dataset to avoid
+  this ambiguity. It also only exposes columns explicitly added in the
+  Table Dataset Editor - confirmed live that a field present in the
+  underlying raw event but never added as a dataset column is simply
+  absent from `| from datamodel:`'s results, not included by default the
+  way a plain index search would include it. See DATA_INGESTION.md
+  section F.

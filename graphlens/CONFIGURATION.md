@@ -18,9 +18,11 @@ through Splunk's standard `configs/conf-*` REST endpoint.
 | | `max_path_depth` | 5 | Max hops considered by the path finder |
 | | `max_search_result_rows` | 500 | Upper bound on every controlled search's `\| head` |
 | | `search_dispatch_max_time_seconds` | 30 | Client-side search timeout |
-| `[search]` | `relationship_source_type` | `index` | `index` or `lookup` - where observed relationship data comes from (see DATA_INGESTION.md) |
+| `[search]` | `relationship_source_type` | `index` | `index`, `lookup`, `saved_search` or `dataset` - where observed relationship data comes from (see DATA_INGESTION.md). Setting this to `saved_search` or `dataset`, and changing `relationship_saved_search`/`relationship_dataset` once it is, all require the `graphlens_use_search_source` capability - see SECURITY.md |
 | | `relationship_index` | `graphlens_relationships` | Index searched when `relationship_source_type = index` |
 | | `relationship_lookup` | `graphlens_relationships_lookup` | **Lookup definition** name (not a raw CSV filename) read via `\| inputlookup` when `relationship_source_type = lookup` - see DATA_INGESTION.md |
+| | `relationship_saved_search` | empty | Saved search name read via `\| savedsearch` when `relationship_source_type = saved_search` - see DATA_INGESTION.md |
+| | `relationship_dataset` | empty | **Table Dataset's underlying model name** (not its display title) read via `\| from datamodel:` when `relationship_source_type = dataset` - see DATA_INGESTION.md |
 | | `evidence_default_index` | `*` | Fallback index for evidence search |
 | | `default_earliest` / `default_latest` | `-24h` / `now` | Default time range |
 | `[features]` | `enable_export` / `enable_annotations` / `enable_saved_views` / `enable_clustering` / `enable_path_finder` / `enable_graph_query` | all `true` | Feature toggles |
@@ -73,7 +75,47 @@ DATA_INGESTION.md/INSTALL.md it automates), does three things:
 
 This is a convenience for trying GraphLens out, or demoing it, before
 bringing in real data - it is not part of bringing your own data in (see
-DATA_INGESTION.md).
+DATA_INGESTION.md). It is not available when `relationship_source_type =
+saved_search` or `dataset` (below) - there is no bundled relationship data
+to load into a search or a Table Dataset you authored yourself; the
+Configuration page's Load demo data button is disabled with an
+explanation in either mode.
+
+## Relationship data source: saved search and Table Dataset
+
+`relationship_source_type = saved_search` and `= dataset` are a third and
+fourth alternative to Index and Lookup (above), for relationship data
+better expressed as an already-authored search or dataset than as either
+of those:
+
+- **Saved search** - a join across several indexes, a transforming
+  search, anything not naturally a single index or a single static table.
+  GraphLens runs it via `| savedsearch "<relationship_saved_search>"`.
+- **Table Dataset** (Settings > Datasets > Create Table View) - the same
+  idea, authored through Splunk's own Datasets UI instead of as a saved
+  search. GraphLens runs it via `| from datamodel:"<relationship_dataset>"`
+  - a Table Dataset is itself stored as a single-object data model under
+  the hood, which is why this reads it the same way a hand-authored data
+  model would be read (and why **`relationship_dataset` must be the
+  dataset's underlying model name, not necessarily the display title**
+  shown in the Datasets listing - open the dataset's own detail page in
+  Settings > Datasets to find it if they differ).
+
+Both run the same way index mode runs `search index=...` and lookup mode
+runs `| inputlookup <name>`; their results must already be shaped to the
+relationship schema (DATA_MODEL.md) the same way an indexed event or a
+lookup row already has to be - GraphLens does not transform them.
+
+**Setting `relationship_source_type` to `saved_search` or `dataset`, and
+changing `relationship_saved_search`/`relationship_dataset` once it is,
+all require the `graphlens_use_search_source` capability** - deliberately
+not granted to any example role by default (default/authorize.conf),
+unlike every other setting on this page, which only needs
+`graphlens_manage_config`. See SECURITY.md, "Saved search as a
+relationship data source," for why this is kept separate: pointing
+GraphLens at a saved search or a Table Dataset means trusting that
+search's or dataset's own author and content, not reviewing it the way
+GraphLens reviews its own bounded SPL templates.
 
 ## Query language
 

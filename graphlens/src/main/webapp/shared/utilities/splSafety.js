@@ -46,6 +46,26 @@ export const SOURCETYPE_PATTERN = /^[A-Za-z0-9_:.-]{1,150}$/;
 // index/sourcetype).
 export const LOOKUP_NAME_PATTERN = /^[A-Za-z0-9_-]{1,80}$/;
 
+// Saved search name grammar - wider than INDEX_NAME_PATTERN/LOOKUP_NAME_PATTERN
+// (a real saved search name commonly has spaces, e.g. "GraphLens - CMDB
+// relationships") but still excludes quotes, backslashes, pipes and control
+// characters, since the name is substituted into a double-quoted SPL string
+// literal (`| savedsearch "$name$"`) by an admin-configured setting, not raw
+// end-user input - validated anyway per this module's defence-in-depth
+// convention (see safeIndexNameOrFallback's comment for the same point).
+export const SAVED_SEARCH_NAME_PATTERN = /^[A-Za-z0-9][A-Za-z0-9 _.-]{0,99}$/;
+
+// Table Dataset / data model name grammar. Unlike a saved search's display
+// name, a data model's own `modelName` (the identifier `| from
+// datamodel:"<name>"` actually takes - confirmed against a live instance
+// that this is always machine-id-shaped, distinct from its separate,
+// free-text `displayName`) never contains spaces, so this is as strict as
+// INDEX_NAME_PATTERN/LOOKUP_NAME_PATTERN for the same reason - still
+// double-quoted and escaped when embedded (see
+// buildRelationshipSourceLines), as defence in depth rather than because
+// it needs to be.
+export const DATASET_NAME_PATTERN = /^[A-Za-z0-9_-]{1,100}$/;
+
 export const LAYOUT_ALLOWLIST = Object.freeze(['cose', 'concentric', 'breadthfirst', 'circle', 'grid']);
 export const EXPORT_FORMAT_ALLOWLIST = Object.freeze(['json', 'csv-nodes', 'csv-edges', 'png']);
 export const TARGET_KIND_ALLOWLIST = Object.freeze(['node', 'edge']);
@@ -193,6 +213,16 @@ export function safeSourcetypeOrFallback(value, fallback = '*') {
 /** Returns `value` if it is a safe, bare lookup table name, otherwise `fallback`. */
 export function safeLookupNameOrFallback(value, fallback) {
   return typeof value === 'string' && LOOKUP_NAME_PATTERN.test(value) ? value : fallback;
+}
+
+/** Returns `value` if it is a safe saved search name (still to be quoted/embedded as a double-quoted SPL string literal by the caller), otherwise `fallback`. */
+export function safeSavedSearchNameOrFallback(value, fallback) {
+  return typeof value === 'string' && SAVED_SEARCH_NAME_PATTERN.test(value) ? value : fallback;
+}
+
+/** Returns `value` if it is a safe Table Dataset / data model name, otherwise `fallback`. */
+export function safeDatasetNameOrFallback(value, fallback) {
+  return typeof value === 'string' && DATASET_NAME_PATTERN.test(value) ? value : fallback;
 }
 
 /** Validate a Splunk relative or ISO-8601 time literal used for earliest/latest tokens. */

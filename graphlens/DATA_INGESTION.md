@@ -140,6 +140,121 @@ time to filter by unless you give it one). Switch to index mode (option A)
 once you want genuinely time-bounded, continuously-updated relationship
 data.
 
+**E. No index and no lookup - read directly from a saved search you
+already wrote.** If your relationship data is better expressed as an
+already-authored search - a join across several indexes, a data model
+search, a transforming search over a CMDB you already have a working
+query for - than as either a single index or a single static table, you
+can point GraphLens at that search instead of recreating it as a lookup:
+
+1. Author (or reuse) a saved search whose results are already shaped to
+   the relationship schema above - the same columns an index event or a
+   lookup row needs (`source_id`, `target_id`, `relationship_type`, etc.;
+   `edge_id`/`event_count`/`first_seen`/`last_seen` can be omitted or left
+   blank - see DATA_MODEL.md). GraphLens runs it with `| savedsearch
+   "<name>"` and applies no transformation of its own, so its results must
+   already match.
+2. In the Configuration page, set **Relationship data source** to
+   **Saved search (pre-authored results)** and **Relationship saved
+   search** to that search's name. **Both of these require the
+   `graphlens_use_search_source` capability**, which is deliberately not
+   granted to any example role by default - see SECURITY.md, "Saved
+   search as a relationship data source," before using this option: unlike
+   an index or a lookup, GraphLens does not review a saved search's
+   content, so whoever can author or edit it effectively controls what
+   data appears in the graph.
+3. That's it - no new index, no lookup definition, no HEC. GraphLens reads
+   it with `| savedsearch "<name>"` the same way it reads an index with
+   `search index=<name>` or a lookup with `| inputlookup <name>`, for
+   every entity search and expansion.
+
+This is the right choice when the shape of your relationship data is
+already the hard part solved, and the remaining work is just telling
+GraphLens where to find it - but it does mean the data an administrator
+sees in the graph is only as trustworthy as whoever last edited that
+saved search, which is exactly why this one option is gated by its own
+capability rather than sharing `graphlens_manage_config` with every other
+setting on this page.
+
+**F. No index, no lookup and no saved search - read directly from a
+Table Dataset.** Splunk's own Datasets feature (Settings > Datasets) lets
+you build a table-shaped dataset through a guided editor rather than
+hand-writing SPL - the same underlying idea as option E above, authored a
+different way:
+
+1. Open Settings > Datasets (or the Search app's Datasets tab) and click
+   **Create Table View**. Pick a base index/sourcetype, then **explicitly
+   add every column your relationship schema below needs as a field in
+   the editor** (`source_id`, `target_id`, `relationship_type`, etc. -
+   `edge_id`/`event_count`/`first_seen`/`last_seen` can be omitted; see
+   DATA_MODEL.md), using eval expressions for any column that isn't
+   already a field. This step is easy to under-do and matters: confirmed
+   live that a field not added as a column here is simply absent from
+   what `| from datamodel:` returns, even though the underlying raw event
+   has it - the dataset only ever exposes columns you explicitly added,
+   not "every field" by default. Save it with a name.
+2. **Find its underlying model name, not just its display title.** A
+   Table Dataset is itself stored as a single-object data model under the
+   hood, with a separate machine `modelName` (what GraphLens actually
+   needs) from the free-text title you typed when saving it - open the
+   dataset's own detail page in Settings > Datasets to find the former if
+   they differ. This is the same easy-to-miss distinction option D's step
+   2 calls out for a lookup *definition* name versus its file name.
+3. In the Configuration page, set **Relationship data source** to
+   **Table Dataset (Settings > Datasets)** and **Relationship Table
+   Dataset** to that model name. **Both of these require the
+   `graphlens_use_search_source` capability** - the same one saved-search
+   mode (option E) requires, and for the identical reason: see
+   SECURITY.md, "Saved search as a relationship data source," before
+   using this option.
+4. That's it - no index, no lookup, no HEC. GraphLens reads it with `|
+   from datamodel:"<name>"` (not `| datamodel "<name>" search`, which
+   would return fields prefixed with the dataset's object name instead of
+   the plain field names this app expects - see SECURITY.md for why), the
+   same way it reads an index with `search index=<name>`, a lookup with
+   `| inputlookup <name>`, or a saved search with `| savedsearch
+   "<name>"`, for every entity search and expansion.
+
+This is a reasonable middle ground between option D (hand-maintained
+lookup table) and option E (hand-written saved search SPL) for an
+administrator who wants point-and-click column selection over raw SPL
+authoring, but still carries the same trust caveat as option E: GraphLens
+does not review what the dataset actually computes.
+
+**G. Just want to try a one-off search's results, without changing any
+configuration at all.** If you already have, or just ran, an ad hoc or
+scheduled search whose results happen to be shaped to the relationship
+schema - and you just want to see them on the canvas once, not wire up a
+persistent relationship data source - use the toolbar's **Load from
+job** button (not the Configuration page) instead of options A-F:
+
+1. Run your search in Splunk Web's own Search app (or anywhere else) as
+   you normally would, shaped to the relationship schema above.
+2. Copy its job ID (sid) - visible in the Search app's Job Inspector, or
+   in the URL while the job is open.
+3. In GraphLens's Relationship Explorer, click toolbar **Load from job**
+   and paste it in.
+
+This is a one-time action, not a fifth `relationship_source_type`: it
+does not touch the Configuration page, requires no capability beyond
+ordinary toolbar access, and only works while the job's results still
+exist (Splunk expires them on its own TTL - a few minutes by default -
+once the job finishes, unless it has been pinned or scheduled). Reach
+for one of options A-F instead once you want this to be the graph's
+actual, persistent relationship data source.
+
+**H. Have a CSV file already shaped to the schema, and don't even want
+to run a search.** Option B above gets a CSV into an index via `splunk
+add oneshot`, which is the right move once you want it to be the
+graph's ongoing, persistent relationship data source. For a one-off
+look at a CSV you already have on hand - option B without the Splunk
+side at all - use the toolbar **Import** button instead: it accepts a
+CSV with the relationship schema's own column names (`source_id`,
+`target_id`, `relationship_type`, etc. - the exact same file you would
+otherwise `oneshot` or `outputlookup`) and loads it straight onto the
+canvas, client-side, the same way option G's Load from job does for a
+search job's results. See the Help page's "Export and import" section.
+
 ## 3. Register your types
 
 Node/relationship type colours, icons, shapes, and enabled flags live in

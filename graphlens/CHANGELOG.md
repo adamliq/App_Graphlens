@@ -2,6 +2,171 @@
 
 All notable changes to GraphLens are documented in this file.
 
+## [1.18.0] - 2026-11-25
+
+### Added
+
+- **Toolbar Import now also accepts a CSV file**, alongside the existing
+  GraphLens JSON export - a new, independent file shape detected
+  automatically by file extension (falling back to content sniffing for
+  a file matching neither `.json` nor `.csv`). The CSV must already be
+  shaped to the relationship schema documented on the Help page (the
+  same schema an index, lookup, saved search, Table Dataset or Load
+  from job already produces, and the one the bundled sample data ships
+  as) - not the different column names `exportNodesAsCsv`/
+  `exportEdgesAsCsv` write, which remain one-way.
+- `importService.js`'s new `parseImportedGraphCsv` reuses two existing
+  pieces rather than inventing new ones: a small, dependency-free
+  RFC4180-ish CSV tokenizer (handling quoted fields, embedded
+  commas/newlines, doubled-quote escaping - confirmed against the
+  bundled sample data's own quoted LDAP distinguished names) turns the
+  file into plain row objects, and `jobResultsService.js`'s
+  `classifyJobResultRows` (1.17.0) then classifies them into node
+  rows/edge rows exactly as it already does for "Load from job" - so a
+  CSV import and a job import behave identically once rows exist as
+  plain objects, and this adds no third row-classification scheme.
+- No new setting or capability: CSV import is gated by the same
+  `enableExport` flag Import/Export/Load from job already share, and
+  goes through the same `transformRowsToGraph` validation/escaping/
+  limit enforcement every other relationship source does.
+
+## [1.17.0] - 2026-11-25
+
+### Added
+
+- **"Load from job" toolbar action** - loads the results of a search job
+  that already exists (one you dispatched, or one shared with you - in
+  Splunk Web's own Search app, for example) onto the canvas, given only
+  its job id (sid). Unlike index/lookup/saved_search/dataset, this is a
+  one-time action, not a persistent relationship data source: a job's
+  results are themselves ephemeral (Splunk expires them on its own TTL
+  once a job finishes, unless pinned or scheduled), unlike an index, a
+  lookup, a saved search or a dataset's name. Reuses the exact same
+  poll/results/cancel machinery `dispatchSavedSearch`/`dispatchAdHocSearch`
+  already use (`searchService.js`'s new `attachToJob`), just skipping the
+  "start a new job" step - and reuses the same "classify raw rows, then
+  hand them to `transformRowsToGraph`" pipeline `importService.js`
+  already uses for an imported file - so this does not add a new SPL
+  template, server-side component, or bypass the existing row-validation
+  pipeline.
+- Does not grant access to any job the current user could not already
+  see: GraphLens never dispatches anything here, it only reads the
+  status/results endpoints of a job id you give it, which enforce
+  Splunk's own job-level sharing ACL exactly as they would for any other
+  REST caller - the same "UI convenience, not the security boundary"
+  pattern used throughout this app.
+- Gated by the same `settings.enableExport` flag Import/Export already
+  share (not a new capability or setting) - "Load from job" is
+  thematically a sibling "bring external data onto canvas" action.
+- A job's results can be shaped either as a one-hop expansion's edge rows
+  or a plain entity list's node rows, or a mix of both run together - the
+  new `jobResultsService.js`'s `classifyJobResultRows` inspects each raw
+  row's own fields to split them accordingly (mirroring
+  `importService.js`'s defensive stance toward a parsed JSON file: rows
+  matching neither shape are silently dropped and counted, never passed
+  through partially.
+
+## [1.16.0] - 2026-11-25
+
+### Added
+
+- **"Table Dataset" relationship data source** - a fourth alternative to
+  Index, Lookup and Saved search, for relationship data maintained
+  through Splunk's own Datasets feature (Settings > Datasets > Create
+  Table View) rather than a lookup table or hand-written saved search.
+  GraphLens runs it as `| from datamodel:"<name>"` - a Table Dataset is
+  itself stored as a single-object data model under the hood (confirmed
+  live: Splunk Web's own Datasets listing query only recognises
+  `inputlookup-table`, `inputlookup-transform` and `datamodel` as dataset
+  `eai:type`s, no separate "table dataset" type exists). `| datamodel
+  "<name>" search` was tried first and rejected after live testing showed
+  its output fields come back prefixed with the model's object name (e.g.
+  `Audit.user`, not `user`), which would have silently broken every field
+  this app expects; `| from datamodel:"<name>"` returns flat, unprefixed
+  names instead, confirmed live.
+- Gated by the **same `graphlens_use_search_source` capability** saved
+  search mode already uses (1.14.0) rather than a new one - both carry
+  the identical trust characteristic (GraphLens does not review the
+  named object's own content), so sharing one capability avoids
+  fragmenting an already-narrow permission by which Splunk feature
+  authored the content rather than by actual risk. See SECURITY.md's
+  "Saved search as a relationship data source" (now covers both) for the
+  full reasoning.
+- A data model's own `modelName` (what `relationship_dataset` must hold)
+  is always machine-id-shaped, confirmed distinct from its separate,
+  free-text display title - `DATASET_NAME_PATTERN` is as strict as the
+  index/lookup grammars rather than the wider one saved-search names use.
+- The Configuration page's Load demo data button (1.13.0) is disabled
+  with an explanation in Table Dataset mode too, same as saved-search
+  mode - there is no bundled relationship data to load into a dataset you
+  authored yourself.
+- New DATA_INGESTION.md section F and CONFIGURATION.md updates documenting
+  the new option; ARCHITECTURE.md's "How searches retrieve relationships"
+  and KNOWN_LIMITATIONS.md updated accordingly.
+
+Full npm test (409 tests) and lint (0 warnings) pass; AppInspect re-run
+clean (0 errors/failures, same 8-warning profile as prior releases).
+Version bumped to 1.16.0.
+
+## [1.15.0] - 2026-11-25
+
+### Added
+
+- **Relationship row/event schema table on the Help page**, under
+  "Loading your own data": the full flat field list (`edge_id`,
+  `source_id`/`source_type`/`source_label`, `target_id`/`target_type`/
+  `target_label`, `relationship_type`/`relationship_label`, `event_count`,
+  `first_seen`/`last_seen`, `risk_score`, `source_index`/
+  `source_sourcetype`, `evidence_reference`), each marked required or
+  not, with notes - the same shape every relationship source (index,
+  lookup, saved search) must already produce, previously only documented
+  in DATA_MODEL.md outside the app. Explicitly distinguished from the
+  separate nested node/edge JSON shapes DATA_MODEL.md also documents for
+  curated KV Store metadata, to avoid conflating the two.
+- "Where the relationship data comes from" and "Loading your own data"
+  reworded to cover all three relationship-source modes evenly (index,
+  lookup, saved search) now that saved-search mode exists (1.14.0).
+
+Full npm test (386 tests) and lint (0 warnings) pass; AppInspect re-run
+clean (0 errors/failures, same 8-warning profile as 1.13.0/1.14.0).
+Version bumped to 1.15.0.
+
+## [1.14.0] - 2026-11-25
+
+### Added
+
+- **"Saved search" relationship data source** - a third alternative to
+  Index and Lookup, for relationship data better expressed as an
+  already-authored search (a join across several indexes, a data model
+  search, etc) than as either of those. GraphLens runs it with `|
+  savedsearch "<name>"` (the name is double-quoted and escaped, since real
+  saved search names commonly have spaces, unlike the stricter bare
+  index/lookup identifier grammars) as a third alternative generating
+  clause alongside `search index=...` and `| inputlookup <name>` - no new
+  SPL template shape, just a third branch of the same
+  `buildRelationshipSourceLines` helper every relationship-reading
+  template already goes through.
+- **New `graphlens_use_search_source` capability**, gating both setting
+  `relationship_source_type` to `saved_search` and changing
+  `relationship_saved_search` once it is - kept separate from
+  `graphlens_manage_config` (which still gates every other Configuration
+  page setting) because pointing GraphLens at a saved search means
+  trusting that search's own author and content entirely, the same way
+  Lookup mode already means trusting a configured lookup's content.
+  Deliberately **not granted to any example role by default**, including
+  `role_graphlens_admin` - see SECURITY.md's new "Saved search as a
+  relationship data source" section and ADMIN_GUIDE.md.
+- The Configuration page's Load demo data button (1.13.0) is disabled
+  with an explanation in Saved search mode - there is no bundled
+  relationship data to load into a search you authored yourself.
+- New DATA_INGESTION.md section E and CONFIGURATION.md section documenting
+  the new option; ARCHITECTURE.md's "How searches retrieve relationships"
+  and KNOWN_LIMITATIONS.md updated accordingly.
+
+Full npm test (386 tests) and lint (0 warnings) pass; AppInspect re-run
+clean (0 errors/failures, same 8-warning profile as 1.13.0). Version
+bumped to 1.14.0.
+
 ## [1.13.0] - 2026-11-25
 
 ### Added

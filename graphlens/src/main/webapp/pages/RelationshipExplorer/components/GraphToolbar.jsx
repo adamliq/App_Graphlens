@@ -11,6 +11,7 @@ import NodesCentered from '@splunk/react-icons/NodesCentered';
 import TrashCanCross from '@splunk/react-icons/TrashCanCross';
 import ArrowCircleInRight from '@splunk/react-icons/ArrowCircleInRight';
 import ArrowCircleOutRight from '@splunk/react-icons/ArrowCircleOutRight';
+import MagnifierClock from '@splunk/react-icons/MagnifierClock';
 import EntitySearch from './EntitySearch';
 import TimeRangeSelector from './TimeRangeSelector';
 import { CYTOSCAPE_LAYOUTS } from './GraphCanvas';
@@ -35,6 +36,8 @@ export default function GraphToolbar({
   exportEnabled,
   onImportClick,
   importEnabled,
+  onLoadFromJobOpen,
+  loadFromJobEnabled,
 }) {
   return (
     <div className="graphlens-toolbar" role="toolbar" aria-label="Graph controls">
@@ -70,6 +73,7 @@ export default function GraphToolbar({
       <Button label="Reset graph" icon={<TrashCanCross />} onClick={onReset} appearance="destructive" />
       {importEnabled && <Button label="Import" icon={<ArrowCircleInRight />} onClick={onImportClick} />}
       {exportEnabled && <Button label="Export" icon={<ArrowCircleOutRight />} onClick={onExportOpen} />}
+      {loadFromJobEnabled && <Button label="Load from job" icon={<MagnifierClock />} onClick={onLoadFromJobOpen} />}
     </div>
   );
 }
@@ -94,4 +98,6 @@ GraphToolbar.propTypes = {
   exportEnabled: PropTypes.bool.isRequired,
   onImportClick: PropTypes.func.isRequired,
   importEnabled: PropTypes.bool.isRequired,
+  onLoadFromJobOpen: PropTypes.func.isRequired,
+  loadFromJobEnabled: PropTypes.bool.isRequired,
 };

@@ -88,13 +88,27 @@ take a `source` argument built by `configService.js`'s
 `relationshipSourceFromSettings()` from the Configuration page's
 "Relationship data source" setting: `{ type: 'index', index }` generates
 `search index="<index>" ...`; `{ type: 'lookup', lookupName }` generates
-`| inputlookup <lookup> | search ...` instead - confirmed against a live
-instance that `| inputlookup` works as the sole leading (generating)
-command for ad-hoc dispatch, the same way `search index=...` does, and
-that both the `| search` filter stage and a bracketed `append [ | inputlookup
-... ]` subsearch behave identically to their index-mode equivalents. See
-DATA_INGESTION.md for when to use a lookup instead of an index, and
-CHANGELOG.md 1.2.0 for why this replaced a static
+`| inputlookup <lookup> | search ...` instead; `{ type: 'saved_search',
+savedSearchName }` generates `| savedsearch "<name>" | search ...`;
+`{ type: 'dataset', datasetName }` generates `| from datamodel:"<name>" |
+search ...` - confirmed against a live instance that `| inputlookup`, `|
+savedsearch` and `| from datamodel:` all work as the sole leading
+(generating) command for ad-hoc dispatch, the same way `search
+index=...` does, and that the `| search` filter stage and a bracketed
+`append [ ... ]` subsearch behave identically regardless of which of the
+four leads. Both `savedsearch`'s and `from datamodel:`'s names are
+embedded in double quotes (unlike index/lookup names, which are
+stricter-grammar bare identifiers) since a real saved search name
+commonly has spaces, and quoting a dataset name costs nothing even though
+a data model's own `modelName` never does (see
+`DATASET_NAME_PATTERN`'s comment in splSafety.js) -
+`safeSavedSearchNameOrFallback`/`safeDatasetNameOrFallback` validate
+first and `escapeSplStringLiteral` escapes before embedding, the same
+defence-in-depth pairing already used elsewhere in this module. See
+DATA_INGESTION.md for when to use each of the four, SECURITY.md's "Saved
+search as a relationship data source" (also covers Table Dataset mode)
+for why those two are gated by their own shared capability, and
+CHANGELOG.md 1.2.0 for why the index/lookup design replaced a static
 `graphlens_relationship_index` macro that the Configuration page's
 "Relationship index" field never actually fed into.
 
@@ -194,9 +208,68 @@ Cytoscape elements replace the whole graph via `loadGraphSnapshot` (in
 `resetGraph` followed by loading several "root" nodes at once, so
 imported nodes carry no expansion parent/child link and can still be
 expanded further afterwards. The file itself is read client-side via the
-browser's `FileReader` API and never uploaded anywhere; import is a
+browser's `FileReader` API and never uploaded anywhere; JSON import is a
 convenience for resuming or sharing a graph snapshot, not a path for
-bringing Splunk data into GraphLens (see DATA_INGESTION.md for that).
+bringing Splunk data into GraphLens (see DATA_INGESTION.md for that) -
+except that since 1.18.0, Import also accepts a second, independent file
+shape for exactly that purpose (see below).
+
+### Import also accepts a relationship-schema CSV (1.18.0)
+
+`importService.js`'s `parseImportedGraphCsv` is Import's second accepted
+shape, alongside `parseImportedGraphJson` above - `handleImportFile`
+(RelationshipExplorer/App.jsx) picks between them by file extension,
+falling back to content sniffing (GraphLens's own JSON export always
+starts with `{`) for a file matching neither `.json` nor `.csv`. Unlike
+JSON import, a CSV import's columns are the relationship schema itself
+(`source_id`/`target_id`/`relationship_type`/... or `node_id`/...) -
+the same schema an index, lookup, saved search, Table Dataset or Load
+from job already produces - not GraphLens's own internal node/edge
+field names, so it genuinely is a way to bring your own data in, not
+just a snapshot convenience. A small, dependency-free RFC4180-ish
+tokenizer turns the file into rows of plain objects (keyed by its
+header row), which are then classified into node rows/edge rows by
+`jobResultsService.js`'s `classifyJobResultRows` - the exact same
+function "Load from job" (1.17.0) already uses, so a CSV import and a
+job import behave identically from that point on, both ultimately
+reaching the same `graphTransformer.transformRowsToGraph` JSON import
+does. This is deliberately not the shape `exportNodesAsCsv`/
+`exportEdgesAsCsv` write on the way out (different column names, two
+separate files for one graph) - that export pair remains one-way.
+
+## How "Load from job" attaches to an already-dispatched search (1.17.0)
+
+The toolbar **Load from job** action takes a user-supplied job id (sid)
+and loads that job's results onto the canvas, replacing the whole graph -
+the live-search counterpart to Import above, for a search the user (or
+someone who shared it with them) already ran, in Splunk Web's own Search
+app or anywhere else. It deliberately reuses two existing abstractions
+rather than introducing new ones:
+
+- `searchService.js`'s `attachToJob(sid, options)` calls the same shared
+  `createJobHandle` helper `dispatchSavedSearch`/`dispatchAdHocSearch`
+  already use, with a `startJob` that simply returns the given sid
+  instead of POSTing to create a new job. It exposes the identical
+  `{sid, waitForResults(), cancel()}` handle, so polling, timeout and
+  result-fetching behave exactly as they do for a search GraphLens
+  dispatched itself.
+- `jobResultsService.js`'s `classifyJobResultRows(rows)` inspects each
+  raw result row's own fields to split them into node rows (`node_id`)
+  and edge rows (`source_id`+`target_id`+`relationship_type`), since
+  GraphLens cannot know in advance whether an arbitrary job's results
+  look like a one-hop expansion, a plain entity list, or a mix of both -
+  mirroring `importService.js`'s same defensive stance toward a parsed
+  file. Rows matching neither shape are silently dropped and counted.
+
+The classified rows are then fed through the same
+`graphTransformer.transformRowsToGraph` every other relationship source
+uses, and loaded via `loadGraphSnapshot` exactly as Import does - so a
+job's results are validated, escaped and limit-enforced identically to a
+live search's own results. This is a one-time action, not a fifth
+`relationship_source_type`: a job's results are themselves ephemeral
+(Splunk expires them on its own TTL once the job finishes, unless pinned
+or scheduled), unlike an index, lookup, saved search or dataset's name,
+which is why it has no corresponding persistent setting.
 
 ## How the query language compiles to existing searches
 
@@ -302,9 +375,9 @@ shape (the first three and the last run no search of their own at all;
   `TimeRangeSelector`'s preset options (`Clock`), `GraphToolbar`'s
   layout options (`Layout`), Recalculate layout (`ArrowClockwise`), Fit
   to screen (`ArrowsFourCorners`), Centre selected (`NodesCentered`),
-  Reset graph (`TrashCanCross`), Import (`ArrowCircleInRight`) and
-  Export (`ArrowCircleOutRight`) - purely cosmetic, no behaviour
-  change.
+  Reset graph (`TrashCanCross`), Import (`ArrowCircleInRight`),
+  Export (`ArrowCircleOutRight`) and, since 1.17.0, Load from job
+  (`MagnifierClock`) - purely cosmetic, no behaviour change.
 - **Multi-select and bulk actions.** `GraphCanvas.jsx` leaves
   `boxSelectionEnabled` off by default (so ordinary click-and-drag still
   pans, as every earlier version of the app has) and toggles it on only

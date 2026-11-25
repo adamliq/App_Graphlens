@@ -2,13 +2,13 @@
 
 ## Roles and capabilities
 
-`default/authorize.conf` defines ten fine-grained capabilities
+`default/authorize.conf` defines eleven fine-grained capabilities
 (`graphlens_run_search`, `graphlens_view_evidence`, `graphlens_export_graph`,
 `graphlens_create_annotation`, `graphlens_manage_shared_annotation`,
 `graphlens_save_view`, `graphlens_manage_shared_view`,
 `graphlens_manage_config`, `graphlens_manage_collections`,
-`graphlens_view_health` - see SECURITY.md for what each grants) and three
-example roles built from them:
+`graphlens_view_health`, `graphlens_use_search_source` - see SECURITY.md
+for what each grants) and three example roles built from them:
 
 - **`graphlens_viewer`**: search, expand/collapse, view evidence, export.
   Cannot change configuration, save views, or annotate.
@@ -16,7 +16,10 @@ example roles built from them:
   views, create annotations, use the path finder.
 - **`graphlens_admin`** (imports `graphlens_analyst`): additionally manage
   shared annotations/views, edit `graphlens_settings.conf`, curate KV
-  Store node/edge/type data, view the Health page.
+  Store node/edge/type data, view the Health page. Does **not** include
+  `graphlens_use_search_source` - see SECURITY.md, "Saved search as a
+  relationship data source," before adding it to a cloned role; it is kept
+  separate deliberately, not an oversight.
 
 Clone these roles rather than editing them in place if you need a
 different capability mix - `authorize.conf` local overrides otherwise

@@ -9,7 +9,7 @@
 import { escapeHtml } from '../../src/main/webapp/shared/utilities/splSafety';
 import { transformRowsToGraph } from '../../src/main/webapp/shared/services/graphTransformer';
 import { exportGraphAsJson } from '../../src/main/webapp/shared/services/exportService';
-import { parseImportedGraphJson } from '../../src/main/webapp/shared/services/importService';
+import { parseImportedGraphJson, parseImportedGraphCsv } from '../../src/main/webapp/shared/services/importService';
 
 const XSS_PAYLOADS = [
   '<script>alert(1)</script>',
@@ -71,6 +71,21 @@ describe('an imported file is never trusted more than a live search result - the
   test.each(XSS_PAYLOADS)('malicious label in an imported node survives only HTML-escaped, after parseImportedGraphJson -> transformRowsToGraph: %j', (payload) => {
     const json = JSON.stringify({ nodes: [{ id: 'user:jsmith', type: 'user', label: payload }], edges: [] });
     const { nodeRows, edgeRows } = parseImportedGraphJson(json);
+    const { nodes } = transformRowsToGraph(nodeRows, edgeRows);
+    expect(nodes).toHaveLength(1);
+    expect(nodes[0].data.label).not.toMatch(/<[a-z]/i);
+  });
+});
+
+function csvField(value) {
+  const str = String(value);
+  return /[",\n]/.test(str) ? `"${str.replace(/"/g, '""')}"` : str;
+}
+
+describe('an imported CSV is never trusted more than a live search result - the full import pipeline escapes it too', () => {
+  test.each(XSS_PAYLOADS)('malicious node_label in an imported CSV survives only HTML-escaped, after parseImportedGraphCsv -> transformRowsToGraph: %j', (payload) => {
+    const csv = `node_id,node_type,node_label\nuser:jsmith,user,${csvField(payload)}\n`;
+    const { nodeRows, edgeRows } = parseImportedGraphCsv(csv);
     const { nodes } = transformRowsToGraph(nodeRows, edgeRows);
     expect(nodes).toHaveLength(1);
     expect(nodes[0].data.label).not.toMatch(/<[a-z]/i);

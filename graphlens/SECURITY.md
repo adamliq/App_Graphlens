@@ -139,27 +139,94 @@ The toolbar **Import** button (`importService.js`) reads a user-selected
 file entirely client-side via the browser's `FileReader` API - it is
 never uploaded to Splunk or anywhere else, and GraphLens has no server-side
 component that could receive it even if it tried. The file's content is
-treated as fully untrusted, exactly like a Splunk search result:
+treated as fully untrusted, exactly like a Splunk search result, whichever
+of its two accepted shapes it turns out to be:
 
-- Malformed JSON, or JSON missing the expected `{ nodes: [...], edges:
-  [...] }` shape, is rejected with a user-facing error before anything is
-  touched.
-- Every node/edge in the file is then converted to the same raw "row"
-  shape a search result arrives in and run through
+- A previously-exported **GraphLens JSON** file (`parseImportedGraphJson`)
+  - malformed JSON, or JSON missing the expected `{ nodes: [...], edges:
+    [...] }` shape, is rejected with a user-facing error before anything
+    is touched.
+- A **CSV** file shaped to the relationship schema (`parseImportedGraphCsv`,
+  1.18.0) - the same schema an index, lookup, saved search, Table
+  Dataset or "Load from job" already produces. Parsed with a small,
+  dependency-free RFC4180-ish tokenizer (handles quoted fields, embedded
+  commas/newlines, doubled-quote escaping); each resulting row is then
+  classified by `jobResultsService.js`'s `classifyJobResultRows` -
+  reusing the exact same row-classification "Load from job" already
+  uses, rather than a third bespoke mapping - into node rows
+  (`node_id`) and edge rows (`source_id`+`target_id`+
+  `relationship_type`). A row matching neither shape is silently
+  dropped; a file where no row matches either shape is rejected with a
+  user-facing error before anything is touched. Format is detected by
+  file extension, falling back to content (GraphLens's own JSON export
+  always starts with `{`) for a file extension that matches neither.
+- Either way, every resulting node/edge row is then converted to the
+  same raw "row" shape a search result arrives in and run through
   `graphTransformer.transformRowsToGraph` - the same validation, escaping,
   deduplication and `maxVisibleNodes`/`maxVisibleEdges` enforcement a live
   search's results go through. An invalid identifier is dropped, not
   imported; a label is HTML-escaped the same way (see `tests/security/
-  xss.test.js`'s import-pipeline case). An import can never cause
-  GraphLens to accept or display anything it would not otherwise accept
-  from a search.
+  xss.test.js`'s import-pipeline cases, one per format). An import can
+  never cause GraphLens to accept or display anything it would not
+  otherwise accept from a search.
 - Import is gated by the same `enableExport` feature flag as Export (no
   separate setting or capability) - they are presented as one
   import/export feature, and the graph limits/validation above are the
   actual boundary in either direction, not a capability check.
 - Audited the same way as other graph actions (`import_graph` in
   `graphlens_audit_log`), including on failure (malformed file, rejected
-  rows), with the node/edge counts only - never the file's raw content.
+  rows), with the node/edge counts and detected format only - never the
+  file's raw content.
+- The CSV shape accepted here is deliberately **not** the shape
+  `exportNodesAsCsv`/`exportEdgesAsCsv` write (different column names,
+  two separate files for one graph) - that export pair remains one-way;
+  see USER_GUIDE.md.
+
+## Load from job handling
+
+The toolbar **Load from job** button (1.17.0) is the live-search
+counterpart to Import above: instead of reading a user-selected file, it
+reads the results of a Splunk search job that already exists, identified
+only by its job id (sid) - one the current user dispatched themselves, or
+one shared with them, in Splunk Web's own Search app or anywhere else.
+
+- It does not, and cannot, dispatch a new search or grant access to a job
+  the current user could not already see. `searchService.js`'s
+  `attachToJob` reuses the exact same poll/results/cancel machinery
+  `dispatchSavedSearch`/`dispatchAdHocSearch` already use, skipping only
+  the "start a new job" step - the status and results REST endpoints it
+  then calls (`/services/search/jobs/<sid>` and `.../results`) enforce
+  Splunk's own job-level sharing ACL exactly as they would for any other
+  REST caller. This is the same "UI convenience, not the security
+  boundary" pattern used throughout this app (see "Saved search as a
+  relationship data source" below for the lookup/saved-search/dataset
+  analogue).
+- A job's results are treated as fully untrusted, exactly like Import's
+  file content or a live search's own results: `jobResultsService.js`'s
+  `classifyJobResultRows` inspects each raw row's own fields to split
+  them into node rows / edge rows (a job might hold a one-hop expansion's
+  edge rows, a plain entity list's node rows, or a mix of both), silently
+  dropping and counting any row matching neither shape. The classified
+  rows are then run through the same `graphTransformer.transformRowsToGraph`
+  validation, escaping, deduplication and `maxVisibleNodes`/
+  `maxVisibleEdges` enforcement every other relationship source goes
+  through - a job's results can never cause GraphLens to accept or
+  display anything a live search's results would not otherwise accept.
+- Gated by the same `enableExport` feature flag as Import/Export (no
+  separate setting or capability) - it is thematically a sibling "bring
+  external data onto canvas" action, and the graph limits/validation
+  above are the actual boundary, not a capability check.
+- A job is not a persistent relationship data source the way
+  index/lookup/saved_search/dataset are (see "Saved search as a
+  relationship data source" below): a job's results are themselves
+  ephemeral, expired by Splunk on its own TTL once the job finishes
+  unless it has been pinned or scheduled, so this is a one-time action
+  only, never a `relationship_source_type` value.
+- Audited the same way as Import (`load_from_job` in
+  `graphlens_audit_log`), including on failure (invalid job id, job not
+  found/expired/failed, rows not matching the relationship schema), with
+  the job id and node/edge counts only - never the job's raw result
+  content.
 
 ## Multi-select, the time slicer, style overrides and saved views
 
@@ -213,6 +280,7 @@ checks, as the authority (`default/authorize.conf`):
 | `graphlens_manage_config` | Edit `graphlens_settings.conf` |
 | `graphlens_manage_collections` | Curate node/edge/type KV Store data; also gates the Configuration page's "Load demo data" button (see ARCHITECTURE.md) |
 | `graphlens_view_health` | View the Health page and audit log |
+| `graphlens_use_search_source` | Set the Configuration page's Relationship data source to Saved search or Table Dataset, and change which one it names - see "Saved search as a relationship data source" below. Not granted to any example role by default |
 
 The React frontend calls
 `src/main/webapp/shared/services/capabilityService.js` to hide/disable
@@ -265,6 +333,73 @@ UI-organisation feature. This is called out explicitly in
 `tests/security/injection.test.js`'s sibling security-boundary tests (see
 TESTING.md for the manual REST-level test procedure, which requires a live
 Splunk instance and is not automatable in this repository's unit tests).
+
+## Saved search as a relationship data source
+
+`relationship_source_type = saved_search` and `= dataset`
+(CONFIGURATION.md) are a third and fourth alternative to the Index and
+Lookup modes that have existed since 1.0.0 - saved search added in 1.14.0,
+Table Dataset in 1.16.0. They are the most trust-sensitive of the four,
+which is why they are the only ones with their own dedicated capability
+(`graphlens_use_search_source`, shared by both - see "Why one capability
+covers both" below) rather than sharing `graphlens_manage_config` with
+every other setting on the Configuration page:
+
+- **GraphLens does not review the named saved search's or dataset's
+  content, the same way it already does not review a configured lookup's
+  content in Lookup mode.** Whoever can author or edit that saved search
+  or Table Dataset effectively controls what relationship data appears in
+  the graph for every GraphLens user, regardless of their own individual
+  search permissions on whatever indexes it actually reads from.
+- `| savedsearch "<name>"` and `| from datamodel:"<name>"` both run under
+  the *current user's own session*, the same as every other search this
+  app dispatches - neither escalates privilege or runs as the object's
+  owner on its own. Both are themselves subject to normal Splunk
+  search-time permissions for whichever user runs them.
+- `graphlens_use_search_source` is deliberately **not granted to any
+  example role in default/authorize.conf**, including
+  `role_graphlens_admin` - an organisation adopting either of these
+  features makes that choice explicitly (clone `role_graphlens_admin` and
+  add `graphlens_use_search_source = enabled`), rather than inheriting it
+  silently from an upgrade.
+- Either source's own results must already be shaped to the relationship
+  schema (DATA_MODEL.md) - GraphLens applies no transformation of its
+  own, the same expectation Lookup mode already carries for a configured
+  lookup's rows.
+- The Configuration page's Load demo data button (added in 1.13.0) does
+  not apply in either mode: see CONFIGURATION.md's "Demo data" section.
+
+### Why `| from datamodel:`, not `| datamodel ... search`, for Table Dataset mode
+
+A Table Dataset (Settings > Datasets > Create Table View) is itself
+stored as a single-object data model under the hood - confirmed against a
+live instance: Splunk Web's own Datasets listing query only recognises
+`inputlookup-table`, `inputlookup-transform` and `datamodel` as dataset
+`eai:type`s, with no separate "table dataset" type. `| datamodel "<name>"
+search` was tried first and rejected after live testing: its output
+fields come back prefixed with the model's object name (e.g. `Audit.user`,
+not `user` - confirmed by inspecting a shipped data model's own
+`objectSearch`), which would silently break every `source_id`/`target_id`/
+etc. field this app expects. `| from datamodel:"<name>"` instead returns
+flat, unprefixed field names - also confirmed live - so that is what
+`relationship_dataset` is read with. One consequence: for a data model
+with more than one object (an unusual shape for a genuine Table Dataset,
+which is single-object by design, but possible for a hand-authored
+multi-object data model), `| from datamodel:"<name>"` returns only one
+object's rows, not all of them merged - point `relationship_dataset` at a
+true single-table Table Dataset to avoid this ambiguity.
+
+### Why one capability covers both
+
+Saved search mode and Table Dataset mode carry the identical trust
+characteristic described above - GraphLens trusting an administrator's
+own authored content rather than reviewing it - so they share
+`graphlens_use_search_source` rather than each getting its own capability.
+Splitting them would not add any real additional control (an
+administrator willing to grant one is, in practice, making the same trust
+decision for the other) while fragmenting an already-narrow permission
+into two near-identical ones purely by Splunk feature used to author the
+content, not by the actual risk involved.
 
 ## RBAC model collector
 

@@ -1,14 +1,15 @@
 import React, { useCallback, useEffect, useMemo, useState, useRef } from 'react';
 
 import { useGraphState } from '../../shared/hooks/useGraphState';
-import { dispatchAdHocSearch, toUserFacingError } from '../../shared/services/searchService';
+import { dispatchAdHocSearch, attachToJob, toUserFacingError } from '../../shared/services/searchService';
 import { transformRowsToGraph } from '../../shared/services/graphTransformer';
+import { classifyJobResultRows } from '../../shared/services/jobResultsService';
 import { getSettings, relationshipSourceFromSettings } from '../../shared/services/configService';
 import { loadNodeTypeConfig, loadRelationshipTypeConfig, deriveNodeTypeList, deriveRelationshipTypeList } from '../../shared/services/typeConfigService';
 import { recordAuditEvent, AUDIT_ACTIONS } from '../../shared/services/auditService';
 import { findShortestPath } from '../../shared/services/pathFinder';
 import { buildExportBlob } from '../../shared/services/exportService';
-import { parseImportedGraphJson } from '../../shared/services/importService';
+import { parseImportedGraphJson, parseImportedGraphCsv } from '../../shared/services/importService';
 import { buildEvidenceTokensForEdge, buildEvidenceTokensForNode } from '../../shared/services/evidenceQueryBuilder';
 import { buildInitialEntitySearchSpl, buildExpandNodeSpl, buildEvidenceSpl } from '../../shared/services/splTemplates';
 import { parseGraphQuery } from '../../shared/services/graphQueryLanguage';
@@ -35,11 +36,12 @@ import PathFinderPanel from './components/PathFinderPanel';
 import GraphQueryPanel from './components/GraphQueryPanel';
 import SavedViewsPanel from './components/SavedViewsPanel';
 import ExportDialog from './components/ExportDialog';
+import LoadFromJobDialog from './components/LoadFromJobDialog';
 import ErrorNotification from './components/ErrorNotification';
 import EmptyState from './components/EmptyState';
 import PageNav from '../../shared/components/PageNav';
 
-const APP_VERSION = '1.13.0';
+const APP_VERSION = '1.18.0';
 
 function downloadBlob(blob, filename) {
   const url = URL.createObjectURL(blob);
@@ -62,6 +64,8 @@ export default function App() {
   const [layoutToken, setLayoutToken] = useState(0);
   const [canvasViewMode, setCanvasViewMode] = useState('graph');
   const [exportDialogOpen, setExportDialogOpen] = useState(false);
+  const [loadFromJobDialogOpen, setLoadFromJobDialogOpen] = useState(false);
+  const [loadFromJobState, setLoadFromJobState] = useState({ isLoading: false, error: null });
   const [evidence, setEvidence] = useState({ isLoading: false, error: null, rows: [], fieldOrder: [], targetLabel: null });
   const [pathEndpoints, setPathEndpoints] = useState({ startNodeId: null, endNodeId: null });
   const [path, setPath] = useState(null);
@@ -408,7 +412,16 @@ export default function App() {
     const reader = new FileReader();
     reader.onload = () => {
       try {
-        const { nodeRows, edgeRows } = parseImportedGraphJson(String(reader.result));
+        const text = String(reader.result);
+        // A CSV file is identified by extension first; a file with
+        // neither a .json nor a .csv extension (e.g. renamed, or
+        // dragged in some other way) falls back to content sniffing -
+        // GraphLens's own JSON export always starts with "{", which a
+        // relationship-schema CSV's header row never does.
+        const lowerName = (file.name || '').toLowerCase();
+        const isCsv = lowerName.endsWith('.csv')
+          || (!lowerName.endsWith('.json') && !text.trimStart().startsWith('{'));
+        const { nodeRows, edgeRows } = isCsv ? parseImportedGraphCsv(text) : parseImportedGraphJson(text);
         const { nodes, edges } = transformRowsToGraph(nodeRows, edgeRows, {
           maxNodes: settings.maxVisibleNodes,
           maxEdges: settings.maxVisibleEdges,
@@ -421,7 +434,7 @@ export default function App() {
         setPathEndpoints({ startNodeId: null, endNodeId: null });
         setEvidence({ isLoading: false, error: null, rows: [], fieldOrder: [], targetLabel: null });
         setLayoutToken((t) => t + 1);
-        recordAuditEvent(AUDIT_ACTIONS.IMPORT_GRAPH, { detail: `${nodes.length} nodes, ${edges.length} edges` });
+        recordAuditEvent(AUDIT_ACTIONS.IMPORT_GRAPH, { detail: `${nodes.length} nodes, ${edges.length} edges (${isCsv ? 'csv' : 'json'})` });
       } catch (err) {
         const message = err instanceof GraphLensValidationError ? err.message : 'Could not read that file.';
         setError({ code: 'import_error', message, retryable: false });
@@ -433,6 +446,51 @@ export default function App() {
       recordAuditEvent(AUDIT_ACTIONS.IMPORT_GRAPH, { outcome: 'failure', detail: 'file read error' });
     };
     reader.readAsText(file);
+  }, [settings, actions, nodeTypeConfig, relationshipTypeConfig]);
+
+  // "Load from job": the one-time counterpart to handleImportFile above,
+  // but reading an already-completed Splunk search job's results instead
+  // of a previously-exported file - see LoadFromJobDialog.jsx and
+  // searchService.js's attachToJob doc comment for why this is a
+  // one-time action, not a persistent relationship data source the way
+  // index/lookup/saved_search/dataset are.
+  const handleLoadFromJob = useCallback(async (sid) => {
+    if (!settings) return;
+    setLoadFromJobState({ isLoading: true, error: null });
+    try {
+      const trimmedSid = sid.trim();
+      if (!isValidId(trimmedSid)) {
+        throw new GraphLensValidationError('That does not look like a valid job id.', 'sid');
+      }
+      const job = attachToJob(trimmedSid, { maxWaitMs: settings.searchDispatchMaxTimeSeconds * 1000 });
+      const { rows } = await job.waitForResults({ count: settings.maxSearchResultRows });
+      const { nodeRows, edgeRows, droppedCount } = classifyJobResultRows(rows);
+      if (nodeRows.length === 0 && edgeRows.length === 0) {
+        throw new GraphLensValidationError("That job's results don't match the relationship schema - see the Help page.", 'sid');
+      }
+      const { nodes, edges } = transformRowsToGraph(nodeRows, edgeRows, {
+        maxNodes: settings.maxVisibleNodes,
+        maxEdges: settings.maxVisibleEdges,
+        nodeTypeConfig,
+        relationshipTypeConfig,
+      });
+      actions.loadSnapshot({ nodes, edges }, settings);
+      setSearchResults([]);
+      setPath(null);
+      setPathEndpoints({ startNodeId: null, endNodeId: null });
+      setEvidence({ isLoading: false, error: null, rows: [], fieldOrder: [], targetLabel: null });
+      setLayoutToken((t) => t + 1);
+      setLoadFromJobState({ isLoading: false, error: null });
+      setLoadFromJobDialogOpen(false);
+      recordAuditEvent(
+        AUDIT_ACTIONS.LOAD_FROM_JOB,
+        { detail: `${nodes.length} nodes, ${edges.length} edges from job ${trimmedSid}${droppedCount ? `, ${droppedCount} rows skipped` : ''}` },
+      );
+    } catch (err) {
+      const message = err instanceof GraphLensValidationError ? err.message : toUserFacingError(err).message;
+      setLoadFromJobState({ isLoading: false, error: message });
+      recordAuditEvent(AUDIT_ACTIONS.LOAD_FROM_JOB, { outcome: 'failure', detail: message });
+    }
   }, [settings, actions, nodeTypeConfig, relationshipTypeConfig]);
 
   const handleRunGraphQuery = useCallback(async (queryText) => {
@@ -614,11 +672,13 @@ export default function App() {
         exportEnabled={settings.enableExport}
         onImportClick={() => importInputRef.current && importInputRef.current.click()}
         importEnabled={settings.enableExport}
+        onLoadFromJobOpen={() => setLoadFromJobDialogOpen(true)}
+        loadFromJobEnabled={settings.enableExport}
       />
       <input
         ref={importInputRef}
         type="file"
-        accept="application/json,.json"
+        accept="application/json,.json,text/csv,.csv"
         style={{ display: 'none' }}
         onChange={(e) => {
           const file = e.target.files && e.target.files[0];
@@ -774,6 +834,17 @@ export default function App() {
         allowedFormats={settings.allowedExportFormats.map((f) => (f === 'csv' ? ['csv-nodes', 'csv-edges'] : [f])).flat()}
         onClose={() => setExportDialogOpen(false)}
         onExport={handleExport}
+      />
+
+      <LoadFromJobDialog
+        open={loadFromJobDialogOpen}
+        isLoading={loadFromJobState.isLoading}
+        error={loadFromJobState.error}
+        onClose={() => {
+          setLoadFromJobDialogOpen(false);
+          setLoadFromJobState({ isLoading: false, error: null });
+        }}
+        onLoad={handleLoadFromJob}
       />
     </div>
   );

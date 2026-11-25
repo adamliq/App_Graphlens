@@ -1,7 +1,7 @@
 import React from 'react';
 import PageNav from '../../shared/components/PageNav';
 
-const APP_VERSION = '1.13.0';
+const APP_VERSION = '1.18.0';
 
 /**
  * Static, no-dependency reference page - unlike the other three pages,
@@ -171,15 +171,37 @@ export default function App() {
           Toolbar <strong>Export</strong> button: JSON (full graph data plus
           metadata), CSV (nodes or edges), or PNG (canvas snapshot). Exports
           only ever include what is currently visible to you. Toolbar
-          <strong> Import</strong> button: pick a previously exported JSON
-          file to load it back onto the canvas, replacing the current
-          graph - a convenience for resuming or sharing a specific
-          snapshot, read entirely in your browser (nothing is uploaded).
-          It is not a way to bring your own Splunk data into GraphLens -
-          see &quot;Loading your own data&quot; below for that. Every
-          imported node and edge is re-validated the same way a live
-          search result would be, so an import can never add anything
-          GraphLens would not otherwise accept.
+          <strong> Import</strong> button accepts either of two file
+          shapes, replacing the current graph - detected automatically by
+          file extension (falling back to content, if neither matches):
+        </p>
+        <ul>
+          <li>
+            A previously exported <strong>JSON</strong> file - a
+            convenience for resuming or sharing a specific snapshot (the
+            exported CSV files are not re-importable the same way: they
+            are two separate flat tables with different column names,
+            not this schema).
+          </li>
+          <li>
+            A <strong>CSV</strong> file already shaped to the
+            relationship schema below (the same schema an index, lookup,
+            saved search, Table Dataset or <strong>Load from job</strong>
+            {' '}already produces, and the one the bundled sample data
+            ships as) - a one-off way to bring your own data onto the
+            canvas without any Splunk-side configuration at all. Rows
+            matching neither a node row nor an edge row are silently
+            skipped.
+          </li>
+        </ul>
+        <p>
+          Either way, the file is read entirely in your browser (nothing
+          is uploaded), and every imported node and edge is re-validated
+          the same way a live search result would be, so an import can
+          never add anything GraphLens would not otherwise accept. See
+          &quot;Loading your own data&quot; below for the persistent
+          ways to bring data in (index, lookup, saved search, Table
+          Dataset).
         </p>
       </section>
 
@@ -189,14 +211,22 @@ export default function App() {
           An administrator chooses, on the Configuration page, whether
           searches and expansions read observed relationships from a Splunk
           <strong> index</strong> (the normal, time-series choice, updated by
-          an ingestion pipeline or scheduled search) or directly from a
+          an ingestion pipeline or scheduled search), directly from a
           <strong> lookup table</strong> (a static, hand- or script-maintained
-          table - no ingestion pipeline required). This only changes where
-          the data comes from, not how you use GraphLens - searching,
-          expanding, filtering, and exporting all work the same either way.
-          One difference to know about: in lookup mode, the toolbar&apos;s time
-          range has no effect, since a lookup is a snapshot with no event
-          time to filter by.
+          table - no ingestion pipeline required), from an administrator&apos;s
+          own <strong> saved search</strong> (an already-authored query
+          whose results already match the relationship shape), or from a
+          <strong> Table Dataset</strong> (Settings &gt; Datasets - the same
+          idea as a saved search, authored through Splunk&apos;s own
+          point-and-click Datasets editor instead). The latter two each
+          require a separate capability, since GraphLens does not review
+          what that search or dataset actually does. This only changes
+          where the data comes from, not how you use GraphLens -
+          searching, expanding, filtering, and exporting all work the
+          same regardless of which. One difference to know about: in
+          lookup, saved-search or Table Dataset mode, the toolbar&apos;s
+          time range has no effect, since none of the three is a
+          time-series the way an index is.
         </p>
       </section>
 
@@ -205,19 +235,89 @@ export default function App() {
         <p>
           GraphLens is a visualization layer over data already in Splunk -
           it has no file-upload feature of its own. Relationships are
-          brought in shaped to GraphLens&apos;s schema (<code>source_id</code>,
-          <code> target_id</code>, <code>relationship_type</code>, and so
-          on - see DATA_MODEL.md), either as indexed events (via a
-          scheduled search transforming existing events, a one-off file
-          upload, or a live HTTP Event Collector source) or, with no index
-          at all, as a lookup table in lookup mode (see above). Either way,
-          afterwards you register your node/relationship types in the
-          <code> graphlens_node_types</code> / <code>graphlens_relationship_types</code>
-          {' '}KV Store collections - an unregistered type still renders,
-          with a default colour - and optionally wire up
-          <code> evidence_reference</code> so <strong>View supporting
-          events</strong> works for an edge. See DATA_INGESTION.md in the
-          installed package for the complete, step-by-step guide.
+          brought in shaped to the schema below, either as indexed events
+          (via a scheduled search transforming existing events, a one-off
+          file upload, or a live HTTP Event Collector source), as a lookup
+          table in lookup mode, as the results of an already-authored
+          search in saved-search mode, or as a Table Dataset built through
+          Settings &gt; Datasets (see &quot;Where the relationship data
+          comes from&quot; above) - the same shape is required regardless
+          of which of the four you use; GraphLens applies no
+          transformation of its own. Afterwards you register your
+          node/relationship types in the <code>graphlens_node_types</code>
+          {' '}/ <code>graphlens_relationship_types</code> KV Store
+          collections - an unregistered type still renders, with a default
+          colour - and optionally wire up <code>evidence_reference</code>
+          {' '}so <strong>View supporting events</strong> works for an
+          edge. See DATA_INGESTION.md and DATA_MODEL.md in the installed
+          package for the complete, step-by-step guide and the full data
+          model (including the separate node/edge JSON shapes used
+          elsewhere, e.g. curated KV Store metadata).
+        </p>
+        <table style={{ width: '100%', fontSize: 12, borderCollapse: 'collapse', marginBottom: 12 }}>
+          <thead>
+            <tr>
+              <th style={{ textAlign: 'left', borderBottom: '1px solid #ccc', padding: '4px 8px' }}>Field</th>
+              <th style={{ textAlign: 'left', borderBottom: '1px solid #ccc', padding: '4px 8px' }}>Required</th>
+              <th style={{ textAlign: 'left', borderBottom: '1px solid #ccc', padding: '4px 8px' }}>Notes</th>
+            </tr>
+          </thead>
+          <tbody>
+            {[
+              ['edge_id', 'no', 'Derived deterministically from source_id + relationship_type + target_id if omitted.'],
+              ['source_id', 'yes', 'Namespaced, stable identifier, e.g. user:jsmith. Must match ^[A-Za-z0-9][A-Za-z0-9:_\\-.@/]{0,254}$ - no quotes, backslashes, pipes, wildcards, spaces or control characters.'],
+              ['source_type', 'yes', 'Short type token, e.g. user, host, ip. Governed by graphlens_node_types.'],
+              ['source_label', 'yes', 'Display label for the source node. Treated as untrusted; HTML-escaped on render.'],
+              ['target_id', 'yes', 'Same identifier grammar as source_id.'],
+              ['target_type', 'yes', 'Same as source_type, for the target node.'],
+              ['target_label', 'yes', 'Same as source_label, for the target node.'],
+              ['relationship_type', 'yes', 'Short type token, e.g. AUTHENTICATED_TO. Governed by graphlens_relationship_types.'],
+              ['relationship_label', 'no', 'Display label; defaults to relationship_type.'],
+              ['event_count', 'no', 'Number. Summed across duplicate rows when merged.'],
+              ['first_seen / last_seen', 'no', 'ISO-8601 timestamps, e.g. 2026-07-15T08:00:00Z. Widened (min/max) across duplicate rows when merged. Ignored entirely in lookup/saved-search mode (neither is a time series).'],
+              ['risk_score', 'no', 'Number, clamped to 0-100.'],
+              ['source_index / source_sourcetype', 'no', 'Where the backing raw event actually lives - drives View supporting events. Should name real, existing index/sourcetype values.'],
+              ['evidence_reference', 'no', 'Opaque key joined against a raw evidence event’s own evidence_reference field for View supporting events. Must be a valid identifier if set.'],
+            ].map(([field, required, notes]) => (
+              <tr key={field}>
+                <td style={{ padding: '4px 8px', borderBottom: '1px solid #eee', whiteSpace: 'nowrap', fontFamily: 'monospace' }}>{field}</td>
+                <td style={{ padding: '4px 8px', borderBottom: '1px solid #eee' }}>{required}</td>
+                <td style={{ padding: '4px 8px', borderBottom: '1px solid #eee' }}>{notes}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+        <p style={{ fontSize: 12, color: '#5c5c5c' }}>
+          This is the flat row/event shape every relationship source
+          (index, lookup, saved search, Table Dataset) must already
+          produce - the same
+          one <code>sample_data/graphlens_relationships_sample.csv</code>
+          {' '}and <code>lookups/graphlens_sample_relationships.csv</code>
+          {' '}use, and the one the Configuration page&apos;s Load demo
+          data button loads. It is distinct from the nested node/edge JSON
+          objects DATA_MODEL.md also documents, which describe curated KV
+          Store metadata (<code>graphlens_nodes</code> /
+          <code> graphlens_edges</code>) rather than observed relationship
+          rows.
+        </p>
+        <p style={{ fontSize: 12, color: '#5c5c5c' }}>
+          The toolbar&apos;s <strong>Load from job</strong> button is a
+          fifth, one-time way to get rows matching this same schema onto
+          the canvas: paste the job ID (sid) of a search you already ran
+          anywhere in Splunk - Splunk Web&apos;s own Search app, for
+          example - and GraphLens loads that job&apos;s results directly,
+          without changing the Configuration page&apos;s relationship
+          data source. Unlike the four sources above, this is not a
+          persistent setting: a job&apos;s results are themselves
+          ephemeral, expired by Splunk once the job finishes unless
+          pinned or scheduled, so it only works for a limited time after
+          the search completes.
+        </p>
+        <p style={{ fontSize: 12, color: '#5c5c5c' }}>
+          The toolbar&apos;s <strong>Import</strong> button is a sixth,
+          one-time way to get rows matching this same schema onto the
+          canvas, from a CSV file instead of a live Splunk job - see
+          &quot;Export and import&quot; above.
         </p>
       </section>
 

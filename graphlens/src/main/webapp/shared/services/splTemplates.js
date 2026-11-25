@@ -22,23 +22,55 @@
  * *shape* of each query is fixed and reviewable here, the same as it was
  * in savedsearches.conf; only the substitution mechanism changed.
  *
- * Relationship data source (index vs. lookup): every template below that
- * reads observed relationships takes a `source` argument -
- * `{ type: 'index', index }` or `{ type: 'lookup', lookupName }` - built
- * from Configuration page settings (configService.js) by the caller.
- * This replaced a static `graphlens_relationship_index` macro
- * (`index=graphlens_relationships`, hardcoded in default/macros.conf) that
- * the Configuration page's own "Relationship index" field never actually
- * fed into - changing that setting silently did nothing, because nothing
- * read it back into the macro. See CHANGELOG.md.
+ * Relationship data source (index vs. lookup vs. saved search vs. Table
+ * Dataset): every template below that reads observed relationships takes
+ * a `source` argument - `{ type: 'index', index }`, `{ type: 'lookup',
+ * lookupName }`, `{ type: 'saved_search', savedSearchName }` or `{ type:
+ * 'dataset', datasetName }` - built from Configuration page settings
+ * (configService.js) by the caller. This replaced a static
+ * `graphlens_relationship_index` macro (`index=graphlens_relationships`,
+ * hardcoded in default/macros.conf) that the Configuration page's own
+ * "Relationship index" field never actually fed into - changing that
+ * setting silently did nothing, because nothing read it back into the
+ * macro. See CHANGELOG.md.
+ *
+ * Saved-search and dataset mode (both gated by the
+ * `graphlens_use_search_source` capability - see SECURITY.md) each trust
+ * an administrator-named, administrator-authored object's own content the
+ * same way lookup mode already trusts a lookup's content - GraphLens does
+ * not, and cannot, review what that saved search or dataset actually
+ * does. `| savedsearch "<name>"` and `| from datamodel:"<name>"` both run
+ * under the current user's own session/permissions, same as every other
+ * search this app dispatches; neither escalates privilege on its own.
+ *
+ * Dataset mode specifically reads a Splunk "Table Dataset" (Settings >
+ * Datasets > Create Table View) via `| from datamodel:"<name>"` - a Table
+ * Dataset is itself stored as a single-object data model under the hood
+ * (confirmed live: Splunk Web's own Datasets listing query only
+ * recognises `inputlookup-table`, `inputlookup-transform` and `datamodel`
+ * as dataset `eai:type`s - there is no separate "table dataset" object
+ * type). `| datamodel "<name>" search` was tried first and rejected: its
+ * output fields come back prefixed with the model's object name (e.g.
+ * `Audit.user`, not `user` - confirmed live by inspecting a shipped data
+ * model's own `objectSearch`), which would silently break every
+ * `source_id`/`target_id`/etc. field this app expects. `| from
+ * datamodel:"<name>"` instead returns flat, unprefixed field names -
+ * confirmed live - so that is what this uses. A data model name
+ * (`modelName`, what this takes - confirmed distinct from its separate,
+ * free-text `displayName`) is always machine-id-shaped, never containing
+ * spaces, unlike a saved search's display name; see
+ * `DATASET_NAME_PATTERN`'s own comment in splSafety.js.
  */
 import {
   clampInteger, isValidId, GraphLensValidationError,
-  safeIndexNameOrFallback, safeLookupNameOrFallback,
+  safeIndexNameOrFallback, safeLookupNameOrFallback, safeSavedSearchNameOrFallback,
+  safeDatasetNameOrFallback, escapeSplStringLiteral,
 } from '../utilities/splSafety';
 
 const DEFAULT_INDEX = 'graphlens_relationships';
 const DEFAULT_LOOKUP = 'graphlens_relationships_lookup';
+const DEFAULT_SAVED_SEARCH = 'graphlens_relationships_saved_search';
+const DEFAULT_DATASET = 'graphlens_relationships_dataset';
 
 // edge_id is optional (DATA_MODEL.md, DATA_INGESTION.md) - documented as
 // derived deterministically from source_id/target_id/relationship_type
@@ -69,17 +101,31 @@ function requireValidId(id, field) {
  * result set, before any filtering/aggregation. Index mode is a single
  * `search index="..."` line (optionally with inline filter args, since a
  * plain `search` command accepts trailing filter terms on the same line).
- * Lookup mode is `| inputlookup <name>` followed by a separate
- * `| search <filter args>` line when filtering is needed - `inputlookup`
- * does not accept the same inline trailing-filter-argument syntax a
- * generating `search` command does, so filtering is always a distinct
- * pipe stage in lookup mode.
+ * Lookup, saved-search and dataset mode are all `| <generating command>`
+ * followed by a separate `| search <filter args>` line when filtering is
+ * needed - none of `inputlookup`/`savedsearch`/`from datamodel:` accepts
+ * the same inline trailing-filter-argument syntax a generating `search`
+ * command does, so filtering is always a distinct pipe stage for all
+ * three (confirmed live for all three, including as a leading command
+ * inside a bracketed `append [ ... ]` subsearch).
  */
 function buildRelationshipSourceLines(source, filterArgs) {
-  const type = source && source.type === 'lookup' ? 'lookup' : 'index';
+  const type = source && ['lookup', 'saved_search', 'dataset'].includes(source.type) ? source.type : 'index';
   if (type === 'lookup') {
     const lookupName = safeLookupNameOrFallback(source && source.lookupName, DEFAULT_LOOKUP);
     const lines = [`| inputlookup ${lookupName}`];
+    if (filterArgs) lines.push(`| search ${filterArgs}`);
+    return lines;
+  }
+  if (type === 'saved_search') {
+    const savedSearchName = safeSavedSearchNameOrFallback(source && source.savedSearchName, DEFAULT_SAVED_SEARCH);
+    const lines = [`| savedsearch "${escapeSplStringLiteral(savedSearchName)}"`];
+    if (filterArgs) lines.push(`| search ${filterArgs}`);
+    return lines;
+  }
+  if (type === 'dataset') {
+    const datasetName = safeDatasetNameOrFallback(source && source.datasetName, DEFAULT_DATASET);
+    const lines = [`| from datamodel:"${escapeSplStringLiteral(datasetName)}"`];
     if (filterArgs) lines.push(`| search ${filterArgs}`);
     return lines;
   }

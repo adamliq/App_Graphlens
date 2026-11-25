@@ -42,4 +42,5 @@ export const CAPABILITIES = Object.freeze({
   MANAGE_CONFIG: 'graphlens_manage_config',
   MANAGE_COLLECTIONS: 'graphlens_manage_collections',
   VIEW_HEALTH: 'graphlens_view_health',
+  USE_SEARCH_SOURCE: 'graphlens_use_search_source',
 });
