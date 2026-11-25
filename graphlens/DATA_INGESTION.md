@@ -140,6 +140,42 @@ time to filter by unless you give it one). Switch to index mode (option A)
 once you want genuinely time-bounded, continuously-updated relationship
 data.
 
+**E. No index and no lookup - read directly from a saved search you
+already wrote.** If your relationship data is better expressed as an
+already-authored search - a join across several indexes, a data model
+search, a transforming search over a CMDB you already have a working
+query for - than as either a single index or a single static table, you
+can point GraphLens at that search instead of recreating it as a lookup:
+
+1. Author (or reuse) a saved search whose results are already shaped to
+   the relationship schema above - the same columns an index event or a
+   lookup row needs (`source_id`, `target_id`, `relationship_type`, etc.;
+   `edge_id`/`event_count`/`first_seen`/`last_seen` can be omitted or left
+   blank - see DATA_MODEL.md). GraphLens runs it with `| savedsearch
+   "<name>"` and applies no transformation of its own, so its results must
+   already match.
+2. In the Configuration page, set **Relationship data source** to
+   **Saved search (pre-authored results)** and **Relationship saved
+   search** to that search's name. **Both of these require the
+   `graphlens_use_search_source` capability**, which is deliberately not
+   granted to any example role by default - see SECURITY.md, "Saved
+   search as a relationship data source," before using this option: unlike
+   an index or a lookup, GraphLens does not review a saved search's
+   content, so whoever can author or edit it effectively controls what
+   data appears in the graph.
+3. That's it - no new index, no lookup definition, no HEC. GraphLens reads
+   it with `| savedsearch "<name>"` the same way it reads an index with
+   `search index=<name>` or a lookup with `| inputlookup <name>`, for
+   every entity search and expansion.
+
+This is the right choice when the shape of your relationship data is
+already the hard part solved, and the remaining work is just telling
+GraphLens where to find it - but it does mean the data an administrator
+sees in the graph is only as trustworthy as whoever last edited that
+saved search, which is exactly why this one option is gated by its own
+capability rather than sharing `graphlens_manage_config` with every other
+setting on this page.
+
 ## 3. Register your types
 
 Node/relationship type colours, icons, shapes, and enabled flags live in

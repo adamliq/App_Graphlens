@@ -2,6 +2,42 @@
 
 All notable changes to GraphLens are documented in this file.
 
+## [1.14.0] - 2026-11-25
+
+### Added
+
+- **"Saved search" relationship data source** - a third alternative to
+  Index and Lookup, for relationship data better expressed as an
+  already-authored search (a join across several indexes, a data model
+  search, etc) than as either of those. GraphLens runs it with `|
+  savedsearch "<name>"` (the name is double-quoted and escaped, since real
+  saved search names commonly have spaces, unlike the stricter bare
+  index/lookup identifier grammars) as a third alternative generating
+  clause alongside `search index=...` and `| inputlookup <name>` - no new
+  SPL template shape, just a third branch of the same
+  `buildRelationshipSourceLines` helper every relationship-reading
+  template already goes through.
+- **New `graphlens_use_search_source` capability**, gating both setting
+  `relationship_source_type` to `saved_search` and changing
+  `relationship_saved_search` once it is - kept separate from
+  `graphlens_manage_config` (which still gates every other Configuration
+  page setting) because pointing GraphLens at a saved search means
+  trusting that search's own author and content entirely, the same way
+  Lookup mode already means trusting a configured lookup's content.
+  Deliberately **not granted to any example role by default**, including
+  `role_graphlens_admin` - see SECURITY.md's new "Saved search as a
+  relationship data source" section and ADMIN_GUIDE.md.
+- The Configuration page's Load demo data button (1.13.0) is disabled
+  with an explanation in Saved search mode - there is no bundled
+  relationship data to load into a search you authored yourself.
+- New DATA_INGESTION.md section E and CONFIGURATION.md section documenting
+  the new option; ARCHITECTURE.md's "How searches retrieve relationships"
+  and KNOWN_LIMITATIONS.md updated accordingly.
+
+Full npm test (386 tests) and lint (0 warnings) pass; AppInspect re-run
+clean (0 errors/failures, same 8-warning profile as 1.13.0). Version
+bumped to 1.14.0.
+
 ## [1.13.0] - 2026-11-25
 
 ### Added

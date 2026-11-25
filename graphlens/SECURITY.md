@@ -213,6 +213,7 @@ checks, as the authority (`default/authorize.conf`):
 | `graphlens_manage_config` | Edit `graphlens_settings.conf` |
 | `graphlens_manage_collections` | Curate node/edge/type KV Store data; also gates the Configuration page's "Load demo data" button (see ARCHITECTURE.md) |
 | `graphlens_view_health` | View the Health page and audit log |
+| `graphlens_use_search_source` | Set the Configuration page's Relationship data source to Saved search, and change which saved search it names - see "Saved search as a relationship data source" below. Not granted to any example role by default |
 
 The React frontend calls
 `src/main/webapp/shared/services/capabilityService.js` to hide/disable
@@ -265,6 +266,40 @@ UI-organisation feature. This is called out explicitly in
 `tests/security/injection.test.js`'s sibling security-boundary tests (see
 TESTING.md for the manual REST-level test procedure, which requires a live
 Splunk instance and is not automatable in this repository's unit tests).
+
+## Saved search as a relationship data source
+
+`relationship_source_type = saved_search` (CONFIGURATION.md) is a third
+alternative to the Index and Lookup modes that have existed since 1.0.0,
+added in 1.14.0. It is the most trust-sensitive of the three, which is why
+it is the only one with its own dedicated capability
+(`graphlens_use_search_source`) rather than sharing
+`graphlens_manage_config` with every other setting on the Configuration
+page:
+
+- **GraphLens does not review the named saved search's content, the same
+  way it already does not review a configured lookup's content in Lookup
+  mode.** Whoever can author or edit that saved search effectively
+  controls what relationship data appears in the graph for every GraphLens
+  user, regardless of their own individual search permissions on whatever
+  indexes that saved search actually reads from.
+- `| savedsearch "<name>"` runs under the *current user's own session*,
+  the same as every other search this app dispatches - it does not
+  escalate privilege or run as the saved search's owner on its own. A
+  saved search is itself subject to normal Splunk search-time permissions
+  for whichever user runs it.
+- `graphlens_use_search_source` is deliberately **not granted to any
+  example role in default/authorize.conf**, including
+  `role_graphlens_admin` - an organisation adopting this feature makes
+  that choice explicitly (clone `role_graphlens_admin` and add
+  `graphlens_use_search_source = enabled`), rather than inheriting it
+  silently from an upgrade.
+- The saved search's own results must already be shaped to the
+  relationship schema (DATA_MODEL.md) - GraphLens applies no
+  transformation of its own, the same expectation Lookup mode already
+  carries for a configured lookup's rows.
+- The Configuration page's Load demo data button (added in 1.13.0) does
+  not apply in this mode: see CONFIGURATION.md's "Demo data" section.
 
 ## RBAC model collector
 

@@ -89,6 +89,42 @@ describe('splTemplates - lookup-mode source generates | inputlookup instead of s
   });
 });
 
+describe('splTemplates - saved-search-mode source generates | savedsearch instead of search index', () => {
+  // Third alternative generating clause alongside index/lookup (see
+  // ARCHITECTURE.md's "How searches retrieve relationships" and
+  // SECURITY.md's "Saved search as a relationship data source").
+  const savedSearchSource = { type: 'saved_search', savedSearchName: 'GraphLens Relationships' };
+
+  test('buildInitialEntitySearchSpl leads with savedsearch, not search', () => {
+    const spl = buildInitialEntitySearchSpl('jsmith', 20, savedSearchSource);
+    expect(spl.startsWith('| savedsearch "GraphLens Relationships"')).toBe(true);
+    expect(spl).not.toMatch(/^search /);
+    expect(spl).toContain('append [ | savedsearch "GraphLens Relationships"');
+  });
+
+  test('buildExpandNodeSpl leads with savedsearch and filters via a separate | search stage', () => {
+    const spl = buildExpandNodeSpl('user:jsmith', 50, savedSearchSource);
+    expect(spl.startsWith('| savedsearch "GraphLens Relationships"')).toBe(true);
+    expect(spl).toContain('| search (source_id="user:jsmith" OR target_id="user:jsmith")');
+  });
+
+  test('buildNodeDetailsSpl and buildEdgeDetailsSpl honour saved-search mode', () => {
+    expect(buildNodeDetailsSpl('user:jsmith', savedSearchSource).startsWith('| savedsearch "GraphLens Relationships"')).toBe(true);
+    expect(buildEdgeDetailsSpl('edge:abc123', savedSearchSource).startsWith('| savedsearch "GraphLens Relationships"')).toBe(true);
+  });
+
+  test('buildClusterExpandSpl honours saved-search mode', () => {
+    const spl = buildClusterExpandSpl('node_type', 'user', 100, savedSearchSource);
+    expect(spl.startsWith('| savedsearch "GraphLens Relationships"')).toBe(true);
+  });
+
+  test('an invalid saved search name falls back to the default rather than being embedded', () => {
+    const spl = buildExpandNodeSpl('user:jsmith', 50, { type: 'saved_search', savedSearchName: 'x" | delete | eval y="' });
+    expect(spl).toContain('| savedsearch "graphlens_relationships_saved_search"');
+    expect(spl).not.toContain('delete');
+  });
+});
+
 describe('splTemplates - identifier validation', () => {
   test('buildExpandNodeSpl rejects an invalid node id', () => {
     expect(() => buildExpandNodeSpl('user: jsmith" | delete', 100)).toThrow(GraphLensValidationError);

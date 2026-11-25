@@ -1,7 +1,7 @@
 import React from 'react';
 import PageNav from '../../shared/components/PageNav';
 
-const APP_VERSION = '1.13.0';
+const APP_VERSION = '1.14.0';
 
 /**
  * Static, no-dependency reference page - unlike the other three pages,
@@ -189,14 +189,18 @@ export default function App() {
           An administrator chooses, on the Configuration page, whether
           searches and expansions read observed relationships from a Splunk
           <strong> index</strong> (the normal, time-series choice, updated by
-          an ingestion pipeline or scheduled search) or directly from a
+          an ingestion pipeline or scheduled search), directly from a
           <strong> lookup table</strong> (a static, hand- or script-maintained
-          table - no ingestion pipeline required). This only changes where
-          the data comes from, not how you use GraphLens - searching,
-          expanding, filtering, and exporting all work the same either way.
-          One difference to know about: in lookup mode, the toolbar&apos;s time
-          range has no effect, since a lookup is a snapshot with no event
-          time to filter by.
+          table - no ingestion pipeline required), or from an administrator&apos;s
+          own <strong> saved search</strong> (an already-authored query
+          whose results already match the relationship shape - requires a
+          separate capability, since GraphLens does not review what that
+          search actually does). This only changes where the data comes
+          from, not how you use GraphLens - searching, expanding,
+          filtering, and exporting all work the same regardless of which.
+          One difference to know about: in lookup or saved-search mode,
+          the toolbar&apos;s time range has no effect, since neither is a
+          time-series the way an index is.
         </p>
       </section>
 

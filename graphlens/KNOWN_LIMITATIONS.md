@@ -252,4 +252,12 @@ instance's configured home) to switch away from GraphLens entirely.
   configured index to already exist (it does not create one). "View
   supporting events" only resolves for demo data loaded in index mode -
   lookup mode writes no backing raw events for it to find, since lookup
-  mode never ingests events in the first place.
+  mode never ingests events in the first place. Not available at all in
+  saved-search mode (1.14.0+) - there is no bundled relationship data to
+  load into a search you authored yourself; the button is disabled there.
+- **Saved search as a relationship data source (1.14.0+) is not reviewed
+  by GraphLens.** Unlike an index or a lookup, GraphLens has no way to
+  verify what a configured saved search actually does - it trusts the
+  named search's author and content entirely, the same way lookup mode
+  already trusts a configured lookup's content. See SECURITY.md, "Saved
+  search as a relationship data source."

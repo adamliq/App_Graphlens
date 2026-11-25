@@ -5,7 +5,7 @@
  * coverage is easy to audit and extend in one place, independent of which
  * component happens to call each function.
  */
-import { assertValidId, isValidId, sanitizeSearchTerm, escapeSplStringLiteral, GraphLensValidationError, safeIndexNameOrFallback } from '../../src/main/webapp/shared/utilities/splSafety';
+import { assertValidId, isValidId, sanitizeSearchTerm, escapeSplStringLiteral, GraphLensValidationError, safeIndexNameOrFallback, safeSavedSearchNameOrFallback } from '../../src/main/webapp/shared/utilities/splSafety';
 import { transformRowsToGraph } from '../../src/main/webapp/shared/services/graphTransformer';
 import { buildEvidenceTokensForNode } from '../../src/main/webapp/shared/services/evidenceQueryBuilder';
 
@@ -105,5 +105,11 @@ describe('escapeSplStringLiteral cannot be tricked into producing an unescaped q
 describe('index/sourcetype tokens used unquoted in SPL fall back rather than admit metacharacters', () => {
   test.each(INJECTION_PAYLOADS)('payload as index name: %j', (payload) => {
     expect(safeIndexNameOrFallback(payload, 'safe_default')).toBe('safe_default');
+  });
+});
+
+describe('saved search name token (quoted in SPL, deliberately wider grammar) still rejects every injection payload', () => {
+  test.each(INJECTION_PAYLOADS)('payload as saved search name: %j', (payload) => {
+    expect(safeSavedSearchNameOrFallback(payload, 'safe_default')).toBe('safe_default');
   });
 });

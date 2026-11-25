@@ -18,9 +18,10 @@ through Splunk's standard `configs/conf-*` REST endpoint.
 | | `max_path_depth` | 5 | Max hops considered by the path finder |
 | | `max_search_result_rows` | 500 | Upper bound on every controlled search's `\| head` |
 | | `search_dispatch_max_time_seconds` | 30 | Client-side search timeout |
-| `[search]` | `relationship_source_type` | `index` | `index` or `lookup` - where observed relationship data comes from (see DATA_INGESTION.md) |
+| `[search]` | `relationship_source_type` | `index` | `index`, `lookup` or `saved_search` - where observed relationship data comes from (see DATA_INGESTION.md). Setting this to `saved_search`, and changing `relationship_saved_search`, both require the `graphlens_use_search_source` capability - see SECURITY.md |
 | | `relationship_index` | `graphlens_relationships` | Index searched when `relationship_source_type = index` |
 | | `relationship_lookup` | `graphlens_relationships_lookup` | **Lookup definition** name (not a raw CSV filename) read via `\| inputlookup` when `relationship_source_type = lookup` - see DATA_INGESTION.md |
+| | `relationship_saved_search` | empty | Saved search name read via `\| savedsearch` when `relationship_source_type = saved_search` - see DATA_INGESTION.md |
 | | `evidence_default_index` | `*` | Fallback index for evidence search |
 | | `default_earliest` / `default_latest` | `-24h` / `now` | Default time range |
 | `[features]` | `enable_export` / `enable_annotations` / `enable_saved_views` / `enable_clustering` / `enable_path_finder` / `enable_graph_query` | all `true` | Feature toggles |
@@ -73,7 +74,33 @@ DATA_INGESTION.md/INSTALL.md it automates), does three things:
 
 This is a convenience for trying GraphLens out, or demoing it, before
 bringing in real data - it is not part of bringing your own data in (see
-DATA_INGESTION.md).
+DATA_INGESTION.md). It is not available when `relationship_source_type =
+saved_search` (below) - there is no bundled relationship data to load into
+a search you authored yourself; the Configuration page's Load demo data
+button is disabled with an explanation in that mode.
+
+## Relationship data source: saved search
+
+`relationship_source_type = saved_search` is a third alternative to Index
+and Lookup (above), for relationship data better expressed as an
+already-authored search - a join across several indexes, a data model
+search, anything not naturally a single index or a single static table -
+than as either of those. GraphLens runs it via `| savedsearch
+"<relationship_saved_search>"`, the same way index mode runs `search
+index=...` and lookup mode runs `| inputlookup <name>`; its results must
+already be shaped to the relationship schema (DATA_MODEL.md) the same way
+an indexed event or a lookup row already has to be - GraphLens does not
+transform them.
+
+**Setting `relationship_source_type` to `saved_search`, and changing
+`relationship_saved_search` once it is, both require the
+`graphlens_use_search_source` capability** - deliberately not granted to
+any example role by default (default/authorize.conf), unlike every other
+setting on this page, which only needs `graphlens_manage_config`. See
+SECURITY.md, "Saved search as a relationship data source," for why this
+is kept separate: pointing GraphLens at a saved search means trusting
+that search's own author and content, not reviewing it the way GraphLens
+reviews its own bounded SPL templates.
 
 ## Query language
 

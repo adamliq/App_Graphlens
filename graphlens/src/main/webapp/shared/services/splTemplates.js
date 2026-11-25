@@ -22,23 +22,34 @@
  * *shape* of each query is fixed and reviewable here, the same as it was
  * in savedsearches.conf; only the substitution mechanism changed.
  *
- * Relationship data source (index vs. lookup): every template below that
- * reads observed relationships takes a `source` argument -
- * `{ type: 'index', index }` or `{ type: 'lookup', lookupName }` - built
- * from Configuration page settings (configService.js) by the caller.
- * This replaced a static `graphlens_relationship_index` macro
- * (`index=graphlens_relationships`, hardcoded in default/macros.conf) that
- * the Configuration page's own "Relationship index" field never actually
- * fed into - changing that setting silently did nothing, because nothing
- * read it back into the macro. See CHANGELOG.md.
+ * Relationship data source (index vs. lookup vs. saved search): every
+ * template below that reads observed relationships takes a `source`
+ * argument - `{ type: 'index', index }`, `{ type: 'lookup', lookupName }`
+ * or `{ type: 'saved_search', savedSearchName }` - built from Configuration
+ * page settings (configService.js) by the caller. This replaced a static
+ * `graphlens_relationship_index` macro (`index=graphlens_relationships`,
+ * hardcoded in default/macros.conf) that the Configuration page's own
+ * "Relationship index" field never actually fed into - changing that
+ * setting silently did nothing, because nothing read it back into the
+ * macro. See CHANGELOG.md.
+ *
+ * Saved-search mode (`graphlens_use_search_source` capability - see
+ * SECURITY.md) trusts an administrator-named, administrator-authored
+ * saved search's own content the same way lookup mode already trusts a
+ * lookup's content - GraphLens does not, and cannot, review what that
+ * saved search actually does. `| savedsearch "<name>"` runs under the
+ * current user's own session/permissions, same as every other search this
+ * app dispatches; it does not escalate privilege on its own.
  */
 import {
   clampInteger, isValidId, GraphLensValidationError,
-  safeIndexNameOrFallback, safeLookupNameOrFallback,
+  safeIndexNameOrFallback, safeLookupNameOrFallback, safeSavedSearchNameOrFallback,
+  escapeSplStringLiteral,
 } from '../utilities/splSafety';
 
 const DEFAULT_INDEX = 'graphlens_relationships';
 const DEFAULT_LOOKUP = 'graphlens_relationships_lookup';
+const DEFAULT_SAVED_SEARCH = 'graphlens_relationships_saved_search';
 
 // edge_id is optional (DATA_MODEL.md, DATA_INGESTION.md) - documented as
 // derived deterministically from source_id/target_id/relationship_type
@@ -69,17 +80,23 @@ function requireValidId(id, field) {
  * result set, before any filtering/aggregation. Index mode is a single
  * `search index="..."` line (optionally with inline filter args, since a
  * plain `search` command accepts trailing filter terms on the same line).
- * Lookup mode is `| inputlookup <name>` followed by a separate
- * `| search <filter args>` line when filtering is needed - `inputlookup`
- * does not accept the same inline trailing-filter-argument syntax a
- * generating `search` command does, so filtering is always a distinct
- * pipe stage in lookup mode.
+ * Lookup mode and saved-search mode are both `| <generating command>`
+ * followed by a separate `| search <filter args>` line when filtering is
+ * needed - neither `inputlookup` nor `savedsearch` accepts the same inline
+ * trailing-filter-argument syntax a generating `search` command does, so
+ * filtering is always a distinct pipe stage for both.
  */
 function buildRelationshipSourceLines(source, filterArgs) {
-  const type = source && source.type === 'lookup' ? 'lookup' : 'index';
+  const type = source && (source.type === 'lookup' || source.type === 'saved_search') ? source.type : 'index';
   if (type === 'lookup') {
     const lookupName = safeLookupNameOrFallback(source && source.lookupName, DEFAULT_LOOKUP);
     const lines = [`| inputlookup ${lookupName}`];
+    if (filterArgs) lines.push(`| search ${filterArgs}`);
+    return lines;
+  }
+  if (type === 'saved_search') {
+    const savedSearchName = safeSavedSearchNameOrFallback(source && source.savedSearchName, DEFAULT_SAVED_SEARCH);
+    const lines = [`| savedsearch "${escapeSplStringLiteral(savedSearchName)}"`];
     if (filterArgs) lines.push(`| search ${filterArgs}`);
     return lines;
   }
