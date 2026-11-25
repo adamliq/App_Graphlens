@@ -1,13 +1,18 @@
 #!/usr/bin/env python3
 """Generate synthetic GraphLens sample data.
 
-Produces two files under sample_data/:
-  - graphlens_relationships_sample.csv : rows matching the
+Produces:
+  - sample_data/graphlens_relationships_sample.csv : rows matching the
     graphlens_relationships index schema (see DATA_MODEL.md), suitable for
     `| inputlookup` testing or a one-time `sourcetype=graphlens:relationship`
     upload via Splunk Web's "Add Data" for a demo/sandbox index.
-  - graphlens_evidence_sample.csv : a handful of raw-looking supporting
-    events referenced by evidence_reference, for evidence-drilldown demos.
+  - lookups/graphlens_sample_relationships.csv : an identical copy, bundled
+    as an actual Splunk lookup (default/transforms.conf) so the
+    Configuration page's "Load demo data" button can read it with
+    `| inputlookup` at runtime - see services/demoDataService.js.
+  - sample_data/graphlens_evidence_sample.csv : a handful of raw-looking
+    supporting events referenced by evidence_reference, for
+    evidence-drilldown demos.
 
 All identifiers, hostnames, IP addresses and usernames are fictitious.
 IP addresses are drawn only from IANA documentation ranges
@@ -23,6 +28,7 @@ from datetime import datetime, timedelta, timezone
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 OUT_DIR = os.path.join(os.path.dirname(HERE), "sample_data")
+LOOKUPS_DIR = os.path.join(os.path.dirname(HERE), "lookups")
 
 NOW = datetime(2026, 7, 17, 8, 0, 0, tzinfo=timezone.utc)
 
@@ -216,16 +222,25 @@ add("user:bjones", "user", "B Jones",
 
 def write_relationships():
     os.makedirs(OUT_DIR, exist_ok=True)
+    os.makedirs(LOOKUPS_DIR, exist_ok=True)
     path = os.path.join(OUT_DIR, "graphlens_relationships_sample.csv")
+    # Also written verbatim to lookups/graphlens_sample_relationships.csv -
+    # the file the Configuration page's "Load demo data" button reads via
+    # `| inputlookup graphlens_sample_relationships` (see
+    # default/transforms.conf, services/demoDataService.js). Keeping both
+    # in one writer means regenerating sample data can never leave them out
+    # of sync with each other.
+    lookup_path = os.path.join(LOOKUPS_DIR, "graphlens_sample_relationships.csv")
     fieldnames = ["edge_id", "source_id", "source_type", "source_label", "target_id", "target_type",
                   "target_label", "relationship_type", "relationship_label", "event_count", "first_seen",
                   "last_seen", "risk_score", "source_index", "source_sourcetype", "evidence_reference"]
-    with open(path, "w", newline="") as fh:
-        writer = csv.DictWriter(fh, fieldnames=fieldnames)
-        writer.writeheader()
-        for row in ROWS:
-            writer.writerow(row)
-    return path
+    for out_path in (path, lookup_path):
+        with open(out_path, "w", newline="") as fh:
+            writer = csv.DictWriter(fh, fieldnames=fieldnames)
+            writer.writeheader()
+            for row in ROWS:
+                writer.writerow(row)
+    return path, lookup_path
 
 
 def write_evidence():
@@ -260,7 +275,7 @@ def write_evidence():
 
 
 if __name__ == "__main__":
-    rel_path = write_relationships()
+    rel_path, lookup_path = write_relationships()
     ev_path = write_evidence()
-    print(f"Wrote {len(ROWS)} relationship rows to {rel_path}")
+    print(f"Wrote {len(ROWS)} relationship rows to {rel_path} and {lookup_path}")
     print(f"Wrote evidence sample to {ev_path}")

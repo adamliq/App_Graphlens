@@ -1,7 +1,7 @@
 import React from 'react';
 import PageNav from '../../shared/components/PageNav';
 
-const APP_VERSION = '1.12.0';
+const APP_VERSION = '1.13.0';
 
 /**
  * Static, no-dependency reference page - unlike the other three pages,
@@ -241,6 +241,18 @@ export default function App() {
           so never edit it directly. See CONFIGURATION.md in the installed
           package for the full settings reference, plus upgrade and
           rollback notes.
+        </p>
+        <p>
+          The same page&apos;s <strong>Load demo data</strong> button
+          (requires <code>graphlens_manage_collections</code>) seeds a
+          small bundled sample dataset - node/relationship type
+          configuration plus a handful of sample relationships loaded into
+          whichever relationship data source is currently configured - so
+          a fresh install can be explored immediately. It replaces the
+          current type configuration and, in lookup mode, the entire
+          configured relationship lookup; see CONFIGURATION.md&apos;s
+          &quot;Demo data&quot; section before using it on an instance with
+          real curated data.
         </p>
       </section>
 

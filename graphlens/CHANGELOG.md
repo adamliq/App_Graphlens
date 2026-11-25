@@ -2,6 +2,49 @@
 
 All notable changes to GraphLens are documented in this file.
 
+## [1.13.0] - 2026-11-25
+
+### Added
+
+- **"Load demo data" button on the Configuration page**, gated by the
+  `graphlens_manage_collections` capability. Seeds the bundled sample
+  node/relationship type KV Store collections and a small set of sample
+  relationships, automating the manual steps DATA_INGESTION.md/INSTALL.md
+  already documented rather than introducing a new one:
+  - Type lookups: the same `| inputlookup ... | outputlookup ...` lines
+    an administrator previously had to paste in by hand.
+  - Relationships, lookup mode: `| outputlookup` into the configured
+    relationship lookup (replaces its entire contents, same as that
+    command always does).
+  - Relationships, index mode: re-ingested as real events into the
+    configured index via `| collect`, under a dedicated
+    `graphlens:relationship:demo` sourcetype (`default/props.conf`,
+    `KV_MODE=auto`) rather than `graphlens:relationship` itself - two
+    other designs (posting raw CSV text to Splunk's `receivers/simple`
+    endpoint; `| collect` straight into `graphlens:relationship`) were
+    each tried and rejected after live testing showed neither actually
+    produced searchable fields. The live search templates never filter by
+    sourcetype, only index, so this is found transparently alongside
+    everything else.
+  - Each sample row's `source_index`/`source_sourcetype` are rewritten to
+    the administrator's actually-configured index at load time, so "View
+    supporting events" resolves correctly even when that default has been
+    changed.
+  - Writes one `load_demo_data` audit log entry, same as every other
+    tracked action.
+  - New `lookups/graphlens_sample_relationships.csv` (also written by
+    `scripts/generate_sample_data.py`, so it can never drift from
+    `sample_data/graphlens_relationships_sample.csv`) and a matching
+    `transforms.conf` stanza.
+  - See CONFIGURATION.md's new "Demo data" section and
+    ARCHITECTURE.md's new "How 'Load demo data' works" section.
+
+Full npm test (364 tests) and lint (0 warnings) pass; AppInspect re-run
+clean (0 errors/failures), 8 warnings (one new: `check_hostnames_and_ips`
+on the new bundled `lookups/graphlens_sample_relationships.csv` - a
+documentation-range IP already shipped harmlessly elsewhere in this app;
+see APPINSPECT.md). Version bumped to 1.13.0.
+
 ## [1.12.0] - 2026-11-21
 
 ### Changed

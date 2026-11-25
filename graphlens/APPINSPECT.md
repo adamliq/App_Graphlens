@@ -45,7 +45,7 @@ final submission**, since that service can surface additional,
 environment-dependent findings (e.g. newly disclosed vulnerable
 third-party libraries) that a fully offline run cannot.
 
-## Result summary (1.2.0 validation run, splunk-appinspect 4.4.0)
+## Result summary (1.13.0 validation run, splunk-appinspect 4.4.0)
 
 ```
 error:          0
@@ -53,25 +53,28 @@ failure:        0
 future_failure:  0
 skipped:        0
 not_applicable: 103
-warning:        7
-success:        144
+warning:        8
+success:        143
 -------------------
 Total:          254
 ```
 
-**Zero errors, zero failures.** Same profile as 1.1.0-1.1.4 - re-run for
-1.2.0 specifically because it added a fourth Mako view template
-(`Help.html`); `check_for_custom_mako_templates` now names all four
-templates instead of three (see its own section below), which is the only
-substantive difference. Seven warnings remain, all reviewed and accepted
-with justification below: the three carried over unchanged from 1.0.1
-(`check_for_updates_disabled`, `check_collections_conf`,
-`check_for_custom_mako_templates`), plus four introduced by 1.1.0 adding
-the app's first scripted input
+**Zero errors, zero failures.** Same profile as 1.2.0-1.12.0 plus one new
+warning: 1.13.0 added `lookups/graphlens_sample_relationships.csv` (the
+"Load demo data" feature's bundled sample data, see CHANGELOG.md), which
+surfaced `check_hostnames_and_ips` for the first time (see entry 8 below)
+- a documentation-range IP address already shipped harmlessly elsewhere
+in this app, now also present under `lookups/`, which this check
+apparently scans and `sample_data/` apparently does not. Eight warnings
+remain, all reviewed and accepted with justification below: the three
+carried over unchanged from 1.0.1 (`check_for_updates_disabled`,
+`check_collections_conf`, `check_for_custom_mako_templates`), four
+introduced by 1.1.0 adding the app's first scripted input
 (`check_scripted_inputs_cmd_path_pattern`, `check_for_indexer_synced_configs`,
 `check_for_python_script_existence`, `check_for_scripted_inputs`) - three
 of those four say "No action required" or are purely informational in
-their own check message. Two *failures* that same 1.1.0 run initially
+their own check message - plus the one new to 1.13.0
+(`check_hostnames_and_ips`). Two *failures* that same 1.1.0 run initially
 surfaced (missing `python.version`/`python.required` on the scripted input
 stanza) were fixed, not accepted - see "Remediation notes" below.
 
@@ -192,6 +195,18 @@ warnings that were fixed, not suppressed:
    instance's own access-control configuration, which is a search-head
    concept - it has no reason to run on an indexer and was never intended
    to. Not applicable to this input; no action taken.
+8. **`check_hostnames_and_ips`** (1.13.0) - "PRIVATE IP 203.0.113.44 is
+   found in lookups/graphlens_sample_relationships.csv:5." New in 1.13.0
+   because that file (the "Load demo data" feature's bundled sample
+   relationships, see CHANGELOG.md) is the first `lookups/*.csv` copy of
+   data that already shipped under `sample_data/` without tripping this
+   check - `sample_data/` is apparently not in AppInspect's scanned set,
+   `lookups/` is. The flagged address is drawn from RFC 5737's
+   documentation-only range (203.0.113.0/24, "TEST-NET-3"), the same
+   deliberate choice `scripts/generate_sample_data.py`'s own docstring
+   already documents for every address in this synthetic dataset - it is
+   not a real private IP, and no real one is ever shipped. No action
+   taken.
 
 ### `check_for_custom_mako_templates`: Mako templates are being deprecated
 
@@ -271,11 +286,12 @@ AppInspect's automated checks cannot verify:
 
 ## Cloud-vetting readiness statement
 
-Based on the 1.1.0 validation run, GraphLens has **zero AppInspect errors
-or failures** and seven reviewed, justified warnings (one a forward-looking
+Based on the 1.13.0 validation run, GraphLens has **zero AppInspect errors
+or failures** and eight reviewed, justified warnings (one a forward-looking
 deprecation risk, not a current defect; three purely informational
-"no action required" notices about the new scripted input added in 1.1.0).
-This is a strong
+"no action required" notices about the scripted input added in 1.1.0; one
+about a documentation-range IP address in bundled sample data added in
+1.13.0). This is a strong
 signal of Splunk Cloud vetting readiness, but it is **not** a
 certification of AppInspect success by Splunk, nor a guarantee of
 Splunkbase or Splunk Cloud vetting approval - re-run AppInspect (ideally

@@ -43,6 +43,38 @@ entry still renders, using a deterministic colour derived from its type
 name (`typeConfigService.colorForType`) so the graph is never left
 uncoloured while an administrator catches up on curation.
 
+## Demo data
+
+The Configuration page's "Load demo data" button, gated by the
+`graphlens_manage_collections` capability (same as the manual steps in
+DATA_INGESTION.md/INSTALL.md it automates), does three things:
+
+1. Seeds `graphlens_node_types` / `graphlens_relationship_types` from the
+   bundled sample CSVs (`| inputlookup ... | outputlookup ...`) - this
+   always **replaces** the current contents of those two collections.
+2. Loads a small bundled set of sample relationships (`lookups/
+   graphlens_sample_relationships.csv`, the same data `DATA_INGESTION.md`'s
+   worked example is built from) into whichever `relationship_source_type`
+   is currently configured:
+   - **Index mode**: re-ingests the sample rows as new events into the
+     configured `relationship_index` via `| collect`, under a dedicated
+     `graphlens:relationship:demo` sourcetype (see ARCHITECTURE.md for why
+     a distinct sourcetype is needed). This does not remove any existing
+     data in that index, but **the index must already exist first**.
+   - **Lookup mode**: **replaces** the entire contents of the configured
+     `relationship_lookup` via `| outputlookup` - the same
+     destructive-by-design behaviour that command always has. **The
+     configured name must already be a registered lookup *definition***
+     (DATA_INGESTION.md section D step 2 - Settings > Lookups > Lookup
+     table definitions), not merely a setting value: confirmed live that
+     `| outputlookup` fails outright against a name with no definition yet.
+3. Writes one `load_demo_data` entry to the audit log (see the Health
+   page), the same as every other tracked action.
+
+This is a convenience for trying GraphLens out, or demoing it, before
+bringing in real data - it is not part of bringing your own data in (see
+DATA_INGESTION.md).
+
 ## Query language
 
 The Relationship Explorer's text query panel (`enable_graph_query`, above)

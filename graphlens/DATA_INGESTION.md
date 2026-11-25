@@ -157,6 +157,14 @@ Any `source_type`/`target_type`/`relationship_type` value that isn't
 registered here still renders (with a default colour/shape) - registering
 it just controls how it's displayed in the legend and filters.
 
+**Trying out GraphLens before bringing in your own data?** The
+Configuration page's "Load demo data" button runs the two lines above for
+you, plus loads a small bundled set of sample relationships into whichever
+`relationship_source_type` you've configured (an index or a lookup) - see
+CONFIGURATION.md's "Demo data" section. It is not a substitute for the
+steps in this document; it exists so you can see GraphLens working end to
+end before doing them for your own data.
+
 ## 4. Wire up evidence (optional)
 
 If you want **View supporting events** to work for an edge, the raw
