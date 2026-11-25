@@ -11,6 +11,8 @@ import {
   selectRenderableElements,
   setActiveFilters,
   loadGraphSnapshot,
+  updateNodeData,
+  updateEdgeData,
 } from '../../src/main/webapp/shared/services/graphStateReducer';
 
 function node(id, type = 'user') {
@@ -281,5 +283,37 @@ describe('selectRenderableElements - time window filter', () => {
     state = setActiveFilters(state, { timeFilterMin: Date.parse('2026-01-01T00:00:00Z'), timeFilterMax: Date.parse('2026-01-02T00:00:00Z') });
     const renderable = selectRenderableElements(state);
     expect(renderable.nodes.map((n) => n.id)).toEqual(['A']);
+  });
+});
+
+describe('updateNodeData / updateEdgeData - edit mode (1.19.0, graphlens_edit_graph_data)', () => {
+  test('updateNodeData replaces a visible node\'s own data by id', () => {
+    let state = createEmptyGraphState();
+    state = setInitialNode(state, node('A'));
+    const next = updateNodeData(state, 'A', { ...state.visibleNodes.A, label: 'Edited' });
+    expect(next.visibleNodes.A.label).toBe('Edited');
+  });
+
+  test('updateNodeData is a no-op when the node is no longer visible', () => {
+    let state = createEmptyGraphState();
+    state = setInitialNode(state, node('A'));
+    const next = updateNodeData(state, 'gone', { id: 'gone', label: 'x' });
+    expect(next).toBe(state);
+  });
+
+  test('updateEdgeData replaces a visible edge\'s own data by id', () => {
+    let state = createEmptyGraphState();
+    state = setInitialNode(state, node('A'));
+    const elements = cyEls([node('B')], [edge('e1', 'A', 'B')]);
+    state = mergeExpansion(state, 'A', elements, state.graphLimits).nextState;
+    const next = updateEdgeData(state, 'e1', { ...state.visibleEdges.e1, relationshipLabel: 'Edited' });
+    expect(next.visibleEdges.e1.relationshipLabel).toBe('Edited');
+  });
+
+  test('updateEdgeData is a no-op when the edge is no longer visible', () => {
+    let state = createEmptyGraphState();
+    state = setInitialNode(state, node('A'));
+    const next = updateEdgeData(state, 'gone', { id: 'gone' });
+    expect(next).toBe(state);
   });
 });

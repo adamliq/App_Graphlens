@@ -2,24 +2,36 @@
 
 ## Roles and capabilities
 
-`default/authorize.conf` defines eleven fine-grained capabilities
+`default/authorize.conf` defines twelve fine-grained capabilities
 (`graphlens_run_search`, `graphlens_view_evidence`, `graphlens_export_graph`,
 `graphlens_create_annotation`, `graphlens_manage_shared_annotation`,
 `graphlens_save_view`, `graphlens_manage_shared_view`,
 `graphlens_manage_config`, `graphlens_manage_collections`,
-`graphlens_view_health`, `graphlens_use_search_source` - see SECURITY.md
-for what each grants) and three example roles built from them:
+`graphlens_view_health`, `graphlens_use_search_source`,
+`graphlens_edit_graph_data` - see SECURITY.md for what each grants) and
+three example roles built from them:
 
 - **`graphlens_viewer`**: search, expand/collapse, view evidence, export.
   Cannot change configuration, save views, or annotate.
 - **`graphlens_analyst`** (imports `graphlens_viewer`): additionally save
-  views, create annotations, use the path finder.
+  views, create annotations, use the path finder, and (1.19.0) edit a
+  node/edge's own properties and the cells of a CSV before importing it.
 - **`graphlens_admin`** (imports `graphlens_analyst`): additionally manage
   shared annotations/views, edit `graphlens_settings.conf`, curate KV
   Store node/edge/type data, view the Health page. Does **not** include
   `graphlens_use_search_source` - see SECURITY.md, "Saved search as a
   relationship data source," before adding it to a cloned role; it is kept
   separate deliberately, not an oversight.
+
+`graphlens_edit_graph_data` is granted at the analyst tier (unlike
+`graphlens_use_search_source`) because editing only changes a user's own
+session-only, in-browser view of data their own search permissions
+already surfaced - it cannot affect what anyone else sees, persist
+anywhere, or widen what GraphLens itself trusts. See SECURITY.md,
+"Editing graph data," for the honest caveat this one capability needs:
+unlike every other capability here, it has no corresponding server-side
+REST call to enforce it against, since nothing is written back to
+Splunk.
 
 Clone these roles rather than editing them in place if you need a
 different capability mix - `authorize.conf` local overrides otherwise

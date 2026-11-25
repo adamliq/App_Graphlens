@@ -43,4 +43,5 @@ export const CAPABILITIES = Object.freeze({
   MANAGE_COLLECTIONS: 'graphlens_manage_collections',
   VIEW_HEALTH: 'graphlens_view_health',
   USE_SEARCH_SOURCE: 'graphlens_use_search_source',
+  EDIT_GRAPH_DATA: 'graphlens_edit_graph_data',
 });

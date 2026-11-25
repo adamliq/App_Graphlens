@@ -122,6 +122,18 @@ instance's configured home) to switch away from GraphLens entirely.
   schema - GraphLens classifies each row by its own fields
   (`jobResultsService.js`) but cannot reshape data that does not already
   carry `node_id` or `source_id`/`target_id`/`relationship_type`.
+- **Editing a node/edge, or a CSV's cells before import (1.19.0), is
+  session-only and has no server-side enforcement point** -
+  `graphlens_edit_graph_data` gates the UI (the Edit button, the CSV
+  review table), but since nothing is written to Splunk, there is no
+  REST call for a missing capability to be rejected by; this is
+  documented honestly in SECURITY.md, "Editing graph data," rather than
+  implied to be as strongly enforced as every other capability in this
+  app. An edit is lost on Reset graph or a reload, is never visible to
+  any other user, and the CSV review table only edits the first 200
+  rows (further rows still load, just unedited) - there is no "save my
+  edits back to the index/lookup/saved search/dataset" path at all;
+  re-export (CSV/JSON) is the only way to keep a correction.
 - **The query language (`graphQueryLanguage.js`) supports a deliberately
   small, fixed grammar** - one document, one root field always named
   `node`, no fragments, variables, aliases or directives. Concretely:

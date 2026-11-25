@@ -228,6 +228,24 @@ tables with different column names (`id`/`source`/`target`/...) than
 the relationship schema above, and do not round-trip the full
 node/edge/metadata structure JSON does.
 
+If your role has the `graphlens_edit_graph_data` capability (1.19.0),
+picking a CSV file opens a **review table** first instead of loading it
+straight onto the canvas: fix any cell (a typo'd risk score, a wrong
+label) right there, then click **Load**. This only changes what gets
+loaded, never the file on disk. Only the first 200 rows are shown for
+editing; any further rows still load, just unedited.
+
+## Editing a node or relationship
+
+If your role has the `graphlens_edit_graph_data` capability (1.19.0),
+the Details panel for a selected node or relationship shows an **Edit**
+button alongside its usual actions. Edit mode lets you change its label,
+type, risk score, event count, and a few other fields, then **Save** or
+**Cancel**. An edit only changes what you see in this browser session -
+it is never sent to Splunk, never seen by anyone else, and is lost the
+moment you Reset graph or reload the page. If you want to keep a
+correction, re-export (CSV/JSON) afterward.
+
 ## Load from job
 
 Toolbar **Load from job** button: paste the job ID (sid) of a search you

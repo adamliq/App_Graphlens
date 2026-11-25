@@ -126,18 +126,19 @@ function tokenizeCsv(text) {
 }
 
 /**
- * Parses `csvText` (the contents of a CSV file picked via the Import
- * button) into `{ nodeRows, edgeRows }`. The CSV must have a header row
- * naming relationship-schema columns (source_id/target_id/
- * relationship_type/... for an edge row, node_id/node_type/... for a
- * node row, or a mix of both across rows - see the Help page) - the
- * same schema every other relationship source already produces.
- * Classification reuses jobResultsService.js's classifyJobResultRows so
- * a CSV import and a "Load from job" import behave identically once
- * rows exist as plain objects. Throws GraphLensValidationError if the
- * file is empty, has no header row, or no row matches either shape.
+ * Parses `csvText` into `{ header, rows }` - `header` the trimmed column
+ * names in file order, `rows` the data rows as plain objects keyed by
+ * that header (every row has every header key, defaulting to '' for a
+ * short row). This is the shared first half of both
+ * parseImportedGraphCsv below (which classifies the rows and is done
+ * with them) and CsvImportPreviewDialog.jsx's pre-import table editor
+ * (1.19.0, gated by graphlens_edit_graph_data) - which needs the rows as
+ * plain editable objects *before* classification, so a user can fix a
+ * cell and have the edited value, not the original, go on to
+ * classification. Throws GraphLensValidationError if the file is empty
+ * or has no header row.
  */
-export function parseImportedGraphCsv(csvText) {
+export function parseCsvRowObjects(csvText) {
   if (typeof csvText !== 'string' || csvText.trim().length === 0) {
     throw new GraphLensValidationError('That file is empty.', 'import');
   }
@@ -152,7 +153,7 @@ export function parseImportedGraphCsv(csvText) {
     throw new GraphLensValidationError('That CSV has no header row.', 'import');
   }
 
-  const objects = rawRows.slice(1).map((r) => {
+  const rows = rawRows.slice(1).map((r) => {
     const obj = {};
     header.forEach((h, idx) => {
       if (h) obj[h] = r[idx] !== undefined ? r[idx] : '';
@@ -160,7 +161,24 @@ export function parseImportedGraphCsv(csvText) {
     return obj;
   });
 
-  const { nodeRows, edgeRows } = classifyJobResultRows(objects);
+  return { header: header.filter((h) => h !== ''), rows };
+}
+
+/**
+ * Parses `csvText` (the contents of a CSV file picked via the Import
+ * button) into `{ nodeRows, edgeRows }`. The CSV must have a header row
+ * naming relationship-schema columns (source_id/target_id/
+ * relationship_type/... for an edge row, node_id/node_type/... for a
+ * node row, or a mix of both across rows - see the Help page) - the
+ * same schema every other relationship source already produces.
+ * Classification reuses jobResultsService.js's classifyJobResultRows so
+ * a CSV import and a "Load from job" import behave identically once
+ * rows exist as plain objects. Throws GraphLensValidationError if the
+ * file is empty, has no header row, or no row matches either shape.
+ */
+export function parseImportedGraphCsv(csvText) {
+  const { rows } = parseCsvRowObjects(csvText);
+  const { nodeRows, edgeRows } = classifyJobResultRows(rows);
   if (nodeRows.length === 0 && edgeRows.length === 0) {
     throw new GraphLensValidationError("That CSV doesn't match the relationship schema - see the Help page.", 'import');
   }

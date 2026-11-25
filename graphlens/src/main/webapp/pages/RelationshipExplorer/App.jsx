@@ -2,14 +2,15 @@ import React, { useCallback, useEffect, useMemo, useState, useRef } from 'react'
 
 import { useGraphState } from '../../shared/hooks/useGraphState';
 import { dispatchAdHocSearch, attachToJob, toUserFacingError } from '../../shared/services/searchService';
-import { transformRowsToGraph } from '../../shared/services/graphTransformer';
+import { transformRowsToGraph, sanitizeNodeEdit, sanitizeEdgeEdit } from '../../shared/services/graphTransformer';
 import { classifyJobResultRows } from '../../shared/services/jobResultsService';
 import { getSettings, relationshipSourceFromSettings } from '../../shared/services/configService';
 import { loadNodeTypeConfig, loadRelationshipTypeConfig, deriveNodeTypeList, deriveRelationshipTypeList } from '../../shared/services/typeConfigService';
 import { recordAuditEvent, AUDIT_ACTIONS } from '../../shared/services/auditService';
+import { hasCapability, CAPABILITIES } from '../../shared/services/capabilityService';
 import { findShortestPath } from '../../shared/services/pathFinder';
 import { buildExportBlob } from '../../shared/services/exportService';
-import { parseImportedGraphJson, parseImportedGraphCsv } from '../../shared/services/importService';
+import { parseImportedGraphJson, parseImportedGraphCsv, parseCsvRowObjects } from '../../shared/services/importService';
 import { buildEvidenceTokensForEdge, buildEvidenceTokensForNode } from '../../shared/services/evidenceQueryBuilder';
 import { buildInitialEntitySearchSpl, buildExpandNodeSpl, buildEvidenceSpl } from '../../shared/services/splTemplates';
 import { parseGraphQuery } from '../../shared/services/graphQueryLanguage';
@@ -37,11 +38,12 @@ import GraphQueryPanel from './components/GraphQueryPanel';
 import SavedViewsPanel from './components/SavedViewsPanel';
 import ExportDialog from './components/ExportDialog';
 import LoadFromJobDialog from './components/LoadFromJobDialog';
+import CsvImportPreviewDialog from './components/CsvImportPreviewDialog';
 import ErrorNotification from './components/ErrorNotification';
 import EmptyState from './components/EmptyState';
 import PageNav from '../../shared/components/PageNav';
 
-const APP_VERSION = '1.18.0';
+const APP_VERSION = '1.19.0';
 
 function downloadBlob(blob, filename) {
   const url = URL.createObjectURL(blob);
@@ -66,6 +68,8 @@ export default function App() {
   const [exportDialogOpen, setExportDialogOpen] = useState(false);
   const [loadFromJobDialogOpen, setLoadFromJobDialogOpen] = useState(false);
   const [loadFromJobState, setLoadFromJobState] = useState({ isLoading: false, error: null });
+  const [canEditGraphData, setCanEditGraphData] = useState(false);
+  const [csvPreviewState, setCsvPreviewState] = useState({ open: false, header: [], rows: [], fileName: null, error: null });
   const [evidence, setEvidence] = useState({ isLoading: false, error: null, rows: [], fieldOrder: [], targetLabel: null });
   const [pathEndpoints, setPathEndpoints] = useState({ startNodeId: null, endNodeId: null });
   const [path, setPath] = useState(null);
@@ -95,15 +99,17 @@ export default function App() {
   useEffect(() => {
     let cancelled = false;
     (async () => {
-      const [loadedSettings, nodeTypes, relTypes] = await Promise.all([
+      const [loadedSettings, nodeTypes, relTypes, canEdit] = await Promise.all([
         getSettings(),
         loadNodeTypeConfig(),
         loadRelationshipTypeConfig(),
+        hasCapability(CAPABILITIES.EDIT_GRAPH_DATA),
       ]);
       if (cancelled) return;
       setSettings(loadedSettings);
       setNodeTypeConfig(nodeTypes);
       setRelationshipTypeConfig(relTypes);
+      setCanEditGraphData(canEdit);
     })();
     return () => { cancelled = true; };
   }, []);
@@ -406,6 +412,30 @@ export default function App() {
     }
   }, [state, handleApiError]);
 
+  // Shared tail end of "replace the whole graph with these rows" for
+  // both of Import's accepted shapes (JSON, and CSV - edited or not) -
+  // transform, load, reset the stale search/path/evidence state the
+  // replaced graph can no longer honour, and audit. `formatLabel` is
+  // only ever the audit detail's free text. Load from job
+  // (handleLoadFromJob below) does the same sequence inline rather than
+  // sharing this helper, since it also needs a droppedCount/sid in its
+  // own audit detail and its own loading-state bookkeeping.
+  const loadRowsOntoCanvas = useCallback((nodeRows, edgeRows, formatLabel) => {
+    const { nodes, edges } = transformRowsToGraph(nodeRows, edgeRows, {
+      maxNodes: settings.maxVisibleNodes,
+      maxEdges: settings.maxVisibleEdges,
+      nodeTypeConfig,
+      relationshipTypeConfig,
+    });
+    actions.loadSnapshot({ nodes, edges }, settings);
+    setSearchResults([]);
+    setPath(null);
+    setPathEndpoints({ startNodeId: null, endNodeId: null });
+    setEvidence({ isLoading: false, error: null, rows: [], fieldOrder: [], targetLabel: null });
+    setLayoutToken((t) => t + 1);
+    recordAuditEvent(AUDIT_ACTIONS.IMPORT_GRAPH, { detail: `${nodes.length} nodes, ${edges.length} edges (${formatLabel})` });
+  }, [settings, actions, nodeTypeConfig, relationshipTypeConfig]);
+
   const handleImportFile = useCallback((file) => {
     if (!settings || !file) return;
     setError(null);
@@ -421,20 +451,19 @@ export default function App() {
         const lowerName = (file.name || '').toLowerCase();
         const isCsv = lowerName.endsWith('.csv')
           || (!lowerName.endsWith('.json') && !text.trimStart().startsWith('{'));
+        // A user with graphlens_edit_graph_data gets a chance to fix
+        // the CSV's own cells (typo'd risk score, wrong label, ...)
+        // before anything is classified or loaded onto the canvas - see
+        // CsvImportPreviewDialog.jsx. Without that capability, CSV
+        // import behaves exactly as it did in 1.18.0: straight to the
+        // canvas, same as JSON import always has.
+        if (isCsv && canEditGraphData) {
+          const { header, rows } = parseCsvRowObjects(text);
+          setCsvPreviewState({ open: true, header, rows, fileName: file.name, error: null });
+          return;
+        }
         const { nodeRows, edgeRows } = isCsv ? parseImportedGraphCsv(text) : parseImportedGraphJson(text);
-        const { nodes, edges } = transformRowsToGraph(nodeRows, edgeRows, {
-          maxNodes: settings.maxVisibleNodes,
-          maxEdges: settings.maxVisibleEdges,
-          nodeTypeConfig,
-          relationshipTypeConfig,
-        });
-        actions.loadSnapshot({ nodes, edges }, settings);
-        setSearchResults([]);
-        setPath(null);
-        setPathEndpoints({ startNodeId: null, endNodeId: null });
-        setEvidence({ isLoading: false, error: null, rows: [], fieldOrder: [], targetLabel: null });
-        setLayoutToken((t) => t + 1);
-        recordAuditEvent(AUDIT_ACTIONS.IMPORT_GRAPH, { detail: `${nodes.length} nodes, ${edges.length} edges (${isCsv ? 'csv' : 'json'})` });
+        loadRowsOntoCanvas(nodeRows, edgeRows, isCsv ? 'csv' : 'json');
       } catch (err) {
         const message = err instanceof GraphLensValidationError ? err.message : 'Could not read that file.';
         setError({ code: 'import_error', message, retryable: false });
@@ -446,7 +475,40 @@ export default function App() {
       recordAuditEvent(AUDIT_ACTIONS.IMPORT_GRAPH, { outcome: 'failure', detail: 'file read error' });
     };
     reader.readAsText(file);
-  }, [settings, actions, nodeTypeConfig, relationshipTypeConfig]);
+  }, [settings, canEditGraphData, loadRowsOntoCanvas]);
+
+  // CsvImportPreviewDialog's Load button: the rows may have been
+  // hand-edited since parseCsvRowObjects first produced them, so they
+  // are classified here, not when the dialog opened - classification
+  // reuses jobResultsService.js's classifyJobResultRows, the exact same
+  // function Load from job and the direct (no-edit) CSV import path
+  // both already use, so an edited CSV import behaves identically to
+  // either from this point on.
+  const handleCsvPreviewLoad = useCallback((editedRows) => {
+    const { nodeRows, edgeRows } = classifyJobResultRows(editedRows);
+    if (nodeRows.length === 0 && edgeRows.length === 0) {
+      setCsvPreviewState((s) => ({ ...s, error: "That CSV doesn't match the relationship schema - see the Help page." }));
+      return;
+    }
+    loadRowsOntoCanvas(nodeRows, edgeRows, 'csv, reviewed');
+    setCsvPreviewState({ open: false, header: [], rows: [], fileName: null, error: null });
+  }, [loadRowsOntoCanvas]);
+
+  const handleSaveNodeEdit = useCallback((nodeId, patch) => {
+    const existing = state.visibleNodes[nodeId];
+    if (!existing) return;
+    const nextData = sanitizeNodeEdit(existing, patch, nodeTypeConfig);
+    actions.updateNodeData(nodeId, nextData);
+    recordAuditEvent(AUDIT_ACTIONS.EDIT_NODE, { nodeId, detail: 'node properties edited' });
+  }, [state.visibleNodes, nodeTypeConfig, actions]);
+
+  const handleSaveEdgeEdit = useCallback((edgeId, patch) => {
+    const existing = state.visibleEdges[edgeId];
+    if (!existing) return;
+    const nextData = sanitizeEdgeEdit(existing, patch, relationshipTypeConfig);
+    actions.updateEdgeData(edgeId, nextData);
+    recordAuditEvent(AUDIT_ACTIONS.EDIT_EDGE, { edgeId, detail: 'relationship properties edited' });
+  }, [state.visibleEdges, relationshipTypeConfig, actions]);
 
   // "Load from job": the one-time counterpart to handleImportFile above,
   // but reading an already-completed Splunk search job's results instead
@@ -798,6 +860,7 @@ export default function App() {
                 node={selectedNode}
                 isExpanded={isNodeExpanded(selectedNode.id)}
                 isPinned={isNodePinned(selectedNode.id)}
+                canEdit={canEditGraphData}
                 onExpand={handleExpandNode}
                 onCollapse={handleCollapseNode}
                 onHide={(id) => actions.hideNode(id)}
@@ -805,9 +868,17 @@ export default function App() {
                 onUnpin={(id) => actions.unpinNode(id)}
                 onViewEvidence={handleViewEvidence}
                 onSetPathEndpoint={handleSetPathEndpoint}
+                onSaveEdit={handleSaveNodeEdit}
               />
             )}
-            {selectedEdge && <EdgeDetailsPanel edge={selectedEdge} onViewEvidence={handleViewEvidence} />}
+            {selectedEdge && (
+              <EdgeDetailsPanel
+                edge={selectedEdge}
+                canEdit={canEditGraphData}
+                onViewEvidence={handleViewEvidence}
+                onSaveEdit={handleSaveEdgeEdit}
+              />
+            )}
             {!selectedNode && !selectedEdge && (
               <div className="graphlens-section">
                 <h3>Details</h3>
@@ -845,6 +916,16 @@ export default function App() {
           setLoadFromJobState({ isLoading: false, error: null });
         }}
         onLoad={handleLoadFromJob}
+      />
+
+      <CsvImportPreviewDialog
+        open={csvPreviewState.open}
+        header={csvPreviewState.header}
+        rows={csvPreviewState.rows}
+        fileName={csvPreviewState.fileName}
+        error={csvPreviewState.error}
+        onClose={() => setCsvPreviewState({ open: false, header: [], rows: [], fileName: null, error: null })}
+        onLoad={handleCsvPreviewLoad}
       />
     </div>
   );

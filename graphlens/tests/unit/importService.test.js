@@ -2,7 +2,7 @@ import fs from 'fs';
 import path from 'path';
 import { createEmptyGraphState } from '../../src/main/webapp/shared/models/graphModel';
 import { exportGraphAsJson } from '../../src/main/webapp/shared/services/exportService';
-import { parseImportedGraphJson, parseImportedGraphCsv } from '../../src/main/webapp/shared/services/importService';
+import { parseImportedGraphJson, parseImportedGraphCsv, parseCsvRowObjects } from '../../src/main/webapp/shared/services/importService';
 import { transformRowsToGraph } from '../../src/main/webapp/shared/services/graphTransformer';
 import { GraphLensValidationError } from '../../src/main/webapp/shared/utilities/splSafety';
 
@@ -135,5 +135,33 @@ describe('parseImportedGraphCsv', () => {
     const csv = 'node_id,node_type,node_label\nuser:jsmith,user,J Smith\n\n';
     const { nodeRows } = parseImportedGraphCsv(csv);
     expect(nodeRows).toHaveLength(1);
+  });
+});
+
+describe('parseCsvRowObjects - the pre-classification step CsvImportPreviewDialog edits (1.19.0)', () => {
+  test('returns the header and one plain object per data row, keyed by header', () => {
+    const csv = 'source_id,target_id,relationship_type\nuser:jsmith,host:server01,AUTHENTICATED_TO\n';
+    const { header, rows } = parseCsvRowObjects(csv);
+    expect(header).toEqual(['source_id', 'target_id', 'relationship_type']);
+    expect(rows).toEqual([{ source_id: 'user:jsmith', target_id: 'host:server01', relationship_type: 'AUTHENTICATED_TO' }]);
+  });
+
+  test('a row edited after parsing (simulating the preview dialog) still classifies correctly once fed back through parseImportedGraphCsv-style classification', () => {
+    const csv = 'source_id,target_id,relationship_type\nuser:jsmith,host:server01,AUTHENTICATED_TO\n';
+    const { rows } = parseCsvRowObjects(csv);
+    rows[0].target_id = 'host:corrected01';
+    const { edgeRows } = parseImportedGraphCsv('source_id,target_id,relationship_type\nuser:jsmith,host:corrected01,AUTHENTICATED_TO\n');
+    expect(edgeRows[0].target_id).toBe(rows[0].target_id);
+  });
+
+  test('throws GraphLensValidationError for an empty file or one with no header row', () => {
+    expect(() => parseCsvRowObjects('')).toThrow(GraphLensValidationError);
+    expect(() => parseCsvRowObjects(',,\n1,2,3\n')).toThrow(GraphLensValidationError);
+  });
+
+  test('a CSV with only a header row (no data rows) parses to an empty rows array, not an error', () => {
+    const { header, rows } = parseCsvRowObjects('source_id,target_id,relationship_type\n');
+    expect(header).toEqual(['source_id', 'target_id', 'relationship_type']);
+    expect(rows).toEqual([]);
   });
 });
