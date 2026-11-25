@@ -1,4 +1,4 @@
-import { transformRowsToGraph, deriveEdgeId } from '../../src/main/webapp/shared/services/graphTransformer';
+import { transformRowsToGraph, deriveEdgeId, sanitizeNodeEdit, sanitizeEdgeEdit } from '../../src/main/webapp/shared/services/graphTransformer';
 
 function edgeRow(overrides = {}) {
   return {
@@ -119,5 +119,90 @@ describe('transformRowsToGraph - limits', () => {
     const { edges, diagnostics } = transformRowsToGraph([], rows, { maxNodes: 1000, maxEdges: 3 });
     expect(edges.length).toBeLessThanOrEqual(3);
     expect(diagnostics.limitReached).toBe(true);
+  });
+});
+
+function sampleNode(overrides = {}) {
+  const { nodes } = transformRowsToGraph([{ node_id: 'user:jsmith', node_type: 'user', node_label: 'J Smith', risk_score: 10, event_count: 1 }], []);
+  return { ...nodes[0].data, ...overrides };
+}
+
+function sampleEdge(overrides = {}) {
+  const { edges } = transformRowsToGraph([], [edgeRow()]);
+  return { ...edges[0].data, ...overrides };
+}
+
+describe('sanitizeNodeEdit - edit mode (1.19.0, graphlens_edit_graph_data)', () => {
+  test('replaces editable fields from the patch, leaving id untouched', () => {
+    const existing = sampleNode();
+    const next = sanitizeNodeEdit(existing, {
+      label: 'New Label', type: 'host', group: 'g1', description: 'desc', riskScore: 77, eventCount: 9, sourceIndex: 'idx', sourceSourcetype: 'st',
+    });
+    expect(next.id).toBe(existing.id);
+    expect(next.label).toBe('New Label');
+    expect(next.type).toBe('host');
+    expect(next.group).toBe('g1');
+    expect(next.description).toBe('desc');
+    expect(next.riskScore).toBe(77);
+    expect(next.eventCount).toBe(9);
+    expect(next.sourceIndex).toBe('idx');
+    expect(next.sourceSourcetype).toBe('st');
+  });
+
+  test('clamps an out-of-range risk score the same way a fresh row would be', () => {
+    const existing = sampleNode();
+    const next = sanitizeNodeEdit(existing, { label: 'x', riskScore: 9999, eventCount: -5 });
+    expect(next.riskScore).toBe(100);
+    expect(next.eventCount).toBe(0);
+  });
+
+  test('HTML-escapes an edited label the same way a fresh row would be (XSS-safe)', () => {
+    const existing = sampleNode();
+    const next = sanitizeNodeEdit(existing, { label: '<script>alert(1)</script>', riskScore: 0, eventCount: 0 });
+    expect(next.label).not.toMatch(/<[a-z]/i);
+  });
+
+  test('recomputes color/shape/icon from the new type via nodeTypeConfig', () => {
+    const existing = sampleNode();
+    const nodeTypeConfig = { host: { color: '#abc123', shape: 'square', icon: 'Server' } };
+    const next = sanitizeNodeEdit(existing, { label: 'x', type: 'host', riskScore: 0, eventCount: 0 }, nodeTypeConfig);
+    expect(next.color).toBe('#abc123');
+    expect(next.shape).toBe('square');
+    expect(next.icon).toBe('Server');
+  });
+
+  test('falls back to the existing label when the patch label is blank', () => {
+    const existing = sampleNode({ label: 'Original' });
+    const next = sanitizeNodeEdit(existing, { label: '', riskScore: 0, eventCount: 0 });
+    expect(next.label).toBe(existing.id);
+  });
+});
+
+describe('sanitizeEdgeEdit - edit mode (1.19.0, graphlens_edit_graph_data)', () => {
+  test('replaces editable fields from the patch, leaving id/source/target untouched', () => {
+    const existing = sampleEdge();
+    const next = sanitizeEdgeEdit(existing, {
+      relationship: 'CONNECTED_TO', relationshipLabel: 'Connected to', directed: false, riskScore: 55, eventCount: 3,
+    });
+    expect(next.id).toBe(existing.id);
+    expect(next.source).toBe(existing.source);
+    expect(next.target).toBe(existing.target);
+    expect(next.relationship).toBe('CONNECTED_TO');
+    expect(next.relationshipLabel).toBe('Connected to');
+    expect(next.directed).toBe(false);
+    expect(next.riskScore).toBe(55);
+    expect(next.eventCount).toBe(3);
+  });
+
+  test('HTML-escapes an edited relationship label the same way a fresh row would be (XSS-safe)', () => {
+    const existing = sampleEdge();
+    const next = sanitizeEdgeEdit(existing, { relationshipLabel: '<img src=x onerror=alert(1)>', riskScore: 0, eventCount: 0 });
+    expect(next.relationshipLabel).not.toMatch(/<[a-z]/i);
+  });
+
+  test('clamps an out-of-range risk score the same way a fresh row would be', () => {
+    const existing = sampleEdge();
+    const next = sanitizeEdgeEdit(existing, { riskScore: -50, eventCount: 0 });
+    expect(next.riskScore).toBe(0);
   });
 });

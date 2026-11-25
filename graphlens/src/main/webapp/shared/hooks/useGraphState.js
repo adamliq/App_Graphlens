@@ -10,6 +10,8 @@ const ACTIONS = {
   UNHIDE_NODE: 'UNHIDE_NODE',
   PIN_NODE: 'PIN_NODE',
   UNPIN_NODE: 'UNPIN_NODE',
+  UPDATE_NODE_DATA: 'UPDATE_NODE_DATA',
+  UPDATE_EDGE_DATA: 'UPDATE_EDGE_DATA',
   SELECT_NODE: 'SELECT_NODE',
   SELECT_EDGE: 'SELECT_EDGE',
   CLEAR_SELECTION: 'CLEAR_SELECTION',
@@ -40,6 +42,10 @@ function reducer(state, action) {
       return ops.pinNode(state, action.nodeId);
     case ACTIONS.UNPIN_NODE:
       return ops.unpinNode(state, action.nodeId);
+    case ACTIONS.UPDATE_NODE_DATA:
+      return ops.updateNodeData(state, action.nodeId, action.nextData);
+    case ACTIONS.UPDATE_EDGE_DATA:
+      return ops.updateEdgeData(state, action.edgeId, action.nextData);
     case ACTIONS.SELECT_NODE:
       return ops.selectNode(state, action.nodeId);
     case ACTIONS.SELECT_EDGE:
@@ -85,6 +91,8 @@ export function useGraphState(initialLimits) {
     unhideNode: (nodeId) => dispatch({ type: ACTIONS.UNHIDE_NODE, nodeId }),
     pinNode: (nodeId) => dispatch({ type: ACTIONS.PIN_NODE, nodeId }),
     unpinNode: (nodeId) => dispatch({ type: ACTIONS.UNPIN_NODE, nodeId }),
+    updateNodeData: (nodeId, nextData) => dispatch({ type: ACTIONS.UPDATE_NODE_DATA, nodeId, nextData }),
+    updateEdgeData: (edgeId, nextData) => dispatch({ type: ACTIONS.UPDATE_EDGE_DATA, edgeId, nextData }),
     selectNode: (nodeId) => dispatch({ type: ACTIONS.SELECT_NODE, nodeId }),
     selectEdge: (edgeId) => dispatch({ type: ACTIONS.SELECT_EDGE, edgeId }),
     clearSelection: () => dispatch({ type: ACTIONS.CLEAR_SELECTION }),

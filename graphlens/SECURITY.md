@@ -228,6 +228,78 @@ one shared with them, in Splunk Web's own Search app or anywhere else.
   the job id and node/edge counts only - never the job's raw result
   content.
 
+## Editing graph data
+
+Two related features, both new in 1.19.0 and both gated by the new
+`graphlens_edit_graph_data` capability: the Details panel's **Edit**
+button (`NodeDetailsPanel.jsx`/`EdgeDetailsPanel.jsx`) for a node/edge
+already on the canvas, and the pre-import **CSV table editor**
+(`CsvImportPreviewDialog.jsx`) that a CSV import now opens instead of
+loading straight onto the canvas.
+
+- **An honest caveat, unlike every other capability in this app**: there
+  is no server-side REST call behind either feature to enforce this
+  capability against. An edit changes only the current session's
+  in-memory graph state (`visibleNodes`/`visibleEdges` in React state) -
+  nothing is written to Splunk, to KV Store, or anywhere else, so there
+  is no request for a REST endpoint to reject. `graphlens_edit_graph_data`
+  is therefore a **UI convenience, not an enforced security boundary**:
+  a user who can reach the browser's developer tools could, in
+  principle, call the same internal functions this capability is meant
+  to gate. This is explicitly accepted, not an oversight, because of
+  what editing can and cannot do:
+  - It cannot show a user data their own search permissions did not
+    already surface - editing only changes the display of a node/edge
+    that is already visible to them, the same way a session-only colour
+    override already does (1.9.0) without any capability at all.
+  - It cannot affect what any other user sees - edits are this one
+    session's own React state, never broadcast, never persisted (see
+    below).
+  - It cannot widen what GraphLens itself trusts - it adds no new SPL
+    template, no new REST call, no new relationship data source.
+  Compare this with every *other* capability in this app
+  (`graphlens_manage_config`, `graphlens_use_search_source`, ...), each
+  of which gates an actual Splunk REST write/read that enforces it
+  independently of the UI. `graphlens_edit_graph_data` exists anyway -
+  rather than leaving editing ungated the way style overrides are -
+  because unlike a colour, a node/edge's own fields (label, risk score,
+  relationship type, ...) are exactly what an analyst might otherwise
+  rely on as if they came from the search itself, so hiding the
+  capability from a role that should not be encouraged to hand-edit
+  investigative data is still a meaningful UI convenience, even without
+  a server-side backstop.
+- **Session-only, same as the per-type colour overrides (1.9.0)**: an
+  edit lasts until Reset graph, a reload, or the edited node/edge is
+  dropped by a subsequent action (e.g. collapsing its parent). It is
+  never written anywhere; re-export (CSV/JSON) afterward to keep the
+  corrected data as a file.
+- **Every edited value is sanitised exactly as a fresh row would be**:
+  `graphTransformer.js`'s new `sanitizeNodeEdit`/`sanitizeEdgeEdit`
+  reuse the exact same label-escaping (`escapeHtml`), risk-score-clamping
+  (0-100) and event-count-clamping logic `transformRowsToGraph`'s own
+  `upsertNode`/`upsertEdge` already apply to every other admission path -
+  a hand-typed edit can never introduce markup or an out-of-range value
+  a live search result could not already produce (see `tests/security/
+  xss.test.js`'s edit-mode cases). `id`/`source`/`target` are never
+  editable fields - changing them would just be creating a different
+  node/edge under a confusing guise, not editing this one.
+- **The CSV table editor edits rows, not files**: `CsvImportPreviewDialog.jsx`
+  shows the CSV's own parsed rows (via `importService.js`'s new
+  `parseCsvRowObjects`, the same tokenizer `parseImportedGraphCsv`
+  already uses, split from its classification step) in an editable HTML
+  table, bounded to the first 200 rows for the same reason every other
+  view in this app is bounded - an unbounded inline-editable table would
+  be unusable, not just slow. Rows beyond that limit still load, just
+  unedited. On Load, the (possibly edited) rows are classified by
+  `jobResultsService.js`'s `classifyJobResultRows` - the same function
+  "Load from job" already uses - so an edited CSV import behaves
+  identically to an unedited one, or to a job's results, from that point
+  on. Without `graphlens_edit_graph_data`, CSV import behaves exactly as
+  it did in 1.18.0: straight to the canvas, no preview step.
+- Audited the same way as other graph actions (`edit_node`/`edit_edge`
+  in `graphlens_audit_log`), with the node/edge id only - never the
+  edited values themselves.
+
 ## Multi-select, the time slicer, style overrides and saved views
 
 - **Multi-select and bulk actions** run no search of their own at all -
@@ -281,6 +353,7 @@ checks, as the authority (`default/authorize.conf`):
 | `graphlens_manage_collections` | Curate node/edge/type KV Store data; also gates the Configuration page's "Load demo data" button (see ARCHITECTURE.md) |
 | `graphlens_view_health` | View the Health page and audit log |
 | `graphlens_use_search_source` | Set the Configuration page's Relationship data source to Saved search or Table Dataset, and change which one it names - see "Saved search as a relationship data source" below. Not granted to any example role by default |
+| `graphlens_edit_graph_data` | Edit a node/edge's own properties on canvas, and use the CSV table editor before an import - see "Editing graph data" below. A UI convenience only; there is no server-side write this one enforces against |
 
 The React frontend calls
 `src/main/webapp/shared/services/capabilityService.js` to hide/disable

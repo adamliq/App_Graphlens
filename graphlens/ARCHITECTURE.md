@@ -237,6 +237,50 @@ does. This is deliberately not the shape `exportNodesAsCsv`/
 `exportEdgesAsCsv` write on the way out (different column names, two
 separate files for one graph) - that export pair remains one-way.
 
+## Editing graph data (1.19.0)
+
+Two related, `graphlens_edit_graph_data`-gated features let a user
+correct a value without leaving GraphLens, both strictly session-only
+(see SECURITY.md, "Editing graph data," for the full trust discussion -
+in particular, why this is the one capability in the app with no
+server-side REST call behind it to enforce):
+
+- **On-canvas property editing.** `NodeDetailsPanel.jsx`/
+  `EdgeDetailsPanel.jsx` gain an Edit button (shown only when
+  `canEditGraphData`, a prop threaded down from a `hasCapability`
+  check in `RelationshipExplorer/App.jsx`, the same pattern
+  `ConfigurationPage/App.jsx` already uses for its own capability-gated
+  controls) that swaps the read-only `<dl>` for a form of the same
+  fields. Saving calls `graphTransformer.js`'s new `sanitizeNodeEdit`/
+  `sanitizeEdgeEdit`, which rebuild the node/edge's editable fields
+  using the exact same `safeLabel`/`toRiskScore`/`toEventCount` helpers
+  `upsertNode`/`upsertEdge` already use for a fresh row - so an edit can
+  never introduce anything a live search result could not - then
+  dispatches the result through `graphStateReducer.js`'s new
+  `updateNodeData`/`updateEdgeData` (a plain by-id replacement, a no-op
+  if the node/edge is no longer visible). `id`/`source`/`target` are
+  never editable fields.
+- **The pre-import CSV table editor.** When `canEditGraphData` is true,
+  picking a CSV file no longer loads it straight onto the canvas (the
+  1.18.0 behaviour, still used when the capability is absent, and
+  always used for a JSON file): `handleImportFile` instead calls
+  `importService.js`'s new `parseCsvRowObjects` - the same tokenizer
+  `parseImportedGraphCsv` already uses, with the "turn rows into plain
+  objects" step now split out from the "classify them" step that
+  follows it - and opens `CsvImportPreviewDialog.jsx`, an editable HTML
+  table over those rows (bounded to the first 200 for the same reason
+  every other view in this app bounds what it renders; rows beyond that
+  still load, just unedited). Its Load button classifies the
+  (possibly-edited) rows via `jobResultsService.js`'s
+  `classifyJobResultRows` - the same function "Load from job" and a
+  direct CSV import both already use - so an edited import behaves
+  identically to either from that point on.
+
+Both features are session-only, same as the per-type colour overrides
+(1.9.0): an edit is never written anywhere and is lost on Reset graph or
+a reload; re-export (CSV/JSON) afterward to keep the corrected data as a
+file.
+
 ## How "Load from job" attaches to an already-dispatched search (1.17.0)
 
 The toolbar **Load from job** action takes a user-supplied job id (sid)

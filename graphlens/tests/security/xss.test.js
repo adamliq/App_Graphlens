@@ -10,6 +10,7 @@ import { escapeHtml } from '../../src/main/webapp/shared/utilities/splSafety';
 import { transformRowsToGraph } from '../../src/main/webapp/shared/services/graphTransformer';
 import { exportGraphAsJson } from '../../src/main/webapp/shared/services/exportService';
 import { parseImportedGraphJson, parseImportedGraphCsv } from '../../src/main/webapp/shared/services/importService';
+import { sanitizeNodeEdit, sanitizeEdgeEdit } from '../../src/main/webapp/shared/services/graphTransformer';
 
 const XSS_PAYLOADS = [
   '<script>alert(1)</script>',
@@ -89,5 +90,19 @@ describe('an imported CSV is never trusted more than a live search result - the 
     const { nodes } = transformRowsToGraph(nodeRows, edgeRows);
     expect(nodes).toHaveLength(1);
     expect(nodes[0].data.label).not.toMatch(/<[a-z]/i);
+  });
+});
+
+describe('editing a node/edge (graphlens_edit_graph_data, 1.19.0) is never trusted more than a fresh row', () => {
+  test.each(XSS_PAYLOADS)('a malicious edited node label survives only HTML-escaped, after sanitizeNodeEdit: %j', (payload) => {
+    const { nodes } = transformRowsToGraph([{ node_id: 'user:jsmith', node_type: 'user', node_label: 'ok' }], []);
+    const edited = sanitizeNodeEdit(nodes[0].data, { label: payload, riskScore: 0, eventCount: 0 });
+    expect(edited.label).not.toMatch(/<[a-z]/i);
+  });
+
+  test.each(XSS_PAYLOADS)('a malicious edited relationship label survives only HTML-escaped, after sanitizeEdgeEdit: %j', (payload) => {
+    const { edges } = transformRowsToGraph([], [{ source_id: 'user:jsmith', target_id: 'host:server01', relationship_type: 'AUTHENTICATED_TO' }]);
+    const edited = sanitizeEdgeEdit(edges[0].data, { relationshipLabel: payload, riskScore: 0, eventCount: 0 });
+    expect(edited.relationshipLabel).not.toMatch(/<[a-z]/i);
   });
 });

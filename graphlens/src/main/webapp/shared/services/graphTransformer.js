@@ -185,6 +185,58 @@ export function transformRowsToGraph(nodeRows = [], edgeRows = [], options = {})
   return { nodes, edges, diagnostics };
 }
 
+/**
+ * Applies a user-supplied edit (NodeDetailsPanel's edit mode, gated by
+ * the graphlens_edit_graph_data capability, 1.19.0) to an
+ * already-admitted node, replacing its editable fields exactly the way
+ * upsertNode above builds them fresh from a row - the same
+ * label-escaping/riskScore-clamping/eventCount-clamping/length-capping -
+ * so a hand-typed edit can never bypass the sanitisation any other
+ * node admission path already gets. `id` is never touched: changing it
+ * would just be creating a different node under a confusing guise.
+ * `patch` is a flat object of raw (untrusted) form values, not a
+ * Cytoscape-shaped node - same shape a node row from transformRowsToGraph
+ * would carry, keyed by the same field names this function reads off
+ * `existingNode` (its own output shape), not the node_* row names.
+ */
+export function sanitizeNodeEdit(existingNode, patch, nodeTypeConfig = {}) {
+  const type = typeof patch.type === 'string' && patch.type.trim() ? patch.type.slice(0, 64) : existingNode.type;
+  const typeConfig = nodeTypeConfig[type] || {};
+  return {
+    ...existingNode,
+    label: safeLabel(patch.label, existingNode.id),
+    type,
+    group: typeof patch.group === 'string' && patch.group.trim() ? patch.group.slice(0, 64) : undefined,
+    description: typeof patch.description === 'string' && patch.description.trim() ? escapeHtml(patch.description).slice(0, 1000) : undefined,
+    riskScore: toRiskScore(patch.riskScore),
+    eventCount: toEventCount(patch.eventCount),
+    firstSeen: patch.firstSeen || undefined,
+    lastSeen: patch.lastSeen || undefined,
+    sourceIndex: typeof patch.sourceIndex === 'string' && patch.sourceIndex.trim() ? patch.sourceIndex.slice(0, 128) : undefined,
+    sourceSourcetype: typeof patch.sourceSourcetype === 'string' && patch.sourceSourcetype.trim() ? patch.sourceSourcetype.slice(0, 128) : undefined,
+    color: typeConfig.color,
+    shape: typeConfig.shape,
+    icon: typeConfig.icon,
+  };
+}
+
+/** The edge counterpart to sanitizeNodeEdit above - see its doc comment. `source`/`target`/`id` are never touched; changing an edge's endpoints is out of scope for "edit", not a sanitisation gap. */
+export function sanitizeEdgeEdit(existingEdge, patch, relationshipTypeConfig = {}) {
+  const relationshipType = typeof patch.relationship === 'string' && patch.relationship.trim() ? patch.relationship.slice(0, 64) : existingEdge.relationship;
+  const typeConfig = relationshipTypeConfig[relationshipType] || {};
+  return {
+    ...existingEdge,
+    relationship: relationshipType,
+    relationshipLabel: safeLabel(patch.relationshipLabel, relationshipType),
+    directed: typeof patch.directed === 'boolean' ? patch.directed : existingEdge.directed,
+    riskScore: toRiskScore(patch.riskScore),
+    eventCount: toEventCount(patch.eventCount),
+    firstSeen: patch.firstSeen || undefined,
+    lastSeen: patch.lastSeen || undefined,
+    color: typeConfig.color,
+  };
+}
+
 function minIso(a, b) {
   if (!a) return b;
   if (!b) return a;

@@ -2,6 +2,47 @@
 
 All notable changes to GraphLens are documented in this file.
 
+## [1.19.0] - 2026-11-25
+
+### Added
+
+- **New `graphlens_edit_graph_data` capability**, granted at the analyst
+  tier by default (unlike `graphlens_use_search_source`, which stays
+  withheld) because editing only changes a user's own session-only,
+  in-browser view of data their own search permissions already
+  surfaced - it cannot affect any other user, persist anywhere, or
+  widen what GraphLens itself trusts.
+- **On-canvas property editing**: the Details panel for a selected
+  node/edge gains an Edit button (gated by the new capability) for
+  label, type, group, description, risk score, event count and a few
+  other fields. Saving reuses `graphTransformer.js`'s new
+  `sanitizeNodeEdit`/`sanitizeEdgeEdit`, which apply the exact same
+  label-escaping/risk-score-clamping/event-count-clamping every other
+  node/edge admission path already applies, then
+  `graphStateReducer.js`'s new `updateNodeData`/`updateEdgeData`.
+  `id`/`source`/`target` are never editable.
+- **A pre-import CSV table editor**: with the new capability, picking a
+  CSV file for Import opens a review table (`CsvImportPreviewDialog.jsx`)
+  instead of loading it straight onto the canvas, letting a user fix a
+  cell before clicking Load. `importService.js`'s `parseImportedGraphCsv`
+  is split into a new `parseCsvRowObjects` (tokenize + header-apply) and
+  the classification step that already existed, so the preview dialog
+  gets the same rows a direct CSV import would, just before
+  classification instead of after. Bounded to the first 200 rows for
+  editing, the same way every other view in this app is bounded; rows
+  beyond that still load, unedited. Without the capability, CSV import
+  behaves exactly as it did in 1.18.0.
+- Both features are strictly session-only (same as the 1.9.0 per-type
+  colour overrides): nothing is ever written to Splunk, so - honestly
+  documented in SECURITY.md, "Editing graph data" - this is the one
+  capability in the app with no corresponding server-side REST call to
+  enforce it against; it is a UI convenience, same spirit as every other
+  "convenience, not the security boundary" feature here, just without a
+  backstop because there is nothing for Splunk's own RBAC to intercept.
+- Audited the same way as other graph actions (`edit_node`/`edit_edge`
+  in `graphlens_audit_log`), with the node/edge id only - never the
+  edited values.
+
 ## [1.18.0] - 2026-11-25
 
 ### Added

@@ -1,7 +1,7 @@
 import React from 'react';
 import PageNav from '../../shared/components/PageNav';
 
-const APP_VERSION = '1.18.0';
+const APP_VERSION = '1.19.0';
 
 /**
  * Static, no-dependency reference page - unlike the other three pages,
@@ -191,7 +191,10 @@ export default function App() {
             ships as) - a one-off way to bring your own data onto the
             canvas without any Splunk-side configuration at all. Rows
             matching neither a node row nor an edge row are silently
-            skipped.
+            skipped. If your role has the <code>graphlens_edit_graph_data</code>
+            {' '}capability (1.19.0), a CSV opens in a review table first
+            so you can fix a cell before clicking Load, instead of
+            loading straight onto the canvas.
           </li>
         </ul>
         <p>
@@ -202,6 +205,27 @@ export default function App() {
           &quot;Loading your own data&quot; below for the persistent
           ways to bring data in (index, lookup, saved search, Table
           Dataset).
+        </p>
+      </section>
+
+      <section className="graphlens-section">
+        <h2>Editing a node or relationship</h2>
+        <p>
+          If your role has the <code>graphlens_edit_graph_data</code>
+          {' '}capability (1.19.0), the Details panel for a selected node
+          or relationship shows an <strong>Edit</strong> button. Edit
+          mode lets you change its label, type, risk score, event count
+          and a few other fields - every edited value is re-validated
+          exactly the same way a fresh search result would be (labels
+          are HTML-escaped, risk scores clamped to 0-100). An edit is
+          session-only: it changes only what you see in this browser,
+          is never sent to Splunk or seen by anyone else, and is lost on
+          Reset graph or a reload - re-export (CSV/JSON) afterward if you
+          want to keep a correction. See SECURITY.md, &quot;Editing graph
+          data,&quot; for why this is the one capability in GraphLens
+          with no corresponding server-side enforcement: nothing is
+          written back to Splunk, so there is nothing for a REST
+          endpoint to reject.
         </p>
       </section>
 

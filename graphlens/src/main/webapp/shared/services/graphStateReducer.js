@@ -162,6 +162,27 @@ export function unpinNode(state, nodeId) {
   return { ...state, pinnedNodeIds: state.pinnedNodeIds.filter((id) => id !== nodeId) };
 }
 
+/**
+ * Replaces an already-visible node/edge's own data (NodeDetailsPanel/
+ * EdgeDetailsPanel's edit mode, gated by graphlens_edit_graph_data,
+ * 1.19.0) with `nextData`, which must already be sanitised - the
+ * caller is expected to have built it via graphTransformer.js's
+ * sanitizeNodeEdit/sanitizeEdgeEdit, exactly as every other admission
+ * path builds its node/edge data before it ever reaches this reducer.
+ * A no-op if the node/edge is no longer visible (e.g. the selection
+ * changed while an edit was in flight). Session-only, like every other
+ * piece of state here: a page reload or Reset graph discards it.
+ */
+export function updateNodeData(state, nodeId, nextData) {
+  if (!state.visibleNodes[nodeId]) return state;
+  return { ...state, visibleNodes: { ...state.visibleNodes, [nodeId]: nextData } };
+}
+
+export function updateEdgeData(state, edgeId, nextData) {
+  if (!state.visibleEdges[edgeId]) return state;
+  return { ...state, visibleEdges: { ...state.visibleEdges, [edgeId]: nextData } };
+}
+
 export function selectNode(state, nodeId) {
   return { ...state, selectedNodeId: nodeId, selectedEdgeId: null };
 }
