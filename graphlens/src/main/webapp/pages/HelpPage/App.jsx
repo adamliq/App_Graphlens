@@ -1,7 +1,7 @@
 import React from 'react';
 import PageNav from '../../shared/components/PageNav';
 
-const APP_VERSION = '1.15.0';
+const APP_VERSION = '1.16.0';
 
 /**
  * Static, no-dependency reference page - unlike the other three pages,
@@ -191,15 +191,19 @@ export default function App() {
           <strong> index</strong> (the normal, time-series choice, updated by
           an ingestion pipeline or scheduled search), directly from a
           <strong> lookup table</strong> (a static, hand- or script-maintained
-          table - no ingestion pipeline required), or from an administrator&apos;s
+          table - no ingestion pipeline required), from an administrator&apos;s
           own <strong> saved search</strong> (an already-authored query
-          whose results already match the relationship shape - requires a
-          separate capability, since GraphLens does not review what that
-          search actually does). This only changes where the data comes
-          from, not how you use GraphLens - searching, expanding,
-          filtering, and exporting all work the same regardless of which.
-          One difference to know about: in lookup or saved-search mode,
-          the toolbar&apos;s time range has no effect, since neither is a
+          whose results already match the relationship shape), or from a
+          <strong> Table Dataset</strong> (Settings &gt; Datasets - the same
+          idea as a saved search, authored through Splunk&apos;s own
+          point-and-click Datasets editor instead). The latter two each
+          require a separate capability, since GraphLens does not review
+          what that search or dataset actually does. This only changes
+          where the data comes from, not how you use GraphLens -
+          searching, expanding, filtering, and exporting all work the
+          same regardless of which. One difference to know about: in
+          lookup, saved-search or Table Dataset mode, the toolbar&apos;s
+          time range has no effect, since none of the three is a
           time-series the way an index is.
         </p>
       </section>
@@ -212,10 +216,11 @@ export default function App() {
           brought in shaped to the schema below, either as indexed events
           (via a scheduled search transforming existing events, a one-off
           file upload, or a live HTTP Event Collector source), as a lookup
-          table in lookup mode, or as the results of an already-authored
-          search in saved-search mode (see &quot;Where the relationship
-          data comes from&quot; above) - the same shape is required
-          regardless of which of the three you use; GraphLens applies no
+          table in lookup mode, as the results of an already-authored
+          search in saved-search mode, or as a Table Dataset built through
+          Settings &gt; Datasets (see &quot;Where the relationship data
+          comes from&quot; above) - the same shape is required regardless
+          of which of the four you use; GraphLens applies no
           transformation of its own. Afterwards you register your
           node/relationship types in the <code>graphlens_node_types</code>
           {' '}/ <code>graphlens_relationship_types</code> KV Store
@@ -262,7 +267,8 @@ export default function App() {
         </table>
         <p style={{ fontSize: 12, color: '#5c5c5c' }}>
           This is the flat row/event shape every relationship source
-          (index, lookup, saved search) must already produce - the same
+          (index, lookup, saved search, Table Dataset) must already
+          produce - the same
           one <code>sample_data/graphlens_relationships_sample.csv</code>
           {' '}and <code>lookups/graphlens_sample_relationships.csv</code>
           {' '}use, and the one the Configuration page&apos;s Load demo

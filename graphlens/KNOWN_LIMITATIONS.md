@@ -253,11 +253,23 @@ instance's configured home) to switch away from GraphLens entirely.
   supporting events" only resolves for demo data loaded in index mode -
   lookup mode writes no backing raw events for it to find, since lookup
   mode never ingests events in the first place. Not available at all in
-  saved-search mode (1.14.0+) - there is no bundled relationship data to
-  load into a search you authored yourself; the button is disabled there.
-- **Saved search as a relationship data source (1.14.0+) is not reviewed
-  by GraphLens.** Unlike an index or a lookup, GraphLens has no way to
-  verify what a configured saved search actually does - it trusts the
-  named search's author and content entirely, the same way lookup mode
-  already trusts a configured lookup's content. See SECURITY.md, "Saved
-  search as a relationship data source."
+  saved-search mode (1.14.0+) or Table Dataset mode (1.16.0+) - there is
+  no bundled relationship data to load into a search or dataset you
+  authored yourself; the button is disabled in either mode.
+- **Saved search and Table Dataset as a relationship data source
+  (1.14.0+/1.16.0+) are not reviewed by GraphLens.** Unlike an index or a
+  lookup, GraphLens has no way to verify what a configured saved search or
+  Table Dataset actually does - it trusts the named object's author and
+  content entirely, the same way lookup mode already trusts a configured
+  lookup's content. See SECURITY.md, "Saved search as a relationship data
+  source." Table Dataset mode additionally only exposes one object's rows
+  if the underlying data model has more than one (an unusual shape for a
+  genuine Table Dataset, which is single-object by design, but possible
+  for a hand-authored multi-object data model) - point
+  `relationship_dataset` at a true single-table Table Dataset to avoid
+  this ambiguity. It also only exposes columns explicitly added in the
+  Table Dataset Editor - confirmed live that a field present in the
+  underlying raw event but never added as a dataset column is simply
+  absent from `| from datamodel:`'s results, not included by default the
+  way a plain index search would include it. See DATA_INGESTION.md
+  section F.

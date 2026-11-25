@@ -89,22 +89,28 @@ take a `source` argument built by `configService.js`'s
 "Relationship data source" setting: `{ type: 'index', index }` generates
 `search index="<index>" ...`; `{ type: 'lookup', lookupName }` generates
 `| inputlookup <lookup> | search ...` instead; `{ type: 'saved_search',
-savedSearchName }` generates `| savedsearch "<name>" | search ...` -
-confirmed against a live instance that both `| inputlookup` and `|
-savedsearch` work as the sole leading (generating) command for ad-hoc
-dispatch, the same way `search index=...` does, and that the `| search`
-filter stage and a bracketed `append [ ... ]` subsearch behave
-identically regardless of which of the three leads. `savedsearch`'s name
-is embedded in double quotes (unlike index/lookup names, which are
+savedSearchName }` generates `| savedsearch "<name>" | search ...`;
+`{ type: 'dataset', datasetName }` generates `| from datamodel:"<name>" |
+search ...` - confirmed against a live instance that `| inputlookup`, `|
+savedsearch` and `| from datamodel:` all work as the sole leading
+(generating) command for ad-hoc dispatch, the same way `search
+index=...` does, and that the `| search` filter stage and a bracketed
+`append [ ... ]` subsearch behave identically regardless of which of the
+four leads. Both `savedsearch`'s and `from datamodel:`'s names are
+embedded in double quotes (unlike index/lookup names, which are
 stricter-grammar bare identifiers) since a real saved search name
-commonly has spaces - `safeSavedSearchNameOrFallback` validates it first
-and `escapeSplStringLiteral` escapes it before embedding, the same
+commonly has spaces, and quoting a dataset name costs nothing even though
+a data model's own `modelName` never does (see
+`DATASET_NAME_PATTERN`'s comment in splSafety.js) -
+`safeSavedSearchNameOrFallback`/`safeDatasetNameOrFallback` validate
+first and `escapeSplStringLiteral` escapes before embedding, the same
 defence-in-depth pairing already used elsewhere in this module. See
-DATA_INGESTION.md for when to use each of the three, SECURITY.md's "Saved
-search as a relationship data source" for why that one is gated by its
-own capability, and CHANGELOG.md 1.2.0 for why the index/lookup design
-replaced a static `graphlens_relationship_index` macro that the
-Configuration page's "Relationship index" field never actually fed into.
+DATA_INGESTION.md for when to use each of the four, SECURITY.md's "Saved
+search as a relationship data source" (also covers Table Dataset mode)
+for why those two are gated by their own shared capability, and
+CHANGELOG.md 1.2.0 for why the index/lookup design replaced a static
+`graphlens_relationship_index` macro that the Configuration page's
+"Relationship index" field never actually fed into.
 
 `searchService.js` exposes `dispatchSavedSearch` (named saved search,
 `services/saved/searches/<name>/dispatch`) and `dispatchAdHocSearch`

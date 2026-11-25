@@ -2,6 +2,48 @@
 
 All notable changes to GraphLens are documented in this file.
 
+## [1.16.0] - 2026-11-25
+
+### Added
+
+- **"Table Dataset" relationship data source** - a fourth alternative to
+  Index, Lookup and Saved search, for relationship data maintained
+  through Splunk's own Datasets feature (Settings > Datasets > Create
+  Table View) rather than a lookup table or hand-written saved search.
+  GraphLens runs it as `| from datamodel:"<name>"` - a Table Dataset is
+  itself stored as a single-object data model under the hood (confirmed
+  live: Splunk Web's own Datasets listing query only recognises
+  `inputlookup-table`, `inputlookup-transform` and `datamodel` as dataset
+  `eai:type`s, no separate "table dataset" type exists). `| datamodel
+  "<name>" search` was tried first and rejected after live testing showed
+  its output fields come back prefixed with the model's object name (e.g.
+  `Audit.user`, not `user`), which would have silently broken every field
+  this app expects; `| from datamodel:"<name>"` returns flat, unprefixed
+  names instead, confirmed live.
+- Gated by the **same `graphlens_use_search_source` capability** saved
+  search mode already uses (1.14.0) rather than a new one - both carry
+  the identical trust characteristic (GraphLens does not review the
+  named object's own content), so sharing one capability avoids
+  fragmenting an already-narrow permission by which Splunk feature
+  authored the content rather than by actual risk. See SECURITY.md's
+  "Saved search as a relationship data source" (now covers both) for the
+  full reasoning.
+- A data model's own `modelName` (what `relationship_dataset` must hold)
+  is always machine-id-shaped, confirmed distinct from its separate,
+  free-text display title - `DATASET_NAME_PATTERN` is as strict as the
+  index/lookup grammars rather than the wider one saved-search names use.
+- The Configuration page's Load demo data button (1.13.0) is disabled
+  with an explanation in Table Dataset mode too, same as saved-search
+  mode - there is no bundled relationship data to load into a dataset you
+  authored yourself.
+- New DATA_INGESTION.md section F and CONFIGURATION.md updates documenting
+  the new option; ARCHITECTURE.md's "How searches retrieve relationships"
+  and KNOWN_LIMITATIONS.md updated accordingly.
+
+Full npm test (409 tests) and lint (0 warnings) pass; AppInspect re-run
+clean (0 errors/failures, same 8-warning profile as prior releases).
+Version bumped to 1.16.0.
+
 ## [1.15.0] - 2026-11-25
 
 ### Added

@@ -13,6 +13,7 @@ import {
   safeSourcetypeOrFallback,
   safeLookupNameOrFallback,
   safeSavedSearchNameOrFallback,
+  safeDatasetNameOrFallback,
   GraphLensValidationError,
 } from '../../src/main/webapp/shared/utilities/splSafety';
 
@@ -222,6 +223,24 @@ describe('safeSavedSearchNameOrFallback', () => {
 
   test('falls back for a non-string value', () => {
     expect(safeSavedSearchNameOrFallback(undefined, 'fallback_search')).toBe('fallback_search');
+  });
+});
+
+describe('safeDatasetNameOrFallback', () => {
+  test('accepts a normal dataset/data model name (machine-id-shaped, no spaces)', () => {
+    expect(safeDatasetNameOrFallback('graphlens_relationships_dataset', 'fallback')).toBe('graphlens_relationships_dataset');
+    expect(safeDatasetNameOrFallback('internal_audit_logs', 'fallback')).toBe('internal_audit_logs');
+  });
+
+  test('falls back for a name carrying spaces, quotes, SPL metacharacters or control characters', () => {
+    expect(safeDatasetNameOrFallback('Name With Spaces', 'fallback_dataset')).toBe('fallback_dataset');
+    expect(safeDatasetNameOrFallback('x" | delete | eval y="', 'fallback_dataset')).toBe('fallback_dataset');
+    expect(safeDatasetNameOrFallback('name\\with\\backslash', 'fallback_dataset')).toBe('fallback_dataset');
+    expect(safeDatasetNameOrFallback('name\nwith\nnewline', 'fallback_dataset')).toBe('fallback_dataset');
+  });
+
+  test('falls back for a non-string value', () => {
+    expect(safeDatasetNameOrFallback(undefined, 'fallback_dataset')).toBe('fallback_dataset');
   });
 });
 

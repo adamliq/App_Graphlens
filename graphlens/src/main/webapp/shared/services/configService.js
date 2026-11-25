@@ -41,6 +41,7 @@ const DEFAULTS = Object.freeze({
   relationshipIndex: 'graphlens_relationships',
   relationshipLookup: 'graphlens_relationships_lookup',
   relationshipSavedSearch: '',
+  relationshipDataset: '',
   evidenceDefaultIndex: '*',
   defaultEarliest: '-24h',
   defaultLatest: 'now',
@@ -83,12 +84,13 @@ export async function getSettings({ fetchImpl } = {}) {
       maxPathDepth: clampInteger(limits.max_path_depth, { min: 1, max: 20, fallback: DEFAULTS.maxPathDepth }),
       maxSearchResultRows: clampInteger(limits.max_search_result_rows, { min: 1, max: 50000, fallback: DEFAULTS.maxSearchResultRows }),
       searchDispatchMaxTimeSeconds: clampInteger(limits.search_dispatch_max_time_seconds, { min: 1, max: 600, fallback: DEFAULTS.searchDispatchMaxTimeSeconds }),
-      relationshipSourceType: ['lookup', 'saved_search'].includes(search.relationship_source_type)
+      relationshipSourceType: ['lookup', 'saved_search', 'dataset'].includes(search.relationship_source_type)
         ? search.relationship_source_type
         : DEFAULTS.relationshipSourceType,
       relationshipIndex: search.relationship_index || DEFAULTS.relationshipIndex,
       relationshipLookup: search.relationship_lookup || DEFAULTS.relationshipLookup,
       relationshipSavedSearch: search.relationship_saved_search || DEFAULTS.relationshipSavedSearch,
+      relationshipDataset: search.relationship_dataset || DEFAULTS.relationshipDataset,
       evidenceDefaultIndex: search.evidence_default_index || DEFAULTS.evidenceDefaultIndex,
       defaultEarliest: search.default_earliest || DEFAULTS.defaultEarliest,
       defaultLatest: search.default_latest || DEFAULTS.defaultLatest,
@@ -120,12 +122,13 @@ export async function getSettings({ fetchImpl } = {}) {
  * source" choice into what actually gets embedded in SPL.
  */
 export function relationshipSourceFromSettings(settings) {
-  const type = ['lookup', 'saved_search'].includes(settings.relationshipSourceType) ? settings.relationshipSourceType : 'index';
+  const type = ['lookup', 'saved_search', 'dataset'].includes(settings.relationshipSourceType) ? settings.relationshipSourceType : 'index';
   return {
     type,
     index: settings.relationshipIndex,
     lookupName: settings.relationshipLookup,
     savedSearchName: settings.relationshipSavedSearch,
+    datasetName: settings.relationshipDataset,
   };
 }
 

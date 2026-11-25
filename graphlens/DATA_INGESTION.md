@@ -176,6 +176,51 @@ saved search, which is exactly why this one option is gated by its own
 capability rather than sharing `graphlens_manage_config` with every other
 setting on this page.
 
+**F. No index, no lookup and no saved search - read directly from a
+Table Dataset.** Splunk's own Datasets feature (Settings > Datasets) lets
+you build a table-shaped dataset through a guided editor rather than
+hand-writing SPL - the same underlying idea as option E above, authored a
+different way:
+
+1. Open Settings > Datasets (or the Search app's Datasets tab) and click
+   **Create Table View**. Pick a base index/sourcetype, then **explicitly
+   add every column your relationship schema below needs as a field in
+   the editor** (`source_id`, `target_id`, `relationship_type`, etc. -
+   `edge_id`/`event_count`/`first_seen`/`last_seen` can be omitted; see
+   DATA_MODEL.md), using eval expressions for any column that isn't
+   already a field. This step is easy to under-do and matters: confirmed
+   live that a field not added as a column here is simply absent from
+   what `| from datamodel:` returns, even though the underlying raw event
+   has it - the dataset only ever exposes columns you explicitly added,
+   not "every field" by default. Save it with a name.
+2. **Find its underlying model name, not just its display title.** A
+   Table Dataset is itself stored as a single-object data model under the
+   hood, with a separate machine `modelName` (what GraphLens actually
+   needs) from the free-text title you typed when saving it - open the
+   dataset's own detail page in Settings > Datasets to find the former if
+   they differ. This is the same easy-to-miss distinction option D's step
+   2 calls out for a lookup *definition* name versus its file name.
+3. In the Configuration page, set **Relationship data source** to
+   **Table Dataset (Settings > Datasets)** and **Relationship Table
+   Dataset** to that model name. **Both of these require the
+   `graphlens_use_search_source` capability** - the same one saved-search
+   mode (option E) requires, and for the identical reason: see
+   SECURITY.md, "Saved search as a relationship data source," before
+   using this option.
+4. That's it - no index, no lookup, no HEC. GraphLens reads it with `|
+   from datamodel:"<name>"` (not `| datamodel "<name>" search`, which
+   would return fields prefixed with the dataset's object name instead of
+   the plain field names this app expects - see SECURITY.md for why), the
+   same way it reads an index with `search index=<name>`, a lookup with
+   `| inputlookup <name>`, or a saved search with `| savedsearch
+   "<name>"`, for every entity search and expansion.
+
+This is a reasonable middle ground between option D (hand-maintained
+lookup table) and option E (hand-written saved search SPL) for an
+administrator who wants point-and-click column selection over raw SPL
+authoring, but still carries the same trust caveat as option E: GraphLens
+does not review what the dataset actually computes.
+
 ## 3. Register your types
 
 Node/relationship type colours, icons, shapes, and enabled flags live in

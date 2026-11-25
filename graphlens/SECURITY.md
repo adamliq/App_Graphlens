@@ -213,7 +213,7 @@ checks, as the authority (`default/authorize.conf`):
 | `graphlens_manage_config` | Edit `graphlens_settings.conf` |
 | `graphlens_manage_collections` | Curate node/edge/type KV Store data; also gates the Configuration page's "Load demo data" button (see ARCHITECTURE.md) |
 | `graphlens_view_health` | View the Health page and audit log |
-| `graphlens_use_search_source` | Set the Configuration page's Relationship data source to Saved search, and change which saved search it names - see "Saved search as a relationship data source" below. Not granted to any example role by default |
+| `graphlens_use_search_source` | Set the Configuration page's Relationship data source to Saved search or Table Dataset, and change which one it names - see "Saved search as a relationship data source" below. Not granted to any example role by default |
 
 The React frontend calls
 `src/main/webapp/shared/services/capabilityService.js` to hide/disable
@@ -269,37 +269,70 @@ Splunk instance and is not automatable in this repository's unit tests).
 
 ## Saved search as a relationship data source
 
-`relationship_source_type = saved_search` (CONFIGURATION.md) is a third
-alternative to the Index and Lookup modes that have existed since 1.0.0,
-added in 1.14.0. It is the most trust-sensitive of the three, which is why
-it is the only one with its own dedicated capability
-(`graphlens_use_search_source`) rather than sharing
-`graphlens_manage_config` with every other setting on the Configuration
-page:
+`relationship_source_type = saved_search` and `= dataset`
+(CONFIGURATION.md) are a third and fourth alternative to the Index and
+Lookup modes that have existed since 1.0.0 - saved search added in 1.14.0,
+Table Dataset in 1.16.0. They are the most trust-sensitive of the four,
+which is why they are the only ones with their own dedicated capability
+(`graphlens_use_search_source`, shared by both - see "Why one capability
+covers both" below) rather than sharing `graphlens_manage_config` with
+every other setting on the Configuration page:
 
-- **GraphLens does not review the named saved search's content, the same
-  way it already does not review a configured lookup's content in Lookup
-  mode.** Whoever can author or edit that saved search effectively
-  controls what relationship data appears in the graph for every GraphLens
-  user, regardless of their own individual search permissions on whatever
-  indexes that saved search actually reads from.
-- `| savedsearch "<name>"` runs under the *current user's own session*,
-  the same as every other search this app dispatches - it does not
-  escalate privilege or run as the saved search's owner on its own. A
-  saved search is itself subject to normal Splunk search-time permissions
-  for whichever user runs it.
+- **GraphLens does not review the named saved search's or dataset's
+  content, the same way it already does not review a configured lookup's
+  content in Lookup mode.** Whoever can author or edit that saved search
+  or Table Dataset effectively controls what relationship data appears in
+  the graph for every GraphLens user, regardless of their own individual
+  search permissions on whatever indexes it actually reads from.
+- `| savedsearch "<name>"` and `| from datamodel:"<name>"` both run under
+  the *current user's own session*, the same as every other search this
+  app dispatches - neither escalates privilege or runs as the object's
+  owner on its own. Both are themselves subject to normal Splunk
+  search-time permissions for whichever user runs them.
 - `graphlens_use_search_source` is deliberately **not granted to any
   example role in default/authorize.conf**, including
-  `role_graphlens_admin` - an organisation adopting this feature makes
-  that choice explicitly (clone `role_graphlens_admin` and add
-  `graphlens_use_search_source = enabled`), rather than inheriting it
+  `role_graphlens_admin` - an organisation adopting either of these
+  features makes that choice explicitly (clone `role_graphlens_admin` and
+  add `graphlens_use_search_source = enabled`), rather than inheriting it
   silently from an upgrade.
-- The saved search's own results must already be shaped to the
-  relationship schema (DATA_MODEL.md) - GraphLens applies no
-  transformation of its own, the same expectation Lookup mode already
-  carries for a configured lookup's rows.
+- Either source's own results must already be shaped to the relationship
+  schema (DATA_MODEL.md) - GraphLens applies no transformation of its
+  own, the same expectation Lookup mode already carries for a configured
+  lookup's rows.
 - The Configuration page's Load demo data button (added in 1.13.0) does
-  not apply in this mode: see CONFIGURATION.md's "Demo data" section.
+  not apply in either mode: see CONFIGURATION.md's "Demo data" section.
+
+### Why `| from datamodel:`, not `| datamodel ... search`, for Table Dataset mode
+
+A Table Dataset (Settings > Datasets > Create Table View) is itself
+stored as a single-object data model under the hood - confirmed against a
+live instance: Splunk Web's own Datasets listing query only recognises
+`inputlookup-table`, `inputlookup-transform` and `datamodel` as dataset
+`eai:type`s, with no separate "table dataset" type. `| datamodel "<name>"
+search` was tried first and rejected after live testing: its output
+fields come back prefixed with the model's object name (e.g. `Audit.user`,
+not `user` - confirmed by inspecting a shipped data model's own
+`objectSearch`), which would silently break every `source_id`/`target_id`/
+etc. field this app expects. `| from datamodel:"<name>"` instead returns
+flat, unprefixed field names - also confirmed live - so that is what
+`relationship_dataset` is read with. One consequence: for a data model
+with more than one object (an unusual shape for a genuine Table Dataset,
+which is single-object by design, but possible for a hand-authored
+multi-object data model), `| from datamodel:"<name>"` returns only one
+object's rows, not all of them merged - point `relationship_dataset` at a
+true single-table Table Dataset to avoid this ambiguity.
+
+### Why one capability covers both
+
+Saved search mode and Table Dataset mode carry the identical trust
+characteristic described above - GraphLens trusting an administrator's
+own authored content rather than reviewing it - so they share
+`graphlens_use_search_source` rather than each getting its own capability.
+Splitting them would not add any real additional control (an
+administrator willing to grant one is, in practice, making the same trust
+decision for the other) while fragmenting an already-narrow permission
+into two near-identical ones purely by Splunk feature used to author the
+content, not by the actual risk involved.
 
 ## RBAC model collector
 
