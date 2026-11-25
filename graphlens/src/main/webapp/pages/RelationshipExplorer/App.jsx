@@ -9,7 +9,7 @@ import { loadNodeTypeConfig, loadRelationshipTypeConfig, deriveNodeTypeList, der
 import { recordAuditEvent, AUDIT_ACTIONS } from '../../shared/services/auditService';
 import { findShortestPath } from '../../shared/services/pathFinder';
 import { buildExportBlob } from '../../shared/services/exportService';
-import { parseImportedGraphJson } from '../../shared/services/importService';
+import { parseImportedGraphJson, parseImportedGraphCsv } from '../../shared/services/importService';
 import { buildEvidenceTokensForEdge, buildEvidenceTokensForNode } from '../../shared/services/evidenceQueryBuilder';
 import { buildInitialEntitySearchSpl, buildExpandNodeSpl, buildEvidenceSpl } from '../../shared/services/splTemplates';
 import { parseGraphQuery } from '../../shared/services/graphQueryLanguage';
@@ -41,7 +41,7 @@ import ErrorNotification from './components/ErrorNotification';
 import EmptyState from './components/EmptyState';
 import PageNav from '../../shared/components/PageNav';
 
-const APP_VERSION = '1.17.0';
+const APP_VERSION = '1.18.0';
 
 function downloadBlob(blob, filename) {
   const url = URL.createObjectURL(blob);
@@ -412,7 +412,16 @@ export default function App() {
     const reader = new FileReader();
     reader.onload = () => {
       try {
-        const { nodeRows, edgeRows } = parseImportedGraphJson(String(reader.result));
+        const text = String(reader.result);
+        // A CSV file is identified by extension first; a file with
+        // neither a .json nor a .csv extension (e.g. renamed, or
+        // dragged in some other way) falls back to content sniffing -
+        // GraphLens's own JSON export always starts with "{", which a
+        // relationship-schema CSV's header row never does.
+        const lowerName = (file.name || '').toLowerCase();
+        const isCsv = lowerName.endsWith('.csv')
+          || (!lowerName.endsWith('.json') && !text.trimStart().startsWith('{'));
+        const { nodeRows, edgeRows } = isCsv ? parseImportedGraphCsv(text) : parseImportedGraphJson(text);
         const { nodes, edges } = transformRowsToGraph(nodeRows, edgeRows, {
           maxNodes: settings.maxVisibleNodes,
           maxEdges: settings.maxVisibleEdges,
@@ -425,7 +434,7 @@ export default function App() {
         setPathEndpoints({ startNodeId: null, endNodeId: null });
         setEvidence({ isLoading: false, error: null, rows: [], fieldOrder: [], targetLabel: null });
         setLayoutToken((t) => t + 1);
-        recordAuditEvent(AUDIT_ACTIONS.IMPORT_GRAPH, { detail: `${nodes.length} nodes, ${edges.length} edges` });
+        recordAuditEvent(AUDIT_ACTIONS.IMPORT_GRAPH, { detail: `${nodes.length} nodes, ${edges.length} edges (${isCsv ? 'csv' : 'json'})` });
       } catch (err) {
         const message = err instanceof GraphLensValidationError ? err.message : 'Could not read that file.';
         setError({ code: 'import_error', message, retryable: false });
@@ -669,7 +678,7 @@ export default function App() {
       <input
         ref={importInputRef}
         type="file"
-        accept="application/json,.json"
+        accept="application/json,.json,text/csv,.csv"
         style={{ display: 'none' }}
         onChange={(e) => {
           const file = e.target.files && e.target.files[0];

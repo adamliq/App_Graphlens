@@ -1,7 +1,7 @@
 import React from 'react';
 import PageNav from '../../shared/components/PageNav';
 
-const APP_VERSION = '1.17.0';
+const APP_VERSION = '1.18.0';
 
 /**
  * Static, no-dependency reference page - unlike the other three pages,
@@ -171,15 +171,37 @@ export default function App() {
           Toolbar <strong>Export</strong> button: JSON (full graph data plus
           metadata), CSV (nodes or edges), or PNG (canvas snapshot). Exports
           only ever include what is currently visible to you. Toolbar
-          <strong> Import</strong> button: pick a previously exported JSON
-          file to load it back onto the canvas, replacing the current
-          graph - a convenience for resuming or sharing a specific
-          snapshot, read entirely in your browser (nothing is uploaded).
-          It is not a way to bring your own Splunk data into GraphLens -
-          see &quot;Loading your own data&quot; below for that. Every
-          imported node and edge is re-validated the same way a live
-          search result would be, so an import can never add anything
-          GraphLens would not otherwise accept.
+          <strong> Import</strong> button accepts either of two file
+          shapes, replacing the current graph - detected automatically by
+          file extension (falling back to content, if neither matches):
+        </p>
+        <ul>
+          <li>
+            A previously exported <strong>JSON</strong> file - a
+            convenience for resuming or sharing a specific snapshot (the
+            exported CSV files are not re-importable the same way: they
+            are two separate flat tables with different column names,
+            not this schema).
+          </li>
+          <li>
+            A <strong>CSV</strong> file already shaped to the
+            relationship schema below (the same schema an index, lookup,
+            saved search, Table Dataset or <strong>Load from job</strong>
+            {' '}already produces, and the one the bundled sample data
+            ships as) - a one-off way to bring your own data onto the
+            canvas without any Splunk-side configuration at all. Rows
+            matching neither a node row nor an edge row are silently
+            skipped.
+          </li>
+        </ul>
+        <p>
+          Either way, the file is read entirely in your browser (nothing
+          is uploaded), and every imported node and edge is re-validated
+          the same way a live search result would be, so an import can
+          never add anything GraphLens would not otherwise accept. See
+          &quot;Loading your own data&quot; below for the persistent
+          ways to bring data in (index, lookup, saved search, Table
+          Dataset).
         </p>
       </section>
 
@@ -290,6 +312,12 @@ export default function App() {
           ephemeral, expired by Splunk once the job finishes unless
           pinned or scheduled, so it only works for a limited time after
           the search completes.
+        </p>
+        <p style={{ fontSize: 12, color: '#5c5c5c' }}>
+          The toolbar&apos;s <strong>Import</strong> button is a sixth,
+          one-time way to get rows matching this same schema onto the
+          canvas, from a CSV file instead of a live Splunk job - see
+          &quot;Export and import&quot; above.
         </p>
       </section>
 

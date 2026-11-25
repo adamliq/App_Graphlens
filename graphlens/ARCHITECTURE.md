@@ -208,9 +208,34 @@ Cytoscape elements replace the whole graph via `loadGraphSnapshot` (in
 `resetGraph` followed by loading several "root" nodes at once, so
 imported nodes carry no expansion parent/child link and can still be
 expanded further afterwards. The file itself is read client-side via the
-browser's `FileReader` API and never uploaded anywhere; import is a
+browser's `FileReader` API and never uploaded anywhere; JSON import is a
 convenience for resuming or sharing a graph snapshot, not a path for
-bringing Splunk data into GraphLens (see DATA_INGESTION.md for that).
+bringing Splunk data into GraphLens (see DATA_INGESTION.md for that) -
+except that since 1.18.0, Import also accepts a second, independent file
+shape for exactly that purpose (see below).
+
+### Import also accepts a relationship-schema CSV (1.18.0)
+
+`importService.js`'s `parseImportedGraphCsv` is Import's second accepted
+shape, alongside `parseImportedGraphJson` above - `handleImportFile`
+(RelationshipExplorer/App.jsx) picks between them by file extension,
+falling back to content sniffing (GraphLens's own JSON export always
+starts with `{`) for a file matching neither `.json` nor `.csv`. Unlike
+JSON import, a CSV import's columns are the relationship schema itself
+(`source_id`/`target_id`/`relationship_type`/... or `node_id`/...) -
+the same schema an index, lookup, saved search, Table Dataset or Load
+from job already produces - not GraphLens's own internal node/edge
+field names, so it genuinely is a way to bring your own data in, not
+just a snapshot convenience. A small, dependency-free RFC4180-ish
+tokenizer turns the file into rows of plain objects (keyed by its
+header row), which are then classified into node rows/edge rows by
+`jobResultsService.js`'s `classifyJobResultRows` - the exact same
+function "Load from job" (1.17.0) already uses, so a CSV import and a
+job import behave identically from that point on, both ultimately
+reaching the same `graphTransformer.transformRowsToGraph` JSON import
+does. This is deliberately not the shape `exportNodesAsCsv`/
+`exportEdgesAsCsv` write on the way out (different column names, two
+separate files for one graph) - that export pair remains one-way.
 
 ## How "Load from job" attaches to an already-dispatched search (1.17.0)
 

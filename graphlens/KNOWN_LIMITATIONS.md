@@ -98,11 +98,21 @@ instance's configured home) to switch away from GraphLens entirely.
   extra layout dependency needs to be packaged/vetted. A future release
   could add `cytoscape-dagre`/`cytoscape-cola` if a customer need
   justifies the extra dependency surface.
-- **Import only accepts a GraphLens JSON export, and always replaces the
-  whole current graph** - there is no way to import a CSV file (nodes/
-  edges exports are flat tables and do not round-trip the structure JSON
-  does) or to merge an imported file into the graph already on screen.
-  Import a file first, then expand further, if you want to combine them.
+- **Import only accepts two specific file shapes, and always replaces
+  the whole current graph** - a GraphLens JSON export, or a CSV already
+  shaped to the relationship schema (1.18.0; see the Help page). There
+  is no way to merge an imported file into the graph already on screen
+  (import a file first, then expand further, if you want to combine
+  them), and the **exported** CSV files (nodes/edges) specifically
+  remain one-way - they are two separate flat tables with different
+  column names than the relationship schema, so they do not round-trip
+  the structure JSON does, and are not accepted back by Import.
+- **A CSV import's rows are classified by which fields they happen to
+  carry, the same way Load from job's are, and cannot be reshaped** -
+  `classifyJobResultRows` cannot turn an arbitrary CSV into the
+  relationship schema; a row without `node_id` or `source_id`+
+  `target_id`+`relationship_type` is silently skipped rather than
+  partially imported.
 - **Load from job (1.17.0) always replaces the whole current graph, same
   as Import, and only works while the job's results still exist** -
   Splunk expires a job's results on its own TTL (a few minutes by

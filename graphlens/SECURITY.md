@@ -139,27 +139,48 @@ The toolbar **Import** button (`importService.js`) reads a user-selected
 file entirely client-side via the browser's `FileReader` API - it is
 never uploaded to Splunk or anywhere else, and GraphLens has no server-side
 component that could receive it even if it tried. The file's content is
-treated as fully untrusted, exactly like a Splunk search result:
+treated as fully untrusted, exactly like a Splunk search result, whichever
+of its two accepted shapes it turns out to be:
 
-- Malformed JSON, or JSON missing the expected `{ nodes: [...], edges:
-  [...] }` shape, is rejected with a user-facing error before anything is
-  touched.
-- Every node/edge in the file is then converted to the same raw "row"
-  shape a search result arrives in and run through
+- A previously-exported **GraphLens JSON** file (`parseImportedGraphJson`)
+  - malformed JSON, or JSON missing the expected `{ nodes: [...], edges:
+    [...] }` shape, is rejected with a user-facing error before anything
+    is touched.
+- A **CSV** file shaped to the relationship schema (`parseImportedGraphCsv`,
+  1.18.0) - the same schema an index, lookup, saved search, Table
+  Dataset or "Load from job" already produces. Parsed with a small,
+  dependency-free RFC4180-ish tokenizer (handles quoted fields, embedded
+  commas/newlines, doubled-quote escaping); each resulting row is then
+  classified by `jobResultsService.js`'s `classifyJobResultRows` -
+  reusing the exact same row-classification "Load from job" already
+  uses, rather than a third bespoke mapping - into node rows
+  (`node_id`) and edge rows (`source_id`+`target_id`+
+  `relationship_type`). A row matching neither shape is silently
+  dropped; a file where no row matches either shape is rejected with a
+  user-facing error before anything is touched. Format is detected by
+  file extension, falling back to content (GraphLens's own JSON export
+  always starts with `{`) for a file extension that matches neither.
+- Either way, every resulting node/edge row is then converted to the
+  same raw "row" shape a search result arrives in and run through
   `graphTransformer.transformRowsToGraph` - the same validation, escaping,
   deduplication and `maxVisibleNodes`/`maxVisibleEdges` enforcement a live
   search's results go through. An invalid identifier is dropped, not
   imported; a label is HTML-escaped the same way (see `tests/security/
-  xss.test.js`'s import-pipeline case). An import can never cause
-  GraphLens to accept or display anything it would not otherwise accept
-  from a search.
+  xss.test.js`'s import-pipeline cases, one per format). An import can
+  never cause GraphLens to accept or display anything it would not
+  otherwise accept from a search.
 - Import is gated by the same `enableExport` feature flag as Export (no
   separate setting or capability) - they are presented as one
   import/export feature, and the graph limits/validation above are the
   actual boundary in either direction, not a capability check.
 - Audited the same way as other graph actions (`import_graph` in
   `graphlens_audit_log`), including on failure (malformed file, rejected
-  rows), with the node/edge counts only - never the file's raw content.
+  rows), with the node/edge counts and detected format only - never the
+  file's raw content.
+- The CSV shape accepted here is deliberately **not** the shape
+  `exportNodesAsCsv`/`exportEdgesAsCsv` write (different column names,
+  two separate files for one graph) - that export pair remains one-way;
+  see USER_GUIDE.md.
 
 ## Load from job handling
 

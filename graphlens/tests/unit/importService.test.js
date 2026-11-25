@@ -1,6 +1,8 @@
+import fs from 'fs';
+import path from 'path';
 import { createEmptyGraphState } from '../../src/main/webapp/shared/models/graphModel';
 import { exportGraphAsJson } from '../../src/main/webapp/shared/services/exportService';
-import { parseImportedGraphJson } from '../../src/main/webapp/shared/services/importService';
+import { parseImportedGraphJson, parseImportedGraphCsv } from '../../src/main/webapp/shared/services/importService';
 import { transformRowsToGraph } from '../../src/main/webapp/shared/services/graphTransformer';
 import { GraphLensValidationError } from '../../src/main/webapp/shared/utilities/splSafety';
 
@@ -65,5 +67,73 @@ describe('parseImportedGraphJson - rejects malformed input', () => {
   test('metadata is omitted (not just copied blindly) when not a plain object', () => {
     const { metadata } = parseImportedGraphJson('{"nodes": [], "edges": [], "metadata": "nope"}');
     expect(metadata).toBeNull();
+  });
+});
+
+describe('parseImportedGraphCsv', () => {
+  test('parses a simple edge-row CSV into edgeRows via the relationship schema', () => {
+    const csv = 'source_id,source_type,source_label,target_id,target_type,target_label,relationship_type\n'
+      + 'user:jsmith,user,J Smith,host:server01,host,server01,AUTHENTICATED_TO\n';
+    const { nodeRows, edgeRows } = parseImportedGraphCsv(csv);
+    expect(nodeRows).toHaveLength(0);
+    expect(edgeRows).toHaveLength(1);
+    expect(edgeRows[0].source_id).toBe('user:jsmith');
+    expect(edgeRows[0].relationship_type).toBe('AUTHENTICATED_TO');
+  });
+
+  test('parses a node-row CSV into nodeRows', () => {
+    const csv = 'node_id,node_type,node_label\nuser:jsmith,user,J Smith\n';
+    const { nodeRows, edgeRows } = parseImportedGraphCsv(csv);
+    expect(nodeRows).toHaveLength(1);
+    expect(edgeRows).toHaveLength(0);
+  });
+
+  test('handles quoted fields with embedded commas, same as the bundled sample data', () => {
+    const csv = 'source_id,source_type,source_label,target_id,target_type,target_label,relationship_type\n'
+      + 'ldap_group:cn-finance-ops-ou-groups,ldap_group,"cn=finance-ops,ou=groups,dc=example,dc=com",'
+      + 'identity_provider:corp_ldap,identity_provider,Corporate LDAP,AUTHENTICATES_VIA\n';
+    const { edgeRows } = parseImportedGraphCsv(csv);
+    expect(edgeRows).toHaveLength(1);
+    expect(edgeRows[0].source_label).toBe('cn=finance-ops,ou=groups,dc=example,dc=com');
+  });
+
+  test('the actual bundled sample CSV parses into edge rows matching the relationship schema', () => {
+    const csv = fs.readFileSync(
+      path.join(__dirname, '../../lookups/graphlens_sample_relationships.csv'),
+      'utf8',
+    );
+    const { nodeRows, edgeRows } = parseImportedGraphCsv(csv);
+    expect(nodeRows).toHaveLength(0);
+    expect(edgeRows.length).toBeGreaterThan(0);
+    edgeRows.forEach((row) => {
+      expect(row.source_id).toBeTruthy();
+      expect(row.target_id).toBeTruthy();
+      expect(row.relationship_type).toBeTruthy();
+    });
+  });
+
+  test('a freshly imported CSV round-trips through transformRowsToGraph', () => {
+    const csv = 'source_id,source_type,source_label,target_id,target_type,target_label,relationship_type,relationship_label\n'
+      + 'user:jsmith,user,J Smith,host:server01,host,server01,AUTHENTICATED_TO,Authenticated to\n';
+    const { nodeRows, edgeRows } = parseImportedGraphCsv(csv);
+    const { nodes, edges } = transformRowsToGraph(nodeRows, edgeRows);
+    expect(nodes.map((n) => n.data.id).sort()).toEqual(['host:server01', 'user:jsmith']);
+    expect(edges).toHaveLength(1);
+  });
+
+  test('throws GraphLensValidationError for an empty file', () => {
+    expect(() => parseImportedGraphCsv('')).toThrow(GraphLensValidationError);
+    expect(() => parseImportedGraphCsv('   \n  ')).toThrow(GraphLensValidationError);
+  });
+
+  test('throws GraphLensValidationError when no row matches the relationship schema', () => {
+    const csv = 'foo,bar\n1,2\n';
+    expect(() => parseImportedGraphCsv(csv)).toThrow(GraphLensValidationError);
+  });
+
+  test('tolerates garbage/blank trailing lines without throwing', () => {
+    const csv = 'node_id,node_type,node_label\nuser:jsmith,user,J Smith\n\n';
+    const { nodeRows } = parseImportedGraphCsv(csv);
+    expect(nodeRows).toHaveLength(1);
   });
 });

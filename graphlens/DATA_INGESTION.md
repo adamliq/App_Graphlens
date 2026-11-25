@@ -243,6 +243,18 @@ once the job finishes, unless it has been pinned or scheduled). Reach
 for one of options A-F instead once you want this to be the graph's
 actual, persistent relationship data source.
 
+**H. Have a CSV file already shaped to the schema, and don't even want
+to run a search.** Option B above gets a CSV into an index via `splunk
+add oneshot`, which is the right move once you want it to be the
+graph's ongoing, persistent relationship data source. For a one-off
+look at a CSV you already have on hand - option B without the Splunk
+side at all - use the toolbar **Import** button instead: it accepts a
+CSV with the relationship schema's own column names (`source_id`,
+`target_id`, `relationship_type`, etc. - the exact same file you would
+otherwise `oneshot` or `outputlookup`) and loads it straight onto the
+canvas, client-side, the same way option G's Load from job does for a
+search job's results. See the Help page's "Export and import" section.
+
 ## 3. Register your types
 
 Node/relationship type colours, icons, shapes, and enabled flags live in

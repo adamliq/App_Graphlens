@@ -201,17 +201,31 @@ carrying spreadsheet-formula-injection payloads.
 
 ## Import
 
-Toolbar **Import** button: pick a JSON file previously produced by
-**Export > JSON (graph)** and GraphLens loads it back onto the canvas,
-replacing whatever graph is currently shown. This is a convenience for
-resuming or sharing a specific graph snapshot - it is not a way to bring
-your own Splunk data into GraphLens (see DATA_INGESTION.md for that). The
-file is read entirely in your browser; nothing is uploaded anywhere. Every
-node and edge in the file is re-validated exactly the same way a live
-search result would be (invalid identifiers are silently dropped, labels
-are HTML-escaped) - an import can never add anything GraphLens would not
-otherwise accept. Only CSV/PNG exports are one-way; CSV cannot be
-imported back, since it is a flat table and does not round-trip the
+Toolbar **Import** button accepts either of two file shapes, detected
+automatically (by file extension, falling back to content if neither
+matches), replacing whatever graph is currently shown:
+
+- A **JSON** file previously produced by **Export > JSON (graph)** - a
+  convenience for resuming or sharing a specific graph snapshot. This is
+  not a way to bring your own Splunk data into GraphLens (see
+  DATA_INGESTION.md for that).
+- A **CSV** file already shaped to the relationship schema (see the Help
+  page) - the same schema an index, lookup, saved search, Table Dataset
+  or Load from job already produces, and the one the bundled sample data
+  ships as (`lookups/graphlens_sample_relationships.csv`). This *is* a
+  way to bring your own data in, as a one-off, without touching the
+  Configuration page or any Splunk-side setup at all. Rows matching
+  neither a node row (`node_id`) nor an edge row (`source_id`+
+  `target_id`+`relationship_type`) are silently skipped.
+
+The file is read entirely in your browser; nothing is uploaded anywhere.
+Every node and edge in the file is re-validated exactly the same way a
+live search result would be (invalid identifiers are silently dropped,
+labels are HTML-escaped) - an import can never add anything GraphLens
+would not otherwise accept. The **exported** CSV files (nodes/edges) are
+still one-way and cannot be imported back: they are two separate flat
+tables with different column names (`id`/`source`/`target`/...) than
+the relationship schema above, and do not round-trip the full
 node/edge/metadata structure JSON does.
 
 ## Load from job

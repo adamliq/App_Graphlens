@@ -2,6 +2,34 @@
 
 All notable changes to GraphLens are documented in this file.
 
+## [1.18.0] - 2026-11-25
+
+### Added
+
+- **Toolbar Import now also accepts a CSV file**, alongside the existing
+  GraphLens JSON export - a new, independent file shape detected
+  automatically by file extension (falling back to content sniffing for
+  a file matching neither `.json` nor `.csv`). The CSV must already be
+  shaped to the relationship schema documented on the Help page (the
+  same schema an index, lookup, saved search, Table Dataset or Load
+  from job already produces, and the one the bundled sample data ships
+  as) - not the different column names `exportNodesAsCsv`/
+  `exportEdgesAsCsv` write, which remain one-way.
+- `importService.js`'s new `parseImportedGraphCsv` reuses two existing
+  pieces rather than inventing new ones: a small, dependency-free
+  RFC4180-ish CSV tokenizer (handling quoted fields, embedded
+  commas/newlines, doubled-quote escaping - confirmed against the
+  bundled sample data's own quoted LDAP distinguished names) turns the
+  file into plain row objects, and `jobResultsService.js`'s
+  `classifyJobResultRows` (1.17.0) then classifies them into node
+  rows/edge rows exactly as it already does for "Load from job" - so a
+  CSV import and a job import behave identically once rows exist as
+  plain objects, and this adds no third row-classification scheme.
+- No new setting or capability: CSV import is gated by the same
+  `enableExport` flag Import/Export/Load from job already share, and
+  goes through the same `transformRowsToGraph` validation/escaping/
+  limit enforcement every other relationship source does.
+
 ## [1.17.0] - 2026-11-25
 
 ### Added
