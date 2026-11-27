@@ -5,29 +5,38 @@ import NodeContextMenu from './NodeContextMenu';
 import EdgeContextMenu from './EdgeContextMenu';
 
 const DEFAULT_NODE_COLOR = '#5A2BE2';
-const DEFAULT_EDGE_COLOR = '#9B9B9B';
+// 1.24.0: was #9B9B9B (2.66:1 against the canvas); #767676 is 4.33:1.
+const DEFAULT_EDGE_COLOR = '#767676';
 // Matches .graphlens-canvas-wrapper's --graphlens-canvas-bg fallback in
 // App.css, so an edge label's background reads as part of the plain
 // canvas rather than a visible, mismatched box.
 const CANVAS_BG_COLOR = '#fafafa';
 
 /**
- * Fixed meanings, independent of a node/edge's own type colour - also
+ * Fixed status meanings, independent of a node/edge's own type colour -
  * kept out of typeConfigService.js's FALLBACK_PALETTE so a type can never
- * coincidentally look like one of these states. Risk lives on its own
- * `overlay-*` channel (a halo, not the border) specifically so it stays
- * visible regardless of pinned/selected/path-highlight state - confirmed
- * live that the previous design (risk sharing `border-color` with
- * pinned/selected) made the risk indicator disappear the moment a
- * high-risk node was clicked or pinned, which is exactly when a risk cue
- * matters most.
+ * coincidentally look like one of these states. See the channel list
+ * below STATUS_COLORS for how each status is drawn.
  */
 const STATUS_COLORS = {
-  risk: '#d93f3f',
-  pinned: '#2b7de9',
-  selected: '#e97d2b',
+  risk: '#b3261e',
+  pinned: '#2b3033',
+  selected: '#1a1a1a',
   pathHighlight: '#1f9e54',
 };
+
+// 1.24.0: each status has its own visual channel, so no status can hide
+// another (confirmed live in the 1.23.0 audit: the path highlight replaced
+// both the selected and the pinned border, so neither was visible on a
+// highlighted path) and none of them changes a node's fill (the risk halo
+// used to be drawn *over* the node, tinting its type colour):
+//   - selected      -> a dark outer ring (Cytoscape `outline`)
+//   - pinned        -> a double border
+//   - on the path   -> a green border (dashed, or double when also pinned)
+//   - high risk     -> a red glow *behind* the node (`underlay`)
+// Every status colour is >= 3:1 against the canvas, and none of them is a
+// node-type colour (see typeConfigService.js's FALLBACK_PALETTE).
+const HIGH_RISK_UNDERLAY_OPACITY = 0.7; // #b3261e at 70% over #fafafa = 3.65:1
 
 const HIGH_RISK_THRESHOLD = 70;
 
@@ -55,16 +64,11 @@ const STYLESHEET = [
       color: '#1a1a1a',
       'font-size': 10,
       'text-valign': 'bottom',
-      'text-margin-y': 4,
+      'text-margin-y': 6,
       'text-wrap': 'ellipsis',
       'text-max-width': '90px',
-      // A node label sits below the node on the plain canvas, not on the
-      // node's own fill, so it is not exposed to the same per-type-colour
-      // contrast problem edge labels had - but in a dense graph a curved
-      // edge can still pass directly under where a label lands. Giving it
-      // the same background as edge labels costs nothing on the common
-      // case (it already matches the canvas) and removes that remaining
-      // risk, rather than relying on it never actually happening.
+      // A node label sits below the node on the plain canvas; a background
+      // matching the canvas keeps it readable where an edge passes under it.
       'text-background-color': CANVAS_BG_COLOR,
       'text-background-opacity': 1,
       'text-background-shape': 'roundrectangle',
@@ -73,41 +77,44 @@ const STYLESHEET = [
       height: (ele) => 24 + Math.min(30, (ele.data('riskScore') || 0) / 3),
       'border-width': 1,
       'border-color': '#3a3a3a',
-      'overlay-shape': 'ellipse',
-      'overlay-padding': 6,
-      'overlay-color': STATUS_COLORS.risk,
-      'overlay-opacity': (ele) => ((ele.data('riskScore') || 0) >= HIGH_RISK_THRESHOLD ? 0.35 : 0),
+      'underlay-color': STATUS_COLORS.risk,
+      'underlay-shape': 'ellipse',
+      'underlay-padding': 7,
+      'underlay-opacity': (ele) => ((ele.data('riskScore') || 0) >= HIGH_RISK_THRESHOLD ? HIGH_RISK_UNDERLAY_OPACITY : 0),
     },
   },
   {
+    // Colour only - the double style is applied by the later pinned rule,
+    // so a pinned node on the highlighted path keeps the path's green.
     selector: 'node[?pinned]',
-    style: { 'border-style': 'double', 'border-width': 4, 'border-color': STATUS_COLORS.pinned },
+    style: { 'border-color': STATUS_COLORS.pinned },
   },
   {
-    selector: 'node:selected',
-    style: { 'border-color': STATUS_COLORS.selected, 'border-width': 4 },
-  },
-  {
-    // Border/style only, never background-color - a highlighted path must
-    // never hide which type a node is (confirmed live: overwriting the
-    // fill made every path-highlighted node the same colour, losing the
-    // legend's type-colour meaning for exactly the nodes being inspected).
+    // Border only, never background-color - a highlighted path must never
+    // hide which type a node is.
     selector: 'node.graphlens-path-highlight',
     style: { 'border-color': STATUS_COLORS.pathHighlight, 'border-width': 4, 'border-style': 'dashed' },
   },
   {
-    // Edge labels are drawn directly on top of the edge's own line, whose
-    // colour varies per relationship type (up to 19 colours, several
-    // fairly dark) - a single fixed dark label colour (#4a4a4a) was
-    // frequently near-illegible on a dark line, confirmed live and
-    // reported directly. A solid background behind the label (matching
-    // the plain canvas colour) makes legibility independent of whatever
-    // colour the line underneath happens to be, rather than trying to
-    // pick one label colour that contrasts with every possible line
-    // colour - the same fix used for e.g. map/chart edge labels generally.
+    selector: 'node[?pinned]',
+    style: { 'border-style': 'double', 'border-width': 6 },
+  },
+  {
+    selector: 'node:selected',
+    style: {
+      'outline-width': 3,
+      'outline-style': 'solid',
+      'outline-color': STATUS_COLORS.selected,
+      'outline-offset': 3,
+      'outline-opacity': 1,
+    },
+  },
+  {
+    // Edge labels are drawn on top of the line, whose colour varies per
+    // relationship type, so the label gets a canvas-coloured background.
     selector: 'edge',
     style: {
-      width: (ele) => 1 + Math.min(6, Math.log2(1 + (ele.data('eventCount') || 1))),
+      width: (ele) => 1.5 + Math.min(6, Math.log2(1 + (ele.data('eventCount') || 1))),
       'line-color': (ele) => ele.data('color') || DEFAULT_EDGE_COLOR,
       'target-arrow-color': (ele) => ele.data('color') || DEFAULT_EDGE_COLOR,
       'target-arrow-shape': (ele) => (ele.data('directed') === false ? 'none' : 'triangle'),
@@ -127,12 +134,15 @@ const STYLESHEET = [
     },
   },
   {
-    selector: 'edge:selected',
-    style: { 'line-color': STATUS_COLORS.selected, 'target-arrow-color': STATUS_COLORS.selected, width: 4 },
-  },
-  {
     selector: 'edge.graphlens-path-highlight',
     style: { 'line-color': STATUS_COLORS.pathHighlight, 'target-arrow-color': STATUS_COLORS.pathHighlight, width: 4 },
+  },
+  {
+    // 1.24.0: a dark outline around the line (keeping its own colour), the
+    // edge counterpart of a selected node's dark ring - it used to recolour
+    // the line orange, which also hid the path highlight.
+    selector: 'edge:selected',
+    style: { 'line-outline-width': 2, 'line-outline-color': STATUS_COLORS.selected, width: 4 },
   },
 ];
 

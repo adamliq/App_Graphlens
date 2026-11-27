@@ -46,7 +46,7 @@ import EmptyState from './components/EmptyState';
 import SidebarSection from './components/SidebarSection';
 import PageNav from '../../shared/components/PageNav';
 
-const APP_VERSION = '1.23.0';
+const APP_VERSION = '1.24.0';
 
 function downloadBlob(blob, filename) {
   const url = URL.createObjectURL(blob);
@@ -286,6 +286,9 @@ export default function App() {
   // legend showed per-type colours it was never actually rendering. These
   // maps are the single source of truth for both; see nodes/edges below.
   const nodeColorByType = useMemo(() => Object.fromEntries(nodeTypeList.map((nt) => [nt.node_type, nt.color])), [nodeTypeList]);
+  // 1.24.0: the shape is resolved alongside the colour (configured, or an
+  // automatic one per type) so the canvas and the legend agree on it too.
+  const nodeShapeByType = useMemo(() => Object.fromEntries(nodeTypeList.map((nt) => [nt.node_type, nt.shape])), [nodeTypeList]);
   const relationshipColorByType = useMemo(() => Object.fromEntries(relationshipTypeList.map((rt) => [rt.relationship_type, rt.color])), [relationshipTypeList]);
 
   // Stable basis for the time slicer's own min/max bounds: the full
@@ -1034,7 +1037,7 @@ export default function App() {
         {!hasGraph && <EmptyState />}
         {canvasViewMode === 'graph' ? (
           <GraphCanvas
-            nodes={renderable.nodes.map((n) => ({ data: { ...n, color: nodeColorByType[n.type] || n.color } }))}
+            nodes={renderable.nodes.map((n) => ({ data: { ...n, color: nodeColorByType[n.type] || n.color, shape: nodeShapeByType[n.type] || n.shape } }))}
             edges={renderable.edges.map((e) => ({ data: { ...e, color: relationshipColorByType[e.relationship] || e.color } }))}
             layoutName={state.currentLayout}
             layoutToken={layoutToken}
@@ -1105,7 +1108,7 @@ export default function App() {
             {!selectedNode && !selectedEdge && (
               <div className="graphlens-section">
                 <h3>Details</h3>
-                <p style={{ fontSize: 12, color: '#8a8a8a' }}>Select a node or relationship to see its properties and actions.</p>
+                <p style={{ fontSize: 12, color: '#6b7378' }}>Select a node or relationship to see its properties and actions.</p>
               </div>
             )}
           </>

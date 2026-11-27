@@ -117,7 +117,7 @@
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.04em;
-  color: var(--graphlens-muted, #5c5c5c);
+  color: var(--graphlens-muted, #5c6773);
   margin: 0 0 8px 0;
 }
 
@@ -126,7 +126,7 @@
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.04em;
-  color: var(--graphlens-muted, #5c5c5c);
+  color: var(--graphlens-muted, #5c6773);
   margin: 12px 0 6px 0;
 }
 
@@ -159,17 +159,12 @@
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.04em;
-  color: var(--graphlens-muted, #5c5c5c);
+  color: var(--graphlens-muted, #5c6773);
 }
 
 .graphlens-sidebar-toggle:hover {
   color: #2b3033;
   background: var(--graphlens-hover, rgba(0, 0, 0, 0.04));
-}
-
-.graphlens-sidebar-toggle:focus-visible {
-  outline: 2px solid #2b7de9;
-  outline-offset: 1px;
 }
 
 .graphlens-sidebar-chevron {
@@ -265,7 +260,7 @@
   display: block;
   margin-bottom: 8px;
   font-size: 12px;
-  color: var(--graphlens-muted, #5c5c5c);
+  color: var(--graphlens-muted, #5c6773);
 }
 
 /* 1.23.0: right-click menus - a readable width, long names cut short. */
@@ -283,58 +278,30 @@
   white-space: nowrap;
 }
 
-/* 1.23.0: shared table style - table view, evidence, CSV preview. */
-.graphlens-data-table {
-  width: 100%;
-  font-size: 12px;
-  border-collapse: separate;
-  border-spacing: 0;
-}
-
-.graphlens-data-table th {
-  position: sticky;
-  top: 0;
-  z-index: 1;
-  text-align: left;
-  white-space: nowrap;
-  padding: 6px 8px;
-  background: #f2f4f5;
-  border-bottom: 1px solid #c3cbd4;
-  font-weight: 600;
-  color: #3c444d;
-}
-
-.graphlens-data-table td {
-  padding: 4px 8px;
-  border-bottom: 1px solid #ececec;
-}
-
-.graphlens-data-table tbody tr:nth-child(even) td {
-  background: #f9fafb;
-}
-
-.graphlens-data-table tbody tr:hover td {
-  background: #eef4fc;
-}
-
+/* Data tables: see shared/styles/base.css. Editable variant (CSV preview): */
 .graphlens-data-table-editable td {
   padding: 3px 4px;
 }
 
+/*
+ * 1.24.0: CSV preview cells. The dialog renders in a portal outside the
+ * page root, so the font is set explicitly; the border is the same
+ * 3.39:1 boundary as every other field (was #d6dbe0, 1.39:1).
+ */
 .graphlens-cell-input {
   width: 100%;
   min-width: 90px;
+  font-family: var(--graphlens-font-family);
   font-size: 12px;
+  color: var(--graphlens-text-strong);
   padding: 3px 5px;
-  border: 1px solid #d6dbe0;
+  border: 1px solid var(--graphlens-control-border);
   border-radius: 3px;
   background: #fff;
 }
 
 .graphlens-cell-input:focus {
-  outline: none;
-  border-color: #2b7de9;
-  box-shadow: 0 0 0 2px rgba(43, 125, 233, 0.2);
+  border-color: var(--graphlens-focus);
 }
 
 /* 1.23.0: supporting-events heading matches the other section headings. */
@@ -373,9 +340,153 @@
   color: inherit;
 }
 
-.graphlens-legend-item-button:hover,
-.graphlens-legend-item-button:focus-visible {
+.graphlens-legend-item-button:hover {
   background: var(--graphlens-hover, rgba(0, 0, 0, 0.06));
+}
+
+/* 1.24.0: says what clicking a legend type does, on hover/keyboard focus. */
+.graphlens-legend-label {
+  flex: 1;
+  min-width: 0;
+}
+
+.graphlens-legend-hint {
+  visibility: hidden;
+  font-size: 11px;
+  color: var(--graphlens-text-subtle);
+}
+
+.graphlens-legend-item-button:hover .graphlens-legend-hint,
+.graphlens-legend-item-button:focus-visible .graphlens-legend-hint {
+  visibility: visible;
+}
+
+.graphlens-legend-item-button:hover .graphlens-legend-label {
+  text-decoration: underline;
+}
+
+/*
+ * 1.24.0: type swatches (TypeSwatch.jsx) take the node type's canvas
+ * shape; relationship swatches are a short line.
+ */
+.graphlens-type-swatch {
+  display: inline-block;
+  flex: none;
+  width: 13px;
+  height: 13px;
+  vertical-align: -1px;
+  margin-right: 6px;
+}
+
+.graphlens-type-swatch-line {
+  width: 16px;
+  height: 4px;
+  border-radius: 2px;
+  vertical-align: 3px;
+}
+
+.graphlens-shape-ellipse { border-radius: 50%; }
+.graphlens-shape-round-rectangle,
+.graphlens-shape-bottom-round-rectangle,
+.graphlens-shape-round-tag { border-radius: 3px; }
+.graphlens-shape-barrel { border-radius: 30% / 15%; }
+.graphlens-shape-diamond,
+.graphlens-shape-round-diamond { clip-path: polygon(50% 0, 100% 50%, 50% 100%, 0 50%); }
+.graphlens-shape-hexagon,
+.graphlens-shape-round-hexagon,
+.graphlens-shape-concave-hexagon { clip-path: polygon(25% 0, 75% 0, 100% 50%, 75% 100%, 25% 100%, 0 50%); }
+.graphlens-shape-triangle,
+.graphlens-shape-round-triangle { clip-path: polygon(50% 0, 100% 100%, 0 100%); }
+.graphlens-shape-star { clip-path: polygon(50% 0, 61% 35%, 98% 35%, 68% 57%, 79% 91%, 50% 70%, 21% 91%, 32% 57%, 2% 35%, 39% 35%); }
+.graphlens-shape-tag { clip-path: polygon(0 0, 70% 0, 100% 50%, 70% 100%, 0 100%); }
+.graphlens-shape-pentagon,
+.graphlens-shape-round-pentagon { clip-path: polygon(50% 0, 100% 38%, 82% 100%, 18% 100%, 0 38%); }
+.graphlens-shape-octagon,
+.graphlens-shape-round-octagon,
+.graphlens-shape-heptagon,
+.graphlens-shape-round-heptagon { clip-path: polygon(30% 0, 70% 0, 100% 30%, 100% 70%, 70% 100%, 30% 100%, 0 70%, 0 30%); }
+.graphlens-shape-rhomboid,
+.graphlens-shape-right-rhomboid { clip-path: polygon(25% 0, 100% 0, 75% 100%, 0 100%); }
+.graphlens-shape-vee { clip-path: polygon(0 0, 50% 40%, 100% 0, 50% 100%); }
+.graphlens-shape-cut-rectangle { clip-path: polygon(20% 0, 80% 0, 100% 20%, 100% 80%, 80% 100%, 20% 100%, 0 80%, 0 20%); }
+
+/* 1.24.0: legend indicator samples, drawn the way the canvas draws them. */
+.graphlens-indicator-sample {
+  display: inline-block;
+  flex: none;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: #c3cbd4;
+  border: 1px solid #3a3a3a;
+  margin: 0 3px;
+}
+
+.graphlens-indicator-risk {
+  box-shadow: 0 0 0 4px rgba(179, 38, 30, 0.7);
+}
+
+.graphlens-indicator-pinned {
+  border: 4px double #2b3033;
+}
+
+.graphlens-indicator-selected {
+  outline: 2px solid #1a1a1a;
+  outline-offset: 2px;
+}
+
+.graphlens-indicator-path {
+  border: 2px dashed #1f9e54;
+}
+
+/* 1.24.0: type filter labels; a hidden type is struck through and muted. */
+.graphlens-type-label {
+  margin-left: 6px;
+  font-size: 13px;
+}
+
+.graphlens-type-label-hidden {
+  color: var(--graphlens-text-subtle);
+  text-decoration: line-through;
+}
+
+/* 1.24.0: high risk score - darker red plus a text tag. */
+.graphlens-risk-high {
+  color: #b3261e;
+  font-weight: 600;
+}
+
+.graphlens-risk-tag {
+  display: inline-block;
+  margin-left: 6px;
+  padding: 0 6px;
+  border: 1px solid #b3261e;
+  border-radius: 9px;
+  font-size: 11px;
+  line-height: 16px;
+  font-weight: 600;
+  color: #b3261e;
+  background: #fbeceb;
+}
+
+/*
+ * 1.24.0: Graph/Table switch - the selected view is a neutral pressed
+ * state (grey fill, dark 2px-equivalent border, bold) rather than the green
+ * primary fill used by call-to-action buttons. Id-qualified so it outranks
+ * the component library's class-based button styles.
+ */
+#graphlens-relationship-explorer-root .graphlens-view-tab[aria-selected="true"] {
+  background: #e1e6eb;
+  border-color: #3c444d;
+  box-shadow: inset 0 0 0 1px #3c444d;
+  color: #1f2428;
+  font-weight: 700;
+}
+
+/* 1.24.0: Reset graph hover text #a1382b on #fad6d1 (~5.0:1; was 3.58:1). */
+#graphlens-relationship-explorer-root .graphlens-reset-button:hover:not([disabled]),
+#graphlens-relationship-explorer-root .graphlens-reset-button:hover:not([disabled]) * {
+  color: #a1382b;
 }
 
 .graphlens-legend-swatch {
@@ -407,7 +518,7 @@
   align-items: center;
   justify-content: center;
   gap: 8px;
-  color: var(--graphlens-muted, #5c5c5c);
+  color: var(--graphlens-muted, #5c6773);
   text-align: center;
   padding: 24px;
 }
@@ -451,10 +562,7 @@
   border: 0;
 }
 
-.graphlens-focusable:focus-visible {
-  outline: 3px solid #2b7de9;
-  outline-offset: 2px;
-}
+
 
 @media (max-width: 1024px) {
   .graphlens-app {

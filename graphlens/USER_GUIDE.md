@@ -101,16 +101,27 @@ Left-hand panel:
 
 ## Legend
 
-The left-hand panel legend shows the colour used for each node type and
-relationship type currently present in your graph - guaranteed distinct
-for whatever types are on screen at once, even without any administrator
-curation. Click a node type to select every visible node of that type
-(see "Select several nodes at once" above). An **Indicators** section
-below it explains the canvas's other colour cues, which are independent
-of type colour: a red halo for a risk score of 70 or higher (stays
-visible no matter what else is true of the node), a blue double border
-for pinned, an orange border for selected, and a dashed green border for
-a node on a highlighted path.
+The left-hand panel legend shows the colour **and shape** used for each
+node type (relationship types are shown as a short line) currently
+present in your graph. Every node type has a shape as well as a colour
+(1.24.0) - its configured shape, or an automatic one - so types never
+differ by colour alone, and no two types on screen share both. Hover a
+node type to see **Select**; click it to select every visible node of
+that type (see "Select several nodes at once" above). An **Indicators**
+section below it shows how the canvas marks each status. Each has its
+own visual channel, so they never hide each other and never change a
+node's own colour (1.24.0):
+
+- **High risk** (score 70 or higher): a red glow behind the node.
+- **Pinned**: a double border.
+- **Selected**: a dark ring just outside the node (a selected
+  relationship gets a dark outline around its line).
+- **On a highlighted path**: a green dashed border (green double border
+  if the node is also pinned); path relationships are drawn green.
+
+In the details panel a high risk score is shown in dark red with a
+**High** tag. In the type filters, a type you have hidden is struck
+through.
 
 ## Colours (this session only)
 

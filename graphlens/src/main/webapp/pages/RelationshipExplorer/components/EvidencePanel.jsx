@@ -19,13 +19,13 @@ export default function EvidencePanel({ isLoading, error, rows, fieldOrder, targ
         </h3>
         <div className="graphlens-actions-row" style={{ marginTop: 0 }}>
           {onOpenInSearch && <Button label="Open in Splunk Search" onClick={onOpenInSearch} />}
-          {targetLabel && <Button label="Clear" appearance="subtle" onClick={onClear} />}
+          {targetLabel && <Button label="Clear" appearance="secondary" onClick={onClear} />}
         </div>
       </div>
       {isLoading && <WaitSpinner size="small" />}
       {error && <div className="graphlens-error-banner" role="alert">{error.message}</div>}
       {!isLoading && !error && targetLabel && rows.length === 0 && (
-        <p style={{ fontSize: 12, color: '#8a8a8a' }}>No supporting events were found for this selection in the current time range.</p>
+        <p style={{ fontSize: 12, color: '#6b7378' }}>No supporting events were found for this selection in the current time range.</p>
       )}
       {!isLoading && rows.length > 0 && (
         <div style={{ overflowX: 'auto' }}>

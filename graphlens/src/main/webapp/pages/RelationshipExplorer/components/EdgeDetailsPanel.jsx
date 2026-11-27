@@ -6,7 +6,7 @@ import NumberField from '@splunk/react-ui/Number';
 import Switch from '@splunk/react-ui/Switch';
 import List from '@splunk/react-icons/List';
 import Pencil from '@splunk/react-icons/Pencil';
-import { STATUS_COLORS, HIGH_RISK_THRESHOLD } from './GraphCanvas';
+import { HIGH_RISK_THRESHOLD } from './GraphCanvas';
 
 function fieldsFromEdge(edge) {
   return {
@@ -36,7 +36,7 @@ export default function EdgeDetailsPanel({ edge, canEdit, onViewEvidence, onSave
     return (
       <div className="graphlens-section">
         <h3>Relationship details</h3>
-        <p style={{ fontSize: 12, color: '#8a8a8a' }}>Select a relationship to see its properties.</p>
+        <p style={{ fontSize: 12, color: '#6b7378' }}>Select a relationship to see its properties.</p>
       </div>
     );
   }
@@ -87,8 +87,14 @@ export default function EdgeDetailsPanel({ edge, canEdit, onViewEvidence, onSave
         <dt>Directed</dt>
         <dd>{edge.directed ? 'Yes' : 'No'}</dd>
         <dt>Risk score</dt>
-        <dd style={(edge.riskScore || 0) >= HIGH_RISK_THRESHOLD ? { color: STATUS_COLORS.risk, fontWeight: 600 } : undefined}>
+        {/*
+          1.24.0: a high score is darker red (#b3261e, 6.54:1 - #d93f3f was
+          4.44:1) and carries a "High" tag, so it reads as high risk
+          without relying on colour (WCAG 1.4.1).
+        */}
+        <dd className={(edge.riskScore || 0) >= HIGH_RISK_THRESHOLD ? 'graphlens-risk-high' : undefined}>
           {edge.riskScore}
+          {(edge.riskScore || 0) >= HIGH_RISK_THRESHOLD && <span className="graphlens-risk-tag">High</span>}
         </dd>
         <dt>Event count</dt>
         <dd>{edge.eventCount}</dd>

@@ -1,5 +1,6 @@
 import React from 'react';
 import PropTypes from 'prop-types';
+import TypeSwatch from './TypeSwatch';
 
 export default function RelationshipTypeFilter({ relationshipTypes, hiddenRelationshipTypes, onChange }) {
   const toggle = (type) => {
@@ -23,15 +24,15 @@ export default function RelationshipTypeFilter({ relationshipTypes, hiddenRelati
                 checked={!hiddenRelationshipTypes.includes(rt.relationship_type)}
                 onChange={() => toggle(rt.relationship_type)}
               />
-              <label htmlFor={inputId} style={{ marginLeft: 6, fontSize: 13 }}>
-                <span className="graphlens-legend-swatch" style={{ backgroundColor: rt.color, display: 'inline-block' }} />
-                {' '}
+              {/* 1.24.0: a hidden type's label is struck through and muted, not just unticked. */}
+              <label htmlFor={inputId} className={hiddenRelationshipTypes.includes(rt.relationship_type) ? 'graphlens-type-label graphlens-type-label-hidden' : 'graphlens-type-label'}>
+                <TypeSwatch color={rt.color} kind="relationship" />
                 {rt.display_label || rt.relationship_type}
               </label>
             </li>
           );
         })}
-        {relationshipTypes.length === 0 && <li style={{ fontSize: 12, color: '#8a8a8a' }}>No relationship types observed yet.</li>}
+        {relationshipTypes.length === 0 && <li style={{ fontSize: 12, color: '#6b7378' }}>No relationship types observed yet.</li>}
       </ul>
     </div>
   );

@@ -64,7 +64,7 @@ export default function EntitySearch({ isLoading, results, onSearch, onPickResul
                 onPickResult(result);
               }}
             >
-              {result.label} <span style={{ color: '#8a8a8a', marginLeft: 6 }}>({result.type})</span>
+              {result.label} <span style={{ color: '#6b7378', marginLeft: 6 }}>({result.type})</span>
             </Menu.Item>
           ))}
         </Menu>

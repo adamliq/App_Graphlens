@@ -1,7 +1,7 @@
 import React from 'react';
 import PageNav from '../../shared/components/PageNav';
 
-const APP_VERSION = '1.23.0';
+const APP_VERSION = '1.24.0';
 
 /**
  * Static, no-dependency reference page - unlike the other three pages,
@@ -103,11 +103,12 @@ export default function App() {
           distinct for whatever types are on screen at once, and clickable
           to select every visible node of that type. An
           <strong> Indicators</strong> section below it explains the
-          canvas&apos;s other colour cues, which are independent of type
-          colour and never hide each other: a red halo for risk score 70+
-          (stays visible regardless of selection/pin state), a blue double
-          border for pinned, an orange border for selected, and a dashed
-          green border for a node on a highlighted path. The toolbar&apos;s
+          canvas&apos;s status cues (1.24.0), which never hide each other
+          or change a node&apos;s own colour: a red glow behind a node
+          with risk score 70+, a double border for pinned, a dark ring
+          outside the node for selected, and a green dashed border for a
+          node on a highlighted path. Each node type also has its own
+          shape, shown in the legend. The toolbar&apos;s
           time range dropdown changes the window used by subsequent searches
           (it does not retroactively re-run past expansions).
         </p>
@@ -306,12 +307,12 @@ export default function App() {
           model (including the separate node/edge JSON shapes used
           elsewhere, e.g. curated KV Store metadata).
         </p>
-        <table style={{ width: '100%', fontSize: 12, borderCollapse: 'collapse', marginBottom: 12 }}>
+        <table className="graphlens-data-table" style={{ marginBottom: 12 }}>
           <thead>
             <tr>
-              <th style={{ textAlign: 'left', borderBottom: '1px solid #ccc', padding: '4px 8px' }}>Field</th>
-              <th style={{ textAlign: 'left', borderBottom: '1px solid #ccc', padding: '4px 8px' }}>Required</th>
-              <th style={{ textAlign: 'left', borderBottom: '1px solid #ccc', padding: '4px 8px' }}>Notes</th>
+              <th>Field</th>
+              <th>Required</th>
+              <th>Notes</th>
             </tr>
           </thead>
           <tbody>
@@ -319,7 +320,7 @@ export default function App() {
               ['edge_id', 'no', 'Derived deterministically from source_id + relationship_type + target_id if omitted.'],
               ['source_id', 'yes', 'Namespaced, stable identifier, e.g. user:jsmith. Must match ^[A-Za-z0-9][A-Za-z0-9:_\\-.@/]{0,254}$ - no quotes, backslashes, pipes, wildcards, spaces or control characters.'],
               ['source_type', 'yes', 'Short type token, e.g. user, host, ip. Governed by graphlens_node_types.'],
-              ['source_label', 'yes', 'Display label for the source node. Treated as untrusted; HTML-escaped on render.'],
+              ['source_label', 'yes', 'Display label for the source node. Treated as untrusted; stored as plain text and only ever displayed as text, never as HTML.'],
               ['target_id', 'yes', 'Same identifier grammar as source_id.'],
               ['target_type', 'yes', 'Same as source_type, for the target node.'],
               ['target_label', 'yes', 'Same as source_label, for the target node.'],
@@ -332,14 +333,14 @@ export default function App() {
               ['evidence_reference', 'no', 'Opaque key joined against a raw evidence event’s own evidence_reference field for View supporting events. Must be a valid identifier if set.'],
             ].map(([field, required, notes]) => (
               <tr key={field}>
-                <td style={{ padding: '4px 8px', borderBottom: '1px solid #eee', whiteSpace: 'nowrap', fontFamily: 'monospace' }}>{field}</td>
-                <td style={{ padding: '4px 8px', borderBottom: '1px solid #eee' }}>{required}</td>
-                <td style={{ padding: '4px 8px', borderBottom: '1px solid #eee' }}>{notes}</td>
+                <td style={{ whiteSpace: 'nowrap', fontFamily: 'monospace' }}>{field}</td>
+                <td>{required}</td>
+                <td>{notes}</td>
               </tr>
             ))}
           </tbody>
         </table>
-        <p style={{ fontSize: 12, color: '#5c5c5c' }}>
+        <p style={{ fontSize: 12, color: '#5c6773' }}>
           This is the flat row/event shape every relationship source
           (index, lookup, saved search, Table Dataset) must already
           produce - the same
@@ -352,7 +353,7 @@ export default function App() {
           <code> graphlens_edges</code>) rather than observed relationship
           rows.
         </p>
-        <p style={{ fontSize: 12, color: '#5c5c5c' }}>
+        <p style={{ fontSize: 12, color: '#5c6773' }}>
           The toolbar&apos;s <strong>Load from job</strong> button is a
           fifth, one-time way to get rows matching this same schema onto
           the canvas: paste the job ID (sid) of a search you already ran
@@ -365,7 +366,7 @@ export default function App() {
           pinned or scheduled, so it only works for a limited time after
           the search completes.
         </p>
-        <p style={{ fontSize: 12, color: '#5c5c5c' }}>
+        <p style={{ fontSize: 12, color: '#5c6773' }}>
           The toolbar&apos;s <strong>Import</strong> button is a sixth,
           one-time way to get rows matching this same schema onto the
           canvas, from a CSV file instead of a live Splunk job - see
@@ -449,7 +450,7 @@ export default function App() {
         </p>
       </section>
 
-      <p style={{ fontSize: 12, color: '#5c5c5c' }}>
+      <p style={{ fontSize: 12, color: '#5c6773' }}>
         GraphLens {APP_VERSION}. The sections above condense
         DATA_INGESTION.md, CONFIGURATION.md and SECURITY.md; for those in
         full, plus the data model and admin guide, see this app&apos;s

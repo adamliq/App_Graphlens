@@ -7,14 +7,37 @@
  * @splunk/react-ui components beside them used the Splunk sans-serif
  * stack. Setting the same stack on each page root makes the two match.
  */
+/*
+ * 1.24.0: colour and focus tokens. One set of greys (matching the
+ * @splunk/react-ui ones) instead of five ad-hoc values. Declared on :root
+ * so content @splunk/react-ui renders in a portal outside the page root
+ * (Modal, Popover) can use them too.
+ *   --graphlens-text        #2b3033  13.35:1 on white
+ *   --graphlens-text-muted  #5c6773   5.76:1 - headings, secondary text
+ *   --graphlens-text-subtle #6b7378   4.83:1 - hints, ids, empty states
+ *   --graphlens-control-border #818d99 3.39:1 - field boundaries
+ *   --graphlens-focus       #006eaa   5.51:1 - the one keyboard focus ring
+ */
+:root {
+  --graphlens-font-family: "Splunk Platform Sans", Inter, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --graphlens-text: #2b3033;
+  --graphlens-text-strong: #3c444d;
+  --graphlens-text-muted: #5c6773;
+  --graphlens-text-subtle: #6b7378;
+  --graphlens-control-border: #818d99;
+  --graphlens-focus: #006eaa;
+  --graphlens-accent: #1a8929;
+  --graphlens-muted: #5c6773;
+}
+
 #graphlens-relationship-explorer-root,
 #graphlens-health-root,
 #graphlens-configuration-root,
 #graphlens-help-root {
-  font-family: "Splunk Platform Sans", Inter, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  font-family: var(--graphlens-font-family);
   font-size: 14px;
   line-height: 1.4;
-  color: #2b3033;
+  color: var(--graphlens-text);
   -webkit-font-smoothing: antialiased;
 }
 
@@ -74,4 +97,83 @@
   flex: 1 1 140px;
   min-width: 0;
   overflow-wrap: anywhere;
+}
+
+/*
+ * 1.24.0: placeholder text at 4.83:1 (Splunk's default #818d99 is 3.39:1,
+ * below WCAG 1.4.3's 4.5:1). The id selectors outrank the component
+ * library's own class-based placeholder rule.
+ */
+#graphlens-relationship-explorer-root input::placeholder,
+#graphlens-relationship-explorer-root textarea::placeholder,
+#graphlens-configuration-root input::placeholder,
+#graphlens-configuration-root textarea::placeholder,
+body [data-test="modal"] input::placeholder,
+body [data-test="modal"] textarea::placeholder {
+  color: var(--graphlens-text-subtle);
+  opacity: 1;
+}
+
+/*
+ * 1.24.0: browser-native checkboxes and range sliders use the same green as
+ * the @splunk/react-ui checkboxes on the Configuration page, instead of the
+ * browser's default blue.
+ */
+#graphlens-relationship-explorer-root input[type="checkbox"],
+#graphlens-relationship-explorer-root input[type="range"] {
+  accent-color: var(--graphlens-accent);
+}
+
+/*
+ * 1.24.0: one keyboard focus ring for every control GraphLens styles
+ * itself - the same colour as @splunk/react-ui's own ring - instead of
+ * five different treatments (one of which was only a 6% tint, the same as
+ * hover).
+ */
+.graphlens-focus-ring:focus-visible,
+.graphlens-focusable:focus-visible,
+.graphlens-sidebar-toggle:focus-visible,
+.graphlens-legend-item-button:focus-visible,
+.graphlens-cell-input:focus-visible,
+#graphlens-relationship-explorer-root input[type="checkbox"]:focus-visible,
+#graphlens-relationship-explorer-root input[type="range"]:focus-visible {
+  outline: 2px solid var(--graphlens-focus);
+  outline-offset: 2px;
+}
+
+/*
+ * Shared data-table style (table view, supporting events, CSV preview and
+ * the Help page's reference tables). 1.24.0: a darker header rule, a
+ * visible zebra stripe, and no hover tint - the rows aren't clickable, and
+ * a blue hover read as a selection.
+ */
+.graphlens-data-table {
+  width: 100%;
+  font-size: 12px;
+  border-collapse: separate;
+  border-spacing: 0;
+}
+
+.graphlens-data-table th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  text-align: left;
+  white-space: nowrap;
+  padding: 6px 8px;
+  background: #e8ebee;
+  border-bottom: 1px solid var(--graphlens-control-border);
+  font-weight: 600;
+  color: var(--graphlens-text-strong);
+}
+
+.graphlens-data-table td {
+  padding: 4px 8px;
+  border-bottom: 1px solid #e1e5e9;
+  color: var(--graphlens-text);
+  vertical-align: top;
+}
+
+.graphlens-data-table tbody tr:nth-child(even) td {
+  background: #f2f4f5;
 }
