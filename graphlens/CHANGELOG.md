@@ -2,6 +2,39 @@
 
 All notable changes to GraphLens are documented in this file.
 
+## [1.21.0] - 2026-11-27
+
+### Added
+
+- **Confirm-before-discard guard** on Reset graph, Import and Load from
+  job - each one replaces the whole canvas with no way back, and since
+  1.19.0's on-canvas editing that can silently discard an edit along
+  with everything else. A new `ConfirmDialog.jsx` (a plain
+  `@splunk/react-ui` Modal) now asks first, but only when the canvas
+  already has at least one node - an empty canvas has nothing to lose,
+  so the action still runs immediately with no dialog to click through.
+- **Right-click context menu extended to edges.** The node context menu
+  (1.20.0) now has an edge counterpart, `EdgeContextMenu.jsx`, with its
+  one action - View supporting events - the same single action
+  `EdgeDetailsPanel.jsx` itself offers beyond editing. `GraphCanvas.jsx`'s
+  `contextMenu` state is now kind-based (`'node'|'edge'`) so one slot
+  drives whichever of the two menus a right-click actually opens.
+- **Single-level undo for an edit.** Saving a node/edge edit (1.19.0) now
+  shows an "Edited "&lt;label&gt;"" banner (`EditUndoNotification.jsx`)
+  with an Undo button that reverts that one save, restoring the
+  node/edge's data exactly as it stood just before - through the same
+  `updateNodeData`/`updateEdgeData` reducer action the edit itself used,
+  no new write path. Only the single most recent edit is kept (a second
+  edit, or dismissing the banner, discards it), and it is discarded
+  outright by Reset graph, Import or Load from job, since restoring a
+  stale snapshot into an unrelated new graph that happens to reuse the
+  same id could otherwise silently corrupt it.
+- No new capability for any of the three: the confirm guard and the
+  context menu both reuse actions already available to every
+  viewer-tier user, and undo reuses the same reducer action and
+  capability (`graphlens_edit_graph_data`) the edit itself already
+  required.
+
 ## [1.20.0] - 2026-11-25
 
 ### Added

@@ -299,6 +299,20 @@ loading straight onto the canvas.
 - Audited the same way as other graph actions (`edit_node`/`edit_edge`
   in `graphlens_audit_log`), with the node/edge id only - never the
   edited values themselves.
+- **Undoing the single most recent edit (1.21.0)** carries the same
+  trust characteristics as the edit it reverts: `EditUndoNotification.jsx`'s
+  Undo button restores a node/edge's data to exactly what was captured
+  just before the edit it is undoing, through the same
+  `updateNodeData`/`updateEdgeData` reducer action the edit itself used
+  - no new write path, no new capability, and still gated by
+  `graphlens_edit_graph_data` only in the sense that there is nothing to
+  undo unless an edit happened in the first place. Like the edit itself,
+  it is session-only and never persisted; only the single most recent
+  edit can be undone (a second edit, or dismissing the banner, discards
+  the snapshot), and it is discarded outright by any action that
+  replaces the whole graph (Reset graph, Import, Load from job), since
+  restoring a stale snapshot into an unrelated new graph that happens to
+  reuse the same id could otherwise silently corrupt it.
 
 ## Multi-select, the time slicer, style overrides and saved views
 
@@ -308,15 +322,24 @@ loading straight onto the canvas.
   action (pin, unpin, hide, expand) dispatches exactly the same already-
   reviewed path the single-node version of that action already uses, just
   once per selected node.
-- **The right-click context menu (1.20.0)** adds no new action and no
-  new capability: every item it offers (Expand/Collapse, Pin/Unpin,
-  Hide, Centre on screen, View supporting events, Use as path endpoint)
-  dispatches the exact same handler the details panel's own button for
-  that action already uses, and every one of those actions is already
-  available to any viewer-tier user with no capability check of its
-  own. The menu itself is purely a UI convenience (a `@splunk/react-ui`
-  Popover anchored to the canvas) with no search or state of its own
-  beyond which node it is currently showing for.
+- **The right-click context menu (1.20.0, extended to edges in 1.21.0)**
+  adds no new action and no new capability: every item it offers
+  (Expand/Collapse, Pin/Unpin, Hide, Centre on screen, View supporting
+  events, Use as path endpoint for a node; View supporting events alone
+  for an edge) dispatches the exact same handler the details panel's
+  own button for that action already uses, and every one of those
+  actions is already available to any viewer-tier user with no
+  capability check of its own. The menu itself is purely a UI
+  convenience (a `@splunk/react-ui` Popover anchored to the canvas) with
+  no search or state of its own beyond which element it is currently
+  showing for.
+- **The confirm-before-discard guard (1.21.0)** in front of Reset graph,
+  Import and opening Load from job runs no search and writes nothing -
+  it is a plain `@splunk/react-ui` Modal (`ConfirmDialog.jsx`) that
+  either calls the already-reviewed action the user asked for, or does
+  not, with no third path. It only ever appears when the canvas
+  currently has at least one node (`nodeCount > 0`); an empty canvas
+  skips it entirely, since there is nothing it could lose.
 - **The time slicer** is a pure client-side filter over data already
   fetched (see ARCHITECTURE.md) - identical in kind to the existing Risk
   filter, just filtering on `firstSeen`/`lastSeen` instead of risk score.

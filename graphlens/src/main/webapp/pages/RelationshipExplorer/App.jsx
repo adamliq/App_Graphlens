@@ -39,11 +39,13 @@ import SavedViewsPanel from './components/SavedViewsPanel';
 import ExportDialog from './components/ExportDialog';
 import LoadFromJobDialog from './components/LoadFromJobDialog';
 import CsvImportPreviewDialog from './components/CsvImportPreviewDialog';
+import ConfirmDialog from './components/ConfirmDialog';
 import ErrorNotification from './components/ErrorNotification';
+import EditUndoNotification from './components/EditUndoNotification';
 import EmptyState from './components/EmptyState';
 import PageNav from '../../shared/components/PageNav';
 
-const APP_VERSION = '1.20.0';
+const APP_VERSION = '1.21.0';
 
 function downloadBlob(blob, filename) {
   const url = URL.createObjectURL(blob);
@@ -70,6 +72,8 @@ export default function App() {
   const [loadFromJobState, setLoadFromJobState] = useState({ isLoading: false, error: null });
   const [canEditGraphData, setCanEditGraphData] = useState(false);
   const [csvPreviewState, setCsvPreviewState] = useState({ open: false, header: [], rows: [], fileName: null, error: null });
+  const [confirmState, setConfirmState] = useState(null);
+  const [lastEdit, setLastEdit] = useState(null);
   const [evidence, setEvidence] = useState({ isLoading: false, error: null, rows: [], fieldOrder: [], targetLabel: null });
   const [pathEndpoints, setPathEndpoints] = useState({ startNodeId: null, endNodeId: null });
   const [path, setPath] = useState(null);
@@ -145,6 +149,29 @@ export default function App() {
   const limitReached = settings
     ? nodeCount >= settings.maxVisibleNodes || edgeCount >= settings.maxVisibleEdges
     : false;
+
+  // Guards Reset graph / Import / Load from job (1.21.0) - each one
+  // replaces the whole canvas with no way back, and since 1.19.0 that
+  // can silently discard an on-canvas edit (itself session-only, so
+  // there is nothing to re-export if the user did not think to first).
+  // An empty canvas has nothing to lose, so `action` runs immediately
+  // in that case rather than interrupting an already-empty workflow
+  // with a pointless confirmation.
+  const confirmIfGraphHasContent = useCallback((action, { title, message, confirmLabel }) => {
+    if (nodeCount === 0) {
+      action();
+      return;
+    }
+    setConfirmState({
+      title,
+      message,
+      confirmLabel,
+      onConfirm: () => {
+        setConfirmState(null);
+        action();
+      },
+    });
+  }, [nodeCount]);
 
   const rawNodeTypeList = useMemo(() => deriveNodeTypeList(Object.values(state.visibleNodes), nodeTypeConfig), [state.visibleNodes, nodeTypeConfig]);
   const rawRelationshipTypeList = useMemo(() => deriveRelationshipTypeList(Object.values(state.visibleEdges), relationshipTypeConfig), [state.visibleEdges, relationshipTypeConfig]);
@@ -386,8 +413,17 @@ export default function App() {
     setMultiSelectedNodeIds([]);
     setSavedViewsError(null);
     setError(null);
+    setLastEdit(null);
     setLayoutToken((t) => t + 1);
   }, [actions]);
+
+  const requestReset = useCallback(() => {
+    confirmIfGraphHasContent(handleReset, {
+      title: 'Reset graph?',
+      message: `This clears the current graph (${nodeCount} node${nodeCount === 1 ? '' : 's'}) and can't be undone.`,
+      confirmLabel: 'Reset graph',
+    });
+  }, [confirmIfGraphHasContent, handleReset, nodeCount]);
 
   const handleExport = useCallback((format) => {
     setExportDialogOpen(false);
@@ -432,6 +468,12 @@ export default function App() {
     setPath(null);
     setPathEndpoints({ startNodeId: null, endNodeId: null });
     setEvidence({ isLoading: false, error: null, rows: [], fieldOrder: [], targetLabel: null });
+    // The whole graph is being replaced, so any pending "undo my last
+    // edit" snapshot would now point at a node/edge id that may not
+    // exist in this new graph at all, or - worse - coincidentally exist
+    // as a different, unrelated node/edge reusing the same id. Discard
+    // it rather than risk restoring stale data onto the wrong element.
+    setLastEdit(null);
     setLayoutToken((t) => t + 1);
     recordAuditEvent(AUDIT_ACTIONS.IMPORT_GRAPH, { detail: `${nodes.length} nodes, ${edges.length} edges (${formatLabel})` });
   }, [settings, actions, nodeTypeConfig, relationshipTypeConfig]);
@@ -477,6 +519,21 @@ export default function App() {
     reader.readAsText(file);
   }, [settings, canEditGraphData, loadRowsOntoCanvas]);
 
+  // Gates the file picker itself, not handleImportFile above, so the
+  // same confirmation guards both of Import's accepted shapes (JSON and
+  // CSV) and both of CSV's two paths (direct load, or the preview
+  // dialog) in one place, rather than threading it through each.
+  const requestImport = useCallback(() => {
+    confirmIfGraphHasContent(
+      () => importInputRef.current && importInputRef.current.click(),
+      {
+        title: 'Import graph?',
+        message: `This replaces the current graph (${nodeCount} node${nodeCount === 1 ? '' : 's'}). Pick a file to continue, or Cancel to keep what's on screen.`,
+        confirmLabel: 'Choose file',
+      },
+    );
+  }, [confirmIfGraphHasContent, nodeCount]);
+
   // CsvImportPreviewDialog's Load button: the rows may have been
   // hand-edited since parseCsvRowObjects first produced them, so they
   // are classified here, not when the dialog opened - classification
@@ -499,6 +556,10 @@ export default function App() {
     if (!existing) return;
     const nextData = sanitizeNodeEdit(existing, patch, nodeTypeConfig);
     actions.updateNodeData(nodeId, nextData);
+    // `existing` (the node's data as it was just before this edit) is
+    // kept as the one-level "undo my last edit" snapshot - see
+    // handleUndoLastEdit and EditUndoNotification.jsx (1.21.0).
+    setLastEdit({ kind: 'node', id: nodeId, previousData: existing, label: existing.label });
     recordAuditEvent(AUDIT_ACTIONS.EDIT_NODE, { nodeId, detail: 'node properties edited' });
   }, [state.visibleNodes, nodeTypeConfig, actions]);
 
@@ -507,8 +568,28 @@ export default function App() {
     if (!existing) return;
     const nextData = sanitizeEdgeEdit(existing, patch, relationshipTypeConfig);
     actions.updateEdgeData(edgeId, nextData);
+    setLastEdit({ kind: 'edge', id: edgeId, previousData: existing, label: existing.relationshipLabel });
     recordAuditEvent(AUDIT_ACTIONS.EDIT_EDGE, { edgeId, detail: 'relationship properties edited' });
   }, [state.visibleEdges, relationshipTypeConfig, actions]);
+
+  // Restores the single snapshot handleSaveNodeEdit/handleSaveEdgeEdit
+  // kept just before their own edit. A no-op (beyond clearing the
+  // snapshot) if the node/edge is no longer visible - e.g. hidden or
+  // collapsed away since the edit - since updateNodeData/updateEdgeData
+  // themselves already guard against writing into a node/edge that no
+  // longer exists; there is no second "undo" chance either way, by
+  // design (see EditUndoNotification.jsx's doc comment).
+  const handleUndoLastEdit = useCallback(() => {
+    if (!lastEdit) return;
+    if (lastEdit.kind === 'node') {
+      actions.updateNodeData(lastEdit.id, lastEdit.previousData);
+      recordAuditEvent(AUDIT_ACTIONS.EDIT_NODE, { nodeId: lastEdit.id, detail: 'edit undone' });
+    } else {
+      actions.updateEdgeData(lastEdit.id, lastEdit.previousData);
+      recordAuditEvent(AUDIT_ACTIONS.EDIT_EDGE, { edgeId: lastEdit.id, detail: 'edit undone' });
+    }
+    setLastEdit(null);
+  }, [lastEdit, actions]);
 
   // "Load from job": the one-time counterpart to handleImportFile above,
   // but reading an already-completed Splunk search job's results instead
@@ -541,6 +622,7 @@ export default function App() {
       setPath(null);
       setPathEndpoints({ startNodeId: null, endNodeId: null });
       setEvidence({ isLoading: false, error: null, rows: [], fieldOrder: [], targetLabel: null });
+      setLastEdit(null);
       setLayoutToken((t) => t + 1);
       setLoadFromJobState({ isLoading: false, error: null });
       setLoadFromJobDialogOpen(false);
@@ -554,6 +636,14 @@ export default function App() {
       recordAuditEvent(AUDIT_ACTIONS.LOAD_FROM_JOB, { outcome: 'failure', detail: message });
     }
   }, [settings, actions, nodeTypeConfig, relationshipTypeConfig]);
+
+  const requestLoadFromJobOpen = useCallback(() => {
+    confirmIfGraphHasContent(() => setLoadFromJobDialogOpen(true), {
+      title: 'Load from job?',
+      message: `This replaces the current graph (${nodeCount} node${nodeCount === 1 ? '' : 's'}).`,
+      confirmLabel: 'Continue',
+    });
+  }, [confirmIfGraphHasContent, nodeCount]);
 
   const handleRunGraphQuery = useCallback(async (queryText) => {
     if (!settings) return;
@@ -729,12 +819,12 @@ export default function App() {
         onRecalculateLayout={() => setLayoutToken((t) => t + 1)}
         onFit={() => fitGraph(cyRef.current)}
         onCenterSelected={() => centerOnNode(cyRef.current, state.selectedNodeId)}
-        onReset={handleReset}
+        onReset={requestReset}
         onExportOpen={() => setExportDialogOpen(true)}
         exportEnabled={settings.enableExport}
-        onImportClick={() => importInputRef.current && importInputRef.current.click()}
+        onImportClick={requestImport}
         importEnabled={settings.enableExport}
-        onLoadFromJobOpen={() => setLoadFromJobDialogOpen(true)}
+        onLoadFromJobOpen={requestLoadFromJobOpen}
         loadFromJobEnabled={settings.enableExport}
       />
       <input
@@ -751,6 +841,7 @@ export default function App() {
 
       <div className="graphlens-filters">
         <ErrorNotification error={error} onDismiss={() => setError(null)} />
+        <EditUndoNotification lastEdit={lastEdit} onUndo={handleUndoLastEdit} onDismiss={() => setLastEdit(null)} />
         <NodeTypeFilter nodeTypes={nodeTypeList} hiddenNodeTypes={state.hiddenNodeTypes} onChange={(types) => actions.setHiddenNodeTypes(types)} />
         <RelationshipTypeFilter relationshipTypes={relationshipTypeList} hiddenRelationshipTypes={state.hiddenRelationshipTypes} onChange={(types) => actions.setHiddenRelationshipTypes(types)} />
         <RiskFilter
@@ -933,6 +1024,15 @@ export default function App() {
         error={csvPreviewState.error}
         onClose={() => setCsvPreviewState({ open: false, header: [], rows: [], fileName: null, error: null })}
         onLoad={handleCsvPreviewLoad}
+      />
+
+      <ConfirmDialog
+        open={!!confirmState}
+        title={confirmState ? confirmState.title : ''}
+        message={confirmState ? confirmState.message : ''}
+        confirmLabel={confirmState ? confirmState.confirmLabel : 'Continue'}
+        onConfirm={confirmState ? confirmState.onConfirm : undefined}
+        onCancel={() => setConfirmState(null)}
       />
     </div>
   );

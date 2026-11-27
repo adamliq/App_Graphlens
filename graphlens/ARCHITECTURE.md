@@ -166,32 +166,38 @@ survive ordinary updates. Layout is only re-run when an explicit
 "Recalculate layout"), never on selection or hover, per the performance
 requirement to avoid expensive relayout on every interaction.
 
-### Right-click context menu (1.20.0)
+### Right-click context menu (1.20.0, extended to edges in 1.21.0)
 
-`GraphCanvas.jsx` listens for Cytoscape's `cxttap` event on a node (a
-right-click or long-press) and opens `NodeContextMenu.jsx` - a
-`@splunk/react-ui` `Popover`+`Menu` anchored to the canvas container
-element itself, positioned with `pointTo` at the click's own
-`renderedPosition` (already in the container's coordinate space, so no
-separate conversion is needed). The container's native `contextmenu`
-DOM event is unconditionally `preventDefault()`-ed for the canvas's
-whole lifetime, so the browser's own right-click menu never appears
-over the canvas at all - node, edge, or empty background alike -
-leaving only GraphLens's own menu for a node. The menu closes itself on
-any ordinary `tap`, `pan` or `zoom`, so it never floats disconnected
-from the node it was opened for.
+`GraphCanvas.jsx` listens for Cytoscape's `cxttap` event on a node or an
+edge (a right-click or long-press) and opens `NodeContextMenu.jsx` or
+`EdgeContextMenu.jsx` respectively - each a `@splunk/react-ui`
+`Popover`+`Menu` anchored to the canvas container element itself,
+positioned with `pointTo` at the click's own `renderedPosition` (already
+in the container's coordinate space, so no separate conversion is
+needed). A single `contextMenu` state slot (`{open, kind: 'node'|'edge',
+id, point}`) drives both menus - only one can ever be open, since a
+single click can only ever hit one element - with `kind` picking which
+component actually renders. The container's native `contextmenu` DOM
+event is unconditionally `preventDefault()`-ed for the canvas's whole
+lifetime, so the browser's own right-click menu never appears over the
+canvas at all - node, edge, or empty background alike - leaving only
+GraphLens's own menu, or none at all over empty background. The menu
+closes itself on any ordinary `tap`, `pan` or `zoom`, so it never floats
+disconnected from the element it was opened for.
 
 This is deliberately a thin UI convenience, not a second implementation
-of anything: every item in the menu (Expand/Collapse, Pin/Unpin, Hide,
-Centre on screen, View supporting events, Use as path endpoint) is the
-exact same handler `RelationshipExplorer/App.jsx` already passes to
-`NodeDetailsPanel.jsx` for that same action, now also threaded down to
-`GraphCanvas.jsx` as props. A right-click first selects the node (the
-same `onSelectNode` a left click already triggers), so the details
-panel and the context menu always agree on which node is being acted on.
-No new capability: every action offered is already available to any
-viewer-tier user from the details panel with no capability check of its
-own, so the menu adds none either.
+of anything: every item in the node menu (Expand/Collapse, Pin/Unpin,
+Hide, Centre on screen, View supporting events, Use as path endpoint)
+and the edge menu's single item (View supporting events) is the exact
+same handler `RelationshipExplorer/App.jsx` already passes to
+`NodeDetailsPanel.jsx`/`EdgeDetailsPanel.jsx` for that same action, now
+also threaded down to `GraphCanvas.jsx` as props. A right-click first
+selects the element (the same `onSelectNode`/`onSelectEdge` a left click
+already triggers), so the details panel and the context menu always
+agree on what is being acted on. No new capability: every action
+offered is already available to any viewer-tier user from the details
+panel with no capability check of its own, so the menu adds none
+either.
 
 ## How expansion and collapse operate
 
@@ -307,6 +313,44 @@ Both features are session-only, same as the per-type colour overrides
 (1.9.0): an edit is never written anywhere and is lost on Reset graph or
 a reload; re-export (CSV/JSON) afterward to keep the corrected data as a
 file.
+
+### Single-level undo for an edit (1.21.0)
+
+`handleSaveNodeEdit`/`handleSaveEdgeEdit` (`RelationshipExplorer/App.jsx`)
+capture the node/edge's own data exactly as it stood just before
+`sanitizeNodeEdit`/`sanitizeEdgeEdit` replaces it, into one `lastEdit`
+state slot (`{kind, id, previousData, label}`) - not a stack, so a
+second edit simply overwrites the first's snapshot rather than growing a
+history. `EditUndoNotification.jsx` renders an "Edited "&lt;label&gt;""
+banner with an Undo button whenever `lastEdit` is set; clicking it calls
+`graphStateReducer.js`'s `updateNodeData`/`updateEdgeData` with the
+captured `previousData` (the exact same reducer action used to apply
+the edit in the first place, just restoring the other side of it), then
+clears `lastEdit`. `lastEdit` is also cleared by every action that
+replaces the whole graph (`handleReset`, `loadRowsOntoCanvas`, a
+successful `handleLoadFromJob`) - restoring a stale snapshot into an
+unrelated new graph that happens to reuse the same node/edge id would
+otherwise silently corrupt it.
+
+### Confirming before an action that discards the current graph (1.21.0)
+
+`handleReset`, the toolbar Import button, and opening
+`LoadFromJobDialog` each replace the whole canvas with no way back
+(`resetGraph`/`loadGraphSnapshot` never keep a prior-state copy) - and
+since 1.19.0 that can silently discard an on-canvas edit along with
+everything else, with nothing to re-export if the user did not realise
+it in time. `App.jsx`'s `confirmIfGraphHasContent(action, {title,
+message, confirmLabel})` guards all three: if `nodeCount` is 0 (nothing
+to lose), `action` runs immediately; otherwise it opens
+`ConfirmDialog.jsx` (a plain `@splunk/react-ui` `Modal` with Cancel/
+confirm buttons) and only calls `action` if the user confirms. Reset
+graph is guarded directly (`requestReset` wraps `handleReset`); Import
+and Load from job are guarded at their toolbar button's own `onClick`
+(`requestImport`/`requestLoadFromJobOpen`), before the file picker or
+the job-id dialog even opens, rather than later at the point each would
+actually load something onto the canvas - a single, consistent place to
+ask, regardless of which of Import's two accepted file shapes, or
+whether CSV's own preview-and-edit step, ends up being used afterward.
 
 ## How "Load from job" attaches to an already-dispatched search (1.17.0)
 
