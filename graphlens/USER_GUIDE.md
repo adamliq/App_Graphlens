@@ -234,7 +234,7 @@ screen:
 The file is read entirely in your browser; nothing is uploaded anywhere.
 Every node and edge in the file is re-validated exactly the same way a
 live search result would be (invalid identifiers are silently dropped,
-labels are HTML-escaped) - an import can never add anything GraphLens
+control characters are stripped from labels) - an import can never add anything GraphLens
 would not otherwise accept. The **exported** CSV files (nodes/edges) are
 still one-way and cannot be imported back: they are two separate flat
 tables with different column names (`id`/`source`/`target`/...) than
@@ -262,7 +262,13 @@ banner reading **Edited "&lt;name&gt;"** appears with an **Undo** button
 (1.21.0) - it reverts that one edit back to what it was just before you
 saved. Only your single most recent edit can be undone this way (making
 another edit, or Dismissing the banner, clears it); it is lost on Reset
-graph or a reload, same as the edit itself.
+graph or a reload, same as the edit itself, and on anything else that
+replaces the graph. Once you have made an edit, picking a search result,
+loading a query result onto the canvas or loading a saved view asks you
+to confirm first (**Discard your edits?**, 1.22.0); without an edit they
+run straight away. Text is kept exactly as you type it - "AT&T" stays
+"AT&T" however many times you save it (before 1.22.0 it was shown as
+"AT&amp;T").
 
 ## Load from job
 
@@ -279,7 +285,8 @@ neither shape are silently skipped. A job only exists for a limited time
 after it finishes (a few minutes by Splunk's own default, unless it has
 been pinned or scheduled), so this only works while it still does. Every
 row is re-validated exactly the same way a live search result would be
-(invalid identifiers are silently dropped, labels are HTML-escaped) - it
+(invalid identifiers are silently dropped, control characters are
+stripped from labels) - it
 can never add anything GraphLens would not otherwise accept. If the
 canvas already has anything on it, opening **Load from job** first asks
 you to confirm (1.21.0), same as Import.

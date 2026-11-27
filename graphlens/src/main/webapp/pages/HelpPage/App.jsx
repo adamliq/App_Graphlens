@@ -1,7 +1,7 @@
 import React from 'react';
 import PageNav from '../../shared/components/PageNav';
 
-const APP_VERSION = '1.21.0';
+const APP_VERSION = '1.22.0';
 
 /**
  * Static, no-dependency reference page - unlike the other three pages,
@@ -233,8 +233,10 @@ export default function App() {
           or relationship shows an <strong>Edit</strong> button. Edit
           mode lets you change its label, type, risk score, event count
           and a few other fields - every edited value is re-validated
-          exactly the same way a fresh search result would be (labels
-          are HTML-escaped, risk scores clamped to 0-100). An edit is
+          exactly the same way a fresh search result would be (control
+          characters stripped, risk scores clamped to 0-100). Text such
+          as &quot;AT&amp;T&quot; is kept exactly as you type it (1.22.0) -
+          it is only ever displayed as text, never interpreted as HTML. An edit is
           session-only: it changes only what you see in this browser,
           is never sent to Splunk or seen by anyone else, and is lost on
           Reset graph or a reload - re-export (CSV/JSON) afterward if you
@@ -246,7 +248,11 @@ export default function App() {
           &quot;&lt;name&gt;&quot;</strong> banner with an
           <strong> Undo</strong> button (1.21.0) that reverts that one
           save - only the single most recent edit can be undone this
-          way; making another edit, or dismissing the banner, clears it.
+          way; making another edit, or dismissing the banner, clears it,
+          as does anything that replaces the graph. Picking a search
+          result, loading a query result onto the canvas or loading a
+          saved view after you have made an edit asks you to confirm
+          first (1.22.0), since edits are never saved anywhere.
         </p>
       </section>
 

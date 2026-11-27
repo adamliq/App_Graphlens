@@ -45,7 +45,7 @@ import EditUndoNotification from './components/EditUndoNotification';
 import EmptyState from './components/EmptyState';
 import PageNav from '../../shared/components/PageNav';
 
-const APP_VERSION = '1.21.0';
+const APP_VERSION = '1.22.0';
 
 function downloadBlob(blob, filename) {
   const url = URL.createObjectURL(blob);
@@ -74,6 +74,7 @@ export default function App() {
   const [csvPreviewState, setCsvPreviewState] = useState({ open: false, header: [], rows: [], fileName: null, error: null });
   const [confirmState, setConfirmState] = useState(null);
   const [lastEdit, setLastEdit] = useState(null);
+  const [hasSessionEdits, setHasSessionEdits] = useState(false);
   const [evidence, setEvidence] = useState({ isLoading: false, error: null, rows: [], fieldOrder: [], targetLabel: null });
   const [pathEndpoints, setPathEndpoints] = useState({ startNodeId: null, endNodeId: null });
   const [path, setPath] = useState(null);
@@ -157,8 +158,8 @@ export default function App() {
   // An empty canvas has nothing to lose, so `action` runs immediately
   // in that case rather than interrupting an already-empty workflow
   // with a pointless confirmation.
-  const confirmIfGraphHasContent = useCallback((action, { title, message, confirmLabel }) => {
-    if (nodeCount === 0) {
+  const confirmBeforeDiscard = useCallback((shouldConfirm, action, { title, message, confirmLabel }) => {
+    if (!shouldConfirm) {
       action();
       return;
     }
@@ -171,7 +172,34 @@ export default function App() {
         action();
       },
     });
-  }, [nodeCount]);
+  }, []);
+
+  const confirmIfGraphHasContent = useCallback(
+    (action, opts) => confirmBeforeDiscard(nodeCount > 0, action, opts),
+    [confirmBeforeDiscard, nodeCount],
+  );
+
+  // Picking a search result, loading a query result onto the canvas and
+  // loading a saved view also replace the whole graph (1.22.0), but they
+  // are the normal way to move through an investigation - confirming on
+  // every one would be noise. They only ask when this graph actually
+  // holds an on-canvas edit that would be lost.
+  const confirmIfSessionEdits = useCallback(
+    (action) => confirmBeforeDiscard(hasSessionEdits, action, {
+      title: 'Discard your edits?',
+      message: 'This replaces the current graph, including the node/relationship edits you made in it. Edits are never saved anywhere - export first if you want to keep them.',
+      confirmLabel: 'Discard edits',
+    }),
+    [confirmBeforeDiscard, hasSessionEdits],
+  );
+
+  // Every action that replaces the whole graph calls this, so a pending
+  // Undo can never be applied to an unrelated node in the next graph that
+  // happens to reuse the same id.
+  const discardEditState = useCallback(() => {
+    setLastEdit(null);
+    setHasSessionEdits(false);
+  }, []);
 
   const rawNodeTypeList = useMemo(() => deriveNodeTypeList(Object.values(state.visibleNodes), nodeTypeConfig), [state.visibleNodes, nodeTypeConfig]);
   const rawRelationshipTypeList = useMemo(() => deriveRelationshipTypeList(Object.values(state.visibleEdges), relationshipTypeConfig), [state.visibleEdges, relationshipTypeConfig]);
@@ -253,8 +281,14 @@ export default function App() {
     actions.setInitialNode(result);
     setSearchResults([]);
     setPath(null);
+    discardEditState();
     setLayoutToken((t) => t + 1);
-  }, [actions]);
+  }, [actions, discardEditState]);
+
+  const requestPickResult = useCallback(
+    (result) => confirmIfSessionEdits(() => handlePickResult(result)),
+    [confirmIfSessionEdits, handlePickResult],
+  );
 
   const handleExpandNode = useCallback(async (nodeId) => {
     if (!settings || !isValidId(nodeId)) return;
@@ -413,9 +447,9 @@ export default function App() {
     setMultiSelectedNodeIds([]);
     setSavedViewsError(null);
     setError(null);
-    setLastEdit(null);
+    discardEditState();
     setLayoutToken((t) => t + 1);
-  }, [actions]);
+  }, [actions, discardEditState]);
 
   const requestReset = useCallback(() => {
     confirmIfGraphHasContent(handleReset, {
@@ -468,15 +502,10 @@ export default function App() {
     setPath(null);
     setPathEndpoints({ startNodeId: null, endNodeId: null });
     setEvidence({ isLoading: false, error: null, rows: [], fieldOrder: [], targetLabel: null });
-    // The whole graph is being replaced, so any pending "undo my last
-    // edit" snapshot would now point at a node/edge id that may not
-    // exist in this new graph at all, or - worse - coincidentally exist
-    // as a different, unrelated node/edge reusing the same id. Discard
-    // it rather than risk restoring stale data onto the wrong element.
-    setLastEdit(null);
+    discardEditState();
     setLayoutToken((t) => t + 1);
     recordAuditEvent(AUDIT_ACTIONS.IMPORT_GRAPH, { detail: `${nodes.length} nodes, ${edges.length} edges (${formatLabel})` });
-  }, [settings, actions, nodeTypeConfig, relationshipTypeConfig]);
+  }, [settings, actions, nodeTypeConfig, relationshipTypeConfig, discardEditState]);
 
   const handleImportFile = useCallback((file) => {
     if (!settings || !file) return;
@@ -560,6 +589,7 @@ export default function App() {
     // kept as the one-level "undo my last edit" snapshot - see
     // handleUndoLastEdit and EditUndoNotification.jsx (1.21.0).
     setLastEdit({ kind: 'node', id: nodeId, previousData: existing, label: existing.label });
+    setHasSessionEdits(true);
     recordAuditEvent(AUDIT_ACTIONS.EDIT_NODE, { nodeId, detail: 'node properties edited' });
   }, [state.visibleNodes, nodeTypeConfig, actions]);
 
@@ -569,6 +599,7 @@ export default function App() {
     const nextData = sanitizeEdgeEdit(existing, patch, relationshipTypeConfig);
     actions.updateEdgeData(edgeId, nextData);
     setLastEdit({ kind: 'edge', id: edgeId, previousData: existing, label: existing.relationshipLabel });
+    setHasSessionEdits(true);
     recordAuditEvent(AUDIT_ACTIONS.EDIT_EDGE, { edgeId, detail: 'relationship properties edited' });
   }, [state.visibleEdges, relationshipTypeConfig, actions]);
 
@@ -622,7 +653,7 @@ export default function App() {
       setPath(null);
       setPathEndpoints({ startNodeId: null, endNodeId: null });
       setEvidence({ isLoading: false, error: null, rows: [], fieldOrder: [], targetLabel: null });
-      setLastEdit(null);
+      discardEditState();
       setLayoutToken((t) => t + 1);
       setLoadFromJobState({ isLoading: false, error: null });
       setLoadFromJobDialogOpen(false);
@@ -635,7 +666,7 @@ export default function App() {
       setLoadFromJobState({ isLoading: false, error: message });
       recordAuditEvent(AUDIT_ACTIONS.LOAD_FROM_JOB, { outcome: 'failure', detail: message });
     }
-  }, [settings, actions, nodeTypeConfig, relationshipTypeConfig]);
+  }, [settings, actions, nodeTypeConfig, relationshipTypeConfig, discardEditState]);
 
   const requestLoadFromJobOpen = useCallback(() => {
     confirmIfGraphHasContent(() => setLoadFromJobDialogOpen(true), {
@@ -682,8 +713,14 @@ export default function App() {
     setPath(null);
     setPathEndpoints({ startNodeId: null, endNodeId: null });
     setEvidence({ isLoading: false, error: null, rows: [], fieldOrder: [], targetLabel: null });
+    discardEditState();
     setLayoutToken((t) => t + 1);
-  }, [settings, queryState.result, actions]);
+  }, [settings, queryState.result, actions, discardEditState]);
+
+  const requestLoadQueryResultOntoCanvas = useCallback(
+    () => confirmIfSessionEdits(handleLoadQueryResultOntoCanvas),
+    [confirmIfSessionEdits, handleLoadQueryResultOntoCanvas],
+  );
 
   const handleSaveView = useCallback(async (name, description) => {
     setSavedViewsError(null);
@@ -779,6 +816,7 @@ export default function App() {
       setPathEndpoints({ startNodeId: null, endNodeId: null });
       setEvidence({ isLoading: false, error: null, rows: [], fieldOrder: [], targetLabel: null });
       setMultiSelectedNodeIds([]);
+      discardEditState();
       setLayoutToken((t) => t + 1);
       recordAuditEvent(AUDIT_ACTIONS.LOAD_VIEW, { detail: view.viewName });
     } catch (err) {
@@ -786,7 +824,14 @@ export default function App() {
       setSavedViewsError({ message });
       recordAuditEvent(AUDIT_ACTIONS.LOAD_VIEW, { outcome: 'failure', detail: String((err && err.code) || (err && err.name) || 'error') });
     }
-  }, [settings, state, actions, nodeTypeConfig, relationshipTypeConfig]);
+  }, [settings, state, actions, nodeTypeConfig, relationshipTypeConfig, discardEditState]);
+
+  // Asks before the saved view's searches even start, not after they
+  // finish - a user who cancels should not have dispatched anything.
+  const requestLoadSavedView = useCallback(
+    (view) => confirmIfSessionEdits(() => handleLoadSavedView(view)),
+    [confirmIfSessionEdits, handleLoadSavedView],
+  );
 
   const handleTimeRangeChange = useCallback((preset) => {
     actions.setActiveFilters({ timeEarliest: preset.earliest, timeLatest: preset.latest });
@@ -808,7 +853,7 @@ export default function App() {
         isSearching={isSearching}
         searchResults={searchResults}
         onSearch={handleSearch}
-        onPickResult={handlePickResult}
+        onPickResult={requestPickResult}
         earliest={timeRange.earliest}
         latest={timeRange.latest}
         onTimeRangeChange={handleTimeRangeChange}
@@ -890,7 +935,7 @@ export default function App() {
             error={queryState.error}
             result={queryState.result}
             onRunQuery={handleRunGraphQuery}
-            onLoadOntoCanvas={handleLoadQueryResultOntoCanvas}
+            onLoadOntoCanvas={requestLoadQueryResultOntoCanvas}
           />
         )}
         {settings.enableSavedViews && (
@@ -899,7 +944,7 @@ export default function App() {
             isLoading={savedViewsLoading}
             error={savedViewsError}
             onSave={handleSaveView}
-            onLoad={handleLoadSavedView}
+            onLoad={requestLoadSavedView}
             onDelete={handleDeleteSavedView}
           />
         )}

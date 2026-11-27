@@ -77,12 +77,20 @@ describe('transformRowsToGraph - validation and rejection', () => {
     expect(diagnostics.rejectedRows).toBe(3);
   });
 
-  test('escapes HTML in labels so raw markup never reaches Cytoscape data', () => {
-    const row = edgeRow({ source_label: '<img src=x onerror=alert(1)>' });
-    const { nodes } = transformRowsToGraph([], [row]);
+  test('stores labels as plain text, verbatim - markup is only ever rendered as text (1.22.0)', () => {
+    const row = edgeRow({ source_label: '<img src=x onerror=alert(1)>', relationship_label: 'AT&T link' });
+    const { nodes, edges } = transformRowsToGraph([], [row]);
     const sourceNode = nodes.find((n) => n.data.id === 'user:jsmith');
-    expect(sourceNode.data.label).not.toContain('<img');
-    expect(sourceNode.data.label).toContain('&lt;img');
+    expect(sourceNode.data.label).toBe('<img src=x onerror=alert(1)>');
+    expect(edges[0].data.relationshipLabel).toBe('AT&T link');
+  });
+
+  test('strips control characters from labels and caps them at 200 characters', () => {
+    const row = edgeRow({ source_label: `a\u0000b\u001fc${'x'.repeat(300)}` });
+    const { nodes } = transformRowsToGraph([], [row]);
+    const label = nodes.find((n) => n.data.id === 'user:jsmith').data.label;
+    expect(label.startsWith('abc')).toBe(true);
+    expect(label).toHaveLength(200);
   });
 
   test('clamps out-of-range risk scores into 0-100', () => {
@@ -156,10 +164,19 @@ describe('sanitizeNodeEdit - edit mode (1.19.0, graphlens_edit_graph_data)', () 
     expect(next.eventCount).toBe(0);
   });
 
-  test('HTML-escapes an edited label the same way a fresh row would be (XSS-safe)', () => {
+  test('stores an edited label as plain text, the same way a fresh row is (1.22.0) - and never compounds escaping across saves', () => {
     const existing = sampleNode();
     const next = sanitizeNodeEdit(existing, { label: '<script>alert(1)</script>', riskScore: 0, eventCount: 0 });
-    expect(next.label).not.toMatch(/<[a-z]/i);
+    expect(next.label).toBe('<script>alert(1)</script>');
+    const once = sanitizeNodeEdit(existing, { label: 'AT&T', riskScore: 0, eventCount: 0 });
+    const twice = sanitizeNodeEdit(once, { label: once.label, riskScore: 0, eventCount: 0 });
+    expect(twice.label).toBe('AT&T');
+  });
+
+  test('strips control characters from an edited label and description', () => {
+    const next = sanitizeNodeEdit(sampleNode(), { label: 'a\u0007b', description: 'line1\nline2\u0000', riskScore: 0, eventCount: 0 });
+    expect(next.label).toBe('ab');
+    expect(next.description).toBe('line1\nline2');
   });
 
   test('recomputes color/shape/icon from the new type via nodeTypeConfig', () => {
@@ -194,10 +211,10 @@ describe('sanitizeEdgeEdit - edit mode (1.19.0, graphlens_edit_graph_data)', () 
     expect(next.eventCount).toBe(3);
   });
 
-  test('HTML-escapes an edited relationship label the same way a fresh row would be (XSS-safe)', () => {
+  test('stores an edited relationship label as plain text, the same way a fresh row is (1.22.0)', () => {
     const existing = sampleEdge();
     const next = sanitizeEdgeEdit(existing, { relationshipLabel: '<img src=x onerror=alert(1)>', riskScore: 0, eventCount: 0 });
-    expect(next.relationshipLabel).not.toMatch(/<[a-z]/i);
+    expect(next.relationshipLabel).toBe('<img src=x onerror=alert(1)>');
   });
 
   test('clamps an out-of-range risk score the same way a fresh row would be', () => {

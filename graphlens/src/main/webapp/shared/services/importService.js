@@ -17,12 +17,38 @@
  *
  * Nothing from an imported file is trusted any more than a Splunk search
  * result would be: the rows produced here still go through
- * transformRowsToGraph's own validation/escaping/dedup/limit logic
+ * transformRowsToGraph's own validation/sanitising/dedup/limit logic
  * before ever becoming graph state, the same as every other node/edge
  * admission path in the app.
  */
 import { GraphLensValidationError } from '../utilities/splSafety';
 import { classifyJobResultRows } from './jobResultsService';
+
+/**
+ * True if `appVersion` (an export file's own metadata.appVersion) is older
+ * than 1.22.0 - the release that stopped storing labels HTML-escaped. A
+ * missing or unparseable version is treated as "not older": a hand-made
+ * file has no reason to contain escaped entities, so it is left alone.
+ */
+function exportPredatesRawLabels(appVersion) {
+  const match = typeof appVersion === 'string' ? /^(\d+)\.(\d+)/.exec(appVersion) : null;
+  if (!match) return false;
+  const major = Number(match[1]);
+  const minor = Number(match[2]);
+  return major < 1 || (major === 1 && minor < 22);
+}
+
+// `&amp;` is decoded last so an escaped literal entity ("&amp;lt;") comes
+// back as the text "&lt;", not as "<".
+function decodeLegacyEntities(value) {
+  if (typeof value !== 'string') return value;
+  return value
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'")
+    .replace(/&amp;/g, '&');
+}
 
 /** Parses `jsonText` (the contents of a file picked via the Import button) into `{ nodeRows, edgeRows, metadata }`. Throws GraphLensValidationError if it is not valid JSON or lacks the expected `{ nodes: [...], edges: [...] }` shape. */
 export function parseImportedGraphJson(jsonText) {
@@ -40,12 +66,18 @@ export function parseImportedGraphJson(jsonText) {
     throw new GraphLensValidationError('That file is not a GraphLens graph export (expected "nodes" and "edges" arrays).', 'import');
   }
 
+  const metadata = (parsed.metadata && typeof parsed.metadata === 'object') ? parsed.metadata : null;
+  // Exports from before 1.22.0 carry labels that were stored HTML-escaped
+  // at the time ("AT&amp;T"); decode them so re-importing an old file
+  // shows the original text rather than the entities.
+  const decode = metadata && exportPredatesRawLabels(metadata.appVersion) ? decodeLegacyEntities : (v) => v;
+
   const nodeRows = parsed.nodes
     .filter((n) => n && typeof n === 'object')
     .map((n) => ({
       node_id: n.id,
       node_type: n.type,
-      node_label: n.label,
+      node_label: decode(n.label),
       node_group: n.group,
       risk_score: n.riskScore,
       event_count: n.eventCount,
@@ -62,7 +94,7 @@ export function parseImportedGraphJson(jsonText) {
       source_id: e.source,
       target_id: e.target,
       relationship_type: e.relationship,
-      relationship_label: e.relationshipLabel,
+      relationship_label: decode(e.relationshipLabel),
       directed: e.directed,
       event_count: e.eventCount,
       risk_score: e.riskScore,
@@ -70,7 +102,7 @@ export function parseImportedGraphJson(jsonText) {
       last_seen: e.lastSeen,
     }));
 
-  return { nodeRows, edgeRows, metadata: (parsed.metadata && typeof parsed.metadata === 'object') ? parsed.metadata : null };
+  return { nodeRows, edgeRows, metadata };
 }
 
 /**

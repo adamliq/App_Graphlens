@@ -1,19 +1,39 @@
 /**
  * Converts raw Splunk search result rows into Cytoscape.js-ready node and
  * edge elements. This is the single place where result rows are validated,
- * deduplicated, escaped for display and bounded by the configured graph
+ * deduplicated, cleaned for display and bounded by the configured graph
  * limits - the browser-side counterpart to the SPL-level validation in
  * default/macros.conf.
+ *
+ * Display text (labels, descriptions) is stored as plain text, NOT
+ * HTML-escaped (1.22.0): every place it is shown renders it as text, never
+ * as markup - React text nodes and the Cytoscape canvas - so escaping it
+ * here only made "AT&T" display as "AT&amp;T", and compounded on every
+ * edit-and-save. tests/security/xss.test.js enforces that no source file
+ * uses an HTML sink (dangerouslySetInnerHTML, innerHTML, ...) that would
+ * make storing raw text unsafe; see SECURITY.md.
  */
-import { isValidId, escapeHtml, clampInteger } from '../utilities/splSafety';
+import { isValidId, clampInteger } from '../utilities/splSafety';
+
+// Control characters are stripped from all display text; a description
+// keeps its own line breaks and tabs, a single-line label does not.
+const LABEL_CONTROL_CHARS = /[\x00-\x1f\x7f]/g; // eslint-disable-line no-control-regex
+const DESCRIPTION_CONTROL_CHARS = /[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]/g; // eslint-disable-line no-control-regex
 
 function isPlainObject(value) {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 
 function safeLabel(label, fallback) {
-  const str = typeof label === 'string' && label.trim().length > 0 ? label : fallback;
-  return escapeHtml(str).slice(0, 200);
+  const cleaned = typeof label === 'string' ? label.replace(LABEL_CONTROL_CHARS, '') : '';
+  const str = cleaned.trim().length > 0 ? cleaned : fallback;
+  return String(str).slice(0, 200);
+}
+
+function safeDescription(value) {
+  if (typeof value !== 'string') return undefined;
+  const cleaned = value.replace(DESCRIPTION_CONTROL_CHARS, '');
+  return cleaned.trim() ? cleaned.slice(0, 1000) : undefined;
 }
 
 function toRiskScore(value) {
@@ -66,7 +86,7 @@ export function transformRowsToGraph(nodeRows = [], edgeRows = [], options = {})
       label: safeLabel(rawNode.node_label, id),
       type: typeof rawNode.node_type === 'string' ? rawNode.node_type.slice(0, 64) : 'unknown',
       group: typeof rawNode.node_group === 'string' ? rawNode.node_group.slice(0, 64) : undefined,
-      description: typeof rawNode.description === 'string' ? escapeHtml(rawNode.description).slice(0, 1000) : undefined,
+      description: safeDescription(rawNode.description),
       riskScore: toRiskScore(rawNode.risk_score),
       firstSeen: rawNode.first_seen || undefined,
       lastSeen: rawNode.last_seen || undefined,
@@ -190,7 +210,7 @@ export function transformRowsToGraph(nodeRows = [], edgeRows = [], options = {})
  * the graphlens_edit_graph_data capability, 1.19.0) to an
  * already-admitted node, replacing its editable fields exactly the way
  * upsertNode above builds them fresh from a row - the same
- * label-escaping/riskScore-clamping/eventCount-clamping/length-capping -
+ * control-character-stripping/riskScore-clamping/eventCount-clamping/length-capping -
  * so a hand-typed edit can never bypass the sanitisation any other
  * node admission path already gets. `id` is never touched: changing it
  * would just be creating a different node under a confusing guise.
@@ -207,7 +227,7 @@ export function sanitizeNodeEdit(existingNode, patch, nodeTypeConfig = {}) {
     label: safeLabel(patch.label, existingNode.id),
     type,
     group: typeof patch.group === 'string' && patch.group.trim() ? patch.group.slice(0, 64) : undefined,
-    description: typeof patch.description === 'string' && patch.description.trim() ? escapeHtml(patch.description).slice(0, 1000) : undefined,
+    description: safeDescription(patch.description),
     riskScore: toRiskScore(patch.riskScore),
     eventCount: toEventCount(patch.eventCount),
     firstSeen: patch.firstSeen || undefined,

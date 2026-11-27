@@ -2,6 +2,55 @@
 
 All notable changes to GraphLens are documented in this file.
 
+## [1.22.0] - 2026-11-27
+
+### Fixed
+
+- **Labels are no longer double-escaped.** Node/edge labels and
+  descriptions were HTML-escaped when stored and then rendered as text,
+  so "AT&T" was displayed as "AT&amp;T" - in the details panels, the
+  table view, the undo banner, on the canvas and in exports - and every
+  Save of an edit escaped it once more ("AT&amp;amp;T", ...). Display
+  text is now stored as plain text: `graphTransformer.js` only strips
+  control characters and caps the length (`safeLabel`, and a new
+  `safeDescription` that keeps newlines/tabs). It is still never
+  interpreted as HTML - nothing in `src/` contains an HTML sink, React
+  escapes text content, and Cytoscape draws labels on a canvas - and the
+  tests now prove that directly (see Security below).
+- **Older exports still import correctly.** Re-importing a JSON export
+  made by a version before 1.22.0 (`metadata.appVersion`) decodes its
+  escaped labels back to the original text, so an old "AT&amp;T" file
+  comes back as "AT&T". Files without a version are left untouched.
+- **The undo snapshot is discarded by every action that replaces the
+  graph.** 1.21.0 cleared it on Reset graph, Import and Load from job,
+  but not when picking a search result, loading a query result onto the
+  canvas or loading a saved view - so Undo could restore an old node's
+  data into a new graph that reused its id.
+- **Reopening Edit after Undo shows the current values.** The details
+  panels kept the form from before the Undo; Edit now re-reads the
+  node/edge each time it opens.
+
+### Added
+
+- **"Discard your edits?" confirmation** before picking a search result,
+  loading a query result onto the canvas or loading a saved view - but
+  only once the current graph holds an on-canvas edit (edits are never
+  saved anywhere, so these are the actions that could silently lose
+  one). Without an edit they run immediately, as before. Reuses
+  1.21.0's `ConfirmDialog.jsx`.
+
+### Security
+
+- `tests/security/xss.test.js` rewritten around the plain-text
+  guarantee: labels are stored verbatim, a static scan of `src/` fails on
+  any HTML sink (`dangerouslySetInnerHTML`, `innerHTML`, `outerHTML`,
+  `insertAdjacentHTML`, `document.write`, `DOMParser`, `eval`,
+  HTML-label Cytoscape extensions), and the JSON export carries payloads
+  only as string data. New `tests/security/xssRender.test.jsx` renders
+  the real details panels, undo banner and table view with the payload
+  set and checks the produced markup. CSV formula-injection defanging is
+  unchanged.
+
 ## [1.21.0] - 2026-11-27
 
 ### Added

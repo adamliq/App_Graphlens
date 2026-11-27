@@ -234,7 +234,7 @@ output, and import reverses that mapping back into the raw `node_id`/
 `source_id`/... "row" shape, then feeds it through the same
 `graphTransformer.transformRowsToGraph` a live search result goes through
 - nothing from an imported file is trusted any more than a Splunk search
-result would be (invalid identifiers are dropped, labels are escaped, the
+result would be (invalid identifiers are dropped, labels are sanitised, the
 same `maxVisibleNodes`/`maxVisibleEdges` limits apply). The resulting
 Cytoscape elements replace the whole graph via `loadGraphSnapshot` (in
 `graphStateReducer.js`, alongside `mergeExpansion`/`collapseNode`) - like
@@ -327,10 +327,17 @@ banner with an Undo button whenever `lastEdit` is set; clicking it calls
 captured `previousData` (the exact same reducer action used to apply
 the edit in the first place, just restoring the other side of it), then
 clears `lastEdit`. `lastEdit` is also cleared by every action that
-replaces the whole graph (`handleReset`, `loadRowsOntoCanvas`, a
-successful `handleLoadFromJob`) - restoring a stale snapshot into an
-unrelated new graph that happens to reuse the same node/edge id would
-otherwise silently corrupt it.
+replaces the whole graph - restoring a stale snapshot into an unrelated
+new graph that happens to reuse the same node/edge id would otherwise
+silently corrupt it. Since 1.22.0 all of those paths go through one
+`discardEditState()` helper (which clears both `lastEdit` and
+`hasSessionEdits`, below): `handleReset`, `loadRowsOntoCanvas`, a
+successful `handleLoadFromJob`, `handlePickResult` (picking a search
+result), `handleLoadQueryResultOntoCanvas` and `handleLoadSavedView`.
+1.21.0 missed the last three. The details panels' Edit buttons also
+re-seed their form from the node/edge's current data on every open, so
+reopening Edit after an Undo shows the restored values, not the undone
+ones.
 
 ### Confirming before an action that discards the current graph (1.21.0)
 
@@ -351,6 +358,18 @@ the job-id dialog even opens, rather than later at the point each would
 actually load something onto the canvas - a single, consistent place to
 ask, regardless of which of Import's two accepted file shapes, or
 whether CSV's own preview-and-edit step, ends up being used afterward.
+
+1.22.0 generalises this into `confirmBeforeDiscard(shouldConfirm,
+action, opts)`; `confirmIfGraphHasContent` is now that with
+`nodeCount > 0`. A second guard, `confirmIfSessionEdits`, uses
+`hasSessionEdits` instead - a flag `handleSaveNodeEdit`/
+`handleSaveEdgeEdit` set and `discardEditState()` clears - and wraps
+the three frequent graph-replacing actions that would be noisy to
+confirm every time: `requestPickResult`,
+`requestLoadQueryResultOntoCanvas` and `requestLoadSavedView` (the last
+asks before any of the view's searches start). They only ask when the
+graph holds an edit, which is the one thing they could lose that cannot
+simply be searched for again.
 
 ## How "Load from job" attaches to an already-dispatched search (1.17.0)
 
