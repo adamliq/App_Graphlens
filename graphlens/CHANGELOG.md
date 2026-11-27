@@ -2,6 +2,63 @@
 
 All notable changes to GraphLens are documented in this file.
 
+## [1.24.0] - 2026-11-27
+
+Fixes every finding from a colour, border and shading audit of 1.23.0
+(measured with computed styles against WCAG 2.2 AA).
+
+### Fixed
+
+- **Selected and pinned stay visible on a highlighted path.** The path
+  highlight replaced both borders, so neither showed. Each status now has
+  its own channel: selected is a dark ring outside the node, pinned a
+  double border, on-path a green dashed border (double if pinned), high
+  risk a red glow behind the node.
+- **Selection is visible against every colour.** The orange selection
+  border was 2.71:1 against the canvas and identical to the "process"
+  type colour; the dark ring is ~17:1. A selected relationship keeps its
+  colour and gets a dark outline instead of turning orange.
+- **The risk halo no longer tints the node.** It was drawn over the node
+  (a yellow node looked orange); it is now a glow behind it, at 3.65:1.
+- **Text contrast (WCAG 1.4.3).**
+  - Hint/empty-state text (`#8a8a8a`, 3.45:1) is now `#6b7378` (4.83:1).
+  - The search placeholder is 4.83:1 (was 3.39:1).
+  - A high risk score is `#b3261e` (6.54:1, was 4.44:1) with a "High"
+    tag, so it doesn't rely on colour.
+  - Reset graph's hover text is 5.01:1 (was 3.58:1).
+- **Graph colours reach 3:1 (WCAG 1.4.11).** The automatic palette is
+  regenerated at ~3.6:1 against the canvas (several colours were
+  1.7-2.3:1), without greens near the path colour or the risk red. The
+  default relationship colour is `#767676` (was 2.66:1).
+- **Type isn't shown by colour alone (WCAG 1.4.1).** Every node type has
+  a shape - configured, or automatic - and the legend and filters show it.
+  A configured type keeps its colour unless another visible type has the
+  same colour and shape (it used to change between graphs).
+- **Bundled type colours and shapes** (`lookups/*_seed.csv`) are all
+  >= 3:1, no two node types share a colour and shape, and the unsupported
+  `cylinder` shape is gone. Existing installs keep their loaded colours
+  until the seed searches are re-run (see INSTALL.md).
+- **CSV preview cells** have a 3.39:1 border (was 1.39:1) and the app
+  font.
+- **The Graph/Table switch** shows the current view as a neutral pressed
+  state instead of the green fill used by action buttons.
+- **Undo, Dismiss and Clear** are outlined buttons instead of text-only.
+- **Legend types** show "Select" on hover and focus; a hidden type in the
+  filters is struck through.
+- **One keyboard focus ring** (2px `#006eaa`, 5.51:1) for every control
+  GraphLens styles itself - there were five, one only a 6% tint.
+- **Native checkboxes and sliders** use the app's green.
+- **Tables** (table view, supporting events, CSV preview, Help) share one
+  style: darker header rule (3.39:1), visible zebra stripe, no hover tint
+  (the rows aren't clickable, and a blue hover looked like a selection).
+- **Greys** come from one set of tokens matching the Splunk UI ones.
+
+### Tests
+
+- Every palette, status and seed colour is checked at >= 3:1 against the
+  canvas; seeds must use supported shapes and unique colour+shape pairs;
+  automatic shapes and the colour+shape resolution are covered.
+
 ## [1.23.0] - 2026-11-27
 
 ### Changed (visual only - no behaviour, search or permission changes)

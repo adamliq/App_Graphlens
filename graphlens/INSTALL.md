@@ -94,6 +94,14 @@ To do the same thing manually instead:
    | inputlookup graphlens_sample_relationship_types | outputlookup graphlens_relationship_types
    ```
 
+   Upgrading from 1.23.0 or earlier: the bundled colours and shapes
+   changed in 1.24.0 (every colour now reaches 3:1 against the graph
+   canvas, no two types share a colour and shape, and the invalid
+   `cylinder` shape is gone). The KV Store collections keep whatever was
+   loaded before, so re-run the two searches above to adopt them -
+   `outputlookup` replaces the collection, discarding any colours you
+   curated yourself.
+
 ## 5. Assign roles
 
 Import GraphLens's example roles into your own role structure (see

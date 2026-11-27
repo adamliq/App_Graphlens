@@ -1,5 +1,6 @@
 import React from 'react';
 import PropTypes from 'prop-types';
+import TypeSwatch from './TypeSwatch';
 
 /** Checkbox list toggling which node types are hidden. Accessible: native inputs, each with a bound <label>, no colour-only indication (a swatch plus the type name). */
 export default function NodeTypeFilter({ nodeTypes, hiddenNodeTypes, onChange }) {
@@ -24,15 +25,15 @@ export default function NodeTypeFilter({ nodeTypes, hiddenNodeTypes, onChange })
                 checked={!hiddenNodeTypes.includes(nt.node_type)}
                 onChange={() => toggle(nt.node_type)}
               />
-              <label htmlFor={inputId} style={{ marginLeft: 6, fontSize: 13 }}>
-                <span className="graphlens-legend-swatch" style={{ backgroundColor: nt.color, display: 'inline-block' }} />
-                {' '}
+              {/* 1.24.0: a hidden type's label is struck through and muted, not just unticked. */}
+              <label htmlFor={inputId} className={hiddenNodeTypes.includes(nt.node_type) ? 'graphlens-type-label graphlens-type-label-hidden' : 'graphlens-type-label'}>
+                <TypeSwatch color={nt.color} shape={nt.shape} />
                 {nt.display_label || nt.node_type}
               </label>
             </li>
           );
         })}
-        {nodeTypes.length === 0 && <li style={{ fontSize: 12, color: '#8a8a8a' }}>No node types observed yet.</li>}
+        {nodeTypes.length === 0 && <li style={{ fontSize: 12, color: '#6b7378' }}>No node types observed yet.</li>}
       </ul>
     </div>
   );

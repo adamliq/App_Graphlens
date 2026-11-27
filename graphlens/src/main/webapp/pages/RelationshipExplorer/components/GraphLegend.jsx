@@ -1,12 +1,16 @@
 import React from 'react';
 import PropTypes from 'prop-types';
-import { STATUS_COLORS, HIGH_RISK_THRESHOLD } from './GraphCanvas';
+import { HIGH_RISK_THRESHOLD } from './GraphCanvas';
+import TypeSwatch from './TypeSwatch';
 
+// 1.24.0: each sample is drawn the way the canvas draws that status (see
+// GraphCanvas.jsx's channel list) - red glow, double border, dark outer
+// ring, green dashed border - rather than four identical coloured squares.
 const INDICATORS = [
-  { key: 'risk', label: `Risk score ≥ ${HIGH_RISK_THRESHOLD} (halo)`, color: STATUS_COLORS.risk },
-  { key: 'pinned', label: 'Pinned (double border)', color: STATUS_COLORS.pinned },
-  { key: 'selected', label: 'Selected (border)', color: STATUS_COLORS.selected },
-  { key: 'pathHighlight', label: 'On highlighted path (dashed border)', color: STATUS_COLORS.pathHighlight },
+  { key: 'risk', label: `High risk (score ≥ ${HIGH_RISK_THRESHOLD}): red glow` },
+  { key: 'pinned', label: 'Pinned: double border' },
+  { key: 'selected', label: 'Selected: dark outer ring' },
+  { key: 'path', label: 'On highlighted path: green dashed border' },
 ];
 
 export default function GraphLegend({ nodeTypes, relationshipTypes, onSelectNodeType }) {
@@ -21,13 +25,15 @@ export default function GraphLegend({ nodeTypes, relationshipTypes, onSelectNode
             onClick={() => onSelectNodeType(nt.node_type)}
             title={`Select every visible ${nt.display_label || nt.node_type} node`}
           >
-            <span className="graphlens-legend-swatch" style={{ backgroundColor: nt.color }} />
-            <span>{nt.display_label || nt.node_type}</span>
+            <TypeSwatch color={nt.color} shape={nt.shape} />
+            <span className="graphlens-legend-label">{nt.display_label || nt.node_type}</span>
+            {/* 1.24.0: says what clicking does; shown on hover/focus via CSS. */}
+            <span className="graphlens-legend-hint" aria-hidden="true">Select</span>
           </button>
         ))}
         {relationshipTypes.slice(0, 8).map((rt) => (
           <div className="graphlens-legend-item" key={rt.relationship_type}>
-            <span className="graphlens-legend-swatch" style={{ backgroundColor: rt.color, borderRadius: '50%' }} />
+            <TypeSwatch color={rt.color} kind="relationship" />
             <span>{rt.display_label || rt.relationship_type}</span>
           </div>
         ))}
@@ -36,7 +42,7 @@ export default function GraphLegend({ nodeTypes, relationshipTypes, onSelectNode
       <div aria-labelledby="graphlens-indicators-heading">
         {INDICATORS.map((ind) => (
           <div className="graphlens-legend-item" key={ind.key}>
-            <span className="graphlens-legend-swatch" style={{ backgroundColor: '#fff', borderColor: ind.color, borderWidth: 2 }} />
+            <span className={`graphlens-indicator-sample graphlens-indicator-${ind.key}`} aria-hidden="true" />
             <span>{ind.label}</span>
           </div>
         ))}

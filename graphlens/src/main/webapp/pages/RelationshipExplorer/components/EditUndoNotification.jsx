@@ -18,8 +18,8 @@ export default function EditUndoNotification({ lastEdit, onUndo, onDismiss }) {
       <span className="graphlens-banner-text">
         Edited &quot;{lastEdit.label}&quot;.
       </span>
-      <Button label="Undo" appearance="subtle" onClick={onUndo} />
-      <Button label="Dismiss" appearance="subtle" onClick={onDismiss} />
+      <Button label="Undo" appearance="secondary" onClick={onUndo} />
+      <Button label="Dismiss" appearance="secondary" onClick={onDismiss} />
     </div>
   );
 }

@@ -7,7 +7,7 @@ export default function ErrorNotification({ error, onDismiss }) {
   return (
     <div className="graphlens-error-banner" role="alert">
       <span className="graphlens-banner-text">{error.message}</span>
-      <Button label="Dismiss" appearance="subtle" onClick={onDismiss} />
+      <Button label="Dismiss" appearance="secondary" onClick={onDismiss} />
     </div>
   );
 }

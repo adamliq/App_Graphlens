@@ -48,7 +48,7 @@ export default function SavedViewsPanel({ views, isLoading, error, onSave, onLoa
 
         {isLoading && <p style={{ fontSize: 12 }}>Loading...</p>}
         {!isLoading && views.length === 0 && (
-          <p style={{ fontSize: 12, color: '#8a8a8a' }}>No saved views yet.</p>
+          <p style={{ fontSize: 12, color: '#6b7378' }}>No saved views yet.</p>
         )}
         {!isLoading && views.length > 0 && (
           <ul style={{ margin: 0, padding: 0, listStyle: 'none' }}>
@@ -59,7 +59,7 @@ export default function SavedViewsPanel({ views, isLoading, error, onSave, onLoa
                   <Button label="Load" onClick={() => onLoad(v)} />
                   <Button label="Delete" onClick={() => onDelete(v.viewId)} />
                 </div>
-                {v.description && <div style={{ color: '#5c5c5c' }}>{v.description}</div>}
+                {v.description && <div style={{ color: '#5c6773' }}>{v.description}</div>}
               </li>
             ))}
           </ul>

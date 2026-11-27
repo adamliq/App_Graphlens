@@ -56,11 +56,17 @@ export default function GraphToolbar({
       </div>
       <span className="graphlens-toolbar-divider" aria-hidden="true" />
       <div className="graphlens-toolbar-group">
+        {/*
+          1.24.0: the selected view is a neutral "pressed" state (styled
+          from aria-selected in App.css), no longer the green primary fill
+          every call-to-action button (Search, Expand, Save) uses.
+        */}
         <div role="tablist" aria-label="Graph view" className="graphlens-toolbar-tabs">
           <Button
             label="Graph"
             icon={<ChartLinkGraph />}
-            appearance={viewMode === 'graph' ? 'primary' : 'secondary'}
+            appearance="secondary"
+            className="graphlens-view-tab"
             role="tab"
             aria-selected={viewMode === 'graph'}
             onClick={() => onViewModeChange('graph')}
@@ -68,7 +74,8 @@ export default function GraphToolbar({
           <Button
             label="Table"
             icon={<Table />}
-            appearance={viewMode === 'table' ? 'primary' : 'secondary'}
+            appearance="secondary"
+            className="graphlens-view-tab"
             role="tab"
             aria-selected={viewMode === 'table'}
             onClick={() => onViewModeChange('table')}
@@ -105,7 +112,7 @@ export default function GraphToolbar({
         </>
       )}
       <span className="graphlens-toolbar-spacer" />
-      <Button label="Reset graph" icon={<TrashCanCross />} onClick={onReset} appearance="destructiveSecondary" />
+      <Button label="Reset graph" icon={<TrashCanCross />} onClick={onReset} appearance="destructiveSecondary" className="graphlens-reset-button" />
     </div>
   );
 }

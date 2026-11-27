@@ -6,7 +6,7 @@ const EDGE_COLUMNS = ['id', 'source', 'target', 'relationship', 'relationshipLab
 
 function DataTable({ rows, columns }) {
   if (rows.length === 0) {
-    return <p style={{ fontSize: 12, color: '#8a8a8a' }}>None currently visible.</p>;
+    return <p style={{ fontSize: 12, color: '#6b7378' }}>None currently visible.</p>;
   }
   return (
     <div style={{ overflowX: 'auto' }}>

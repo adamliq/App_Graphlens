@@ -347,6 +347,34 @@ file.
 - `.graphlens-data-table` gives the table view, supporting events and the
   CSV preview one style: sticky header, zebra rows, hover highlight.
 
+### Colour and state channels (1.24.0)
+
+Follow-up to a colour/border/shading audit of 1.23.0.
+
+- **Canvas status channels** (`GraphCanvas.jsx`): each status has its own
+  Cytoscape style property, so none can override another or change a
+  node's fill - selected is `outline-*` (dark ring), pinned is
+  `border-style: double`, on-path is a green `border-color` (dashed, or
+  double when pinned), high risk is `underlay-*` (red glow behind the
+  node, 70% opacity = 3.65:1). Previously path highlight replaced the
+  selected and pinned borders, and the risk halo was an `overlay` drawn
+  over the node. A selected edge keeps its colour and gets a
+  `line-outline`.
+- **Type colours and shapes** (`typeConfigService.js`): the 19-colour
+  fallback palette is generated at ~3.6:1 against the canvas, skipping
+  greens near the path colour and the risk red. Every node type gets a
+  shape (configured, validated by `normalizeShape`, or `shapeForType`).
+  `resolveDistinctColors` keeps automatic colours distinct, and only
+  re-colours a curated node type when another visible type has the same
+  colour *and* shape - so curated colours stay stable between graphs.
+  `TypeSwatch.jsx` draws the legend/filter swatch in the type's shape
+  (CSS `clip-path`).
+- **Tokens** (`shared/styles/base.css`): `:root` custom properties for
+  text greys, the control border, the focus colour and the accent; one
+  `:focus-visible` outline (2px `#006eaa`) for every self-styled control;
+  `accent-color` for native checkboxes/sliders; placeholder colour; and
+  the shared `.graphlens-data-table` style (also used by the Help page).
+
 ### Single-level undo for an edit (1.21.0)
 
 `handleSaveNodeEdit`/`handleSaveEdgeEdit` (`RelationshipExplorer/App.jsx`)
