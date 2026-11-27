@@ -2,6 +2,56 @@
 
 All notable changes to GraphLens are documented in this file.
 
+## [1.23.0] - 2026-11-27
+
+### Changed (visual only - no behaviour, search or permission changes)
+
+- **One font everywhere.** Splunk Web sets no font on the app's page
+  root, so headings, labels, details, the empty state and the Health,
+  Configuration and Help pages rendered in the browser's serif font next
+  to sans-serif Splunk components. A new shared `base.css` sets the
+  Splunk font stack on every page.
+- **Right-click menus** now have a border, shadow and rounded corners
+  (they were a borderless white box on a near-white canvas), an icon per
+  item, and dividers between graph actions, view actions and
+  investigation actions. The node/relationship name heads the menu,
+  cut short with an ellipsis if long.
+- **Details panels** show the name and id, then a two-column
+  label/value grid instead of one indented value per line, and their
+  actions as a full-width primary button, the two long actions full
+  width, and Pin/Hide/Edit in one row - all with icons. Save/Cancel in
+  edit mode are a matching pair.
+- **Toolbar** is grouped (find | view | data) with dividers, and Reset
+  graph sits on the far right as an outlined destructive button.
+  Recalculate layout, Fit to screen and Centre selected are icon buttons
+  with tooltips, the layout dropdown reads "Layout: cose", and the
+  search box is narrower with its spinner shown inside the Search
+  button - so the toolbar fits one row at 1440px wide (whole groups wrap
+  on narrower screens).
+- **Collapsible sidebar sections.** Each left-sidebar panel can be
+  collapsed from its heading; the filters and legend start open, the
+  rest collapsed. Node types, Relationship types and Saved views show a
+  count. The open/closed state is remembered in the browser
+  (`localStorage`, see PRIVACY.md), and Use as path endpoint opens Path
+  finder automatically.
+- **Canvas.** Fitting a small graph no longer zooms past 1.75x (a single
+  node used to be zoomed 4x, with a 40px label); long relationship
+  labels are cut with an ellipsis.
+- **Supporting events** heading matches the other section headings and
+  shows the event count.
+- **Banners** (errors, the undo notice, configuration status) have a
+  leading icon, and their buttons wrap cleanly in the narrow sidebar.
+- **Tables** (table view, supporting events, CSV import preview) share
+  one style: sticky header, alternating row shading, hover highlight.
+
+### Tests
+
+- `xssRender.test.jsx` now inspects every real tag in the rendered
+  markup (none may be a script/img/iframe or carry an event-handler
+  attribute) and checks the payload never appears verbatim, since the
+  panels now legitimately render icon `<svg>`s; a new case proves the
+  checker flags raw payload markup.
+
 ## [1.22.0] - 2026-11-27
 
 ### Fixed

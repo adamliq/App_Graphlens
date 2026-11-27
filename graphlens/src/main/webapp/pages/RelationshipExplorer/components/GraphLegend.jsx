@@ -12,7 +12,6 @@ const INDICATORS = [
 export default function GraphLegend({ nodeTypes, relationshipTypes, onSelectNodeType }) {
   return (
     <div className="graphlens-section">
-      <h3 id="graphlens-legend-heading">Legend</h3>
       <div aria-labelledby="graphlens-legend-heading">
         {nodeTypes.slice(0, 12).map((nt) => (
           <button
@@ -33,7 +32,7 @@ export default function GraphLegend({ nodeTypes, relationshipTypes, onSelectNode
           </div>
         ))}
       </div>
-      <h3 id="graphlens-indicators-heading" style={{ marginTop: 12 }}>Indicators</h3>
+      <h4 id="graphlens-indicators-heading" className="graphlens-subheading">Indicators</h4>
       <div aria-labelledby="graphlens-indicators-heading">
         {INDICATORS.map((ind) => (
           <div className="graphlens-legend-item" key={ind.key}>

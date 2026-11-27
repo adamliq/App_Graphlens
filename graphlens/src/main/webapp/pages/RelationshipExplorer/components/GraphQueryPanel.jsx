@@ -31,7 +31,6 @@ export default function GraphQueryPanel({ isRunning, error, result, onRunQuery, 
 
   return (
     <div className="graphlens-section">
-      <h3 id="graphlens-query-heading">Query</h3>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }} aria-labelledby="graphlens-query-heading">
         <TextArea
           inputId="graphlens-query-text"

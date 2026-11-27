@@ -5,7 +5,6 @@ import Number from '@splunk/react-ui/Number';
 export default function RiskFilter({ riskMin, riskMax, minEventCount, onChange }) {
   return (
     <div className="graphlens-section">
-      <h3 id="graphlens-risk-filter-heading">Risk &amp; frequency</h3>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }} aria-labelledby="graphlens-risk-filter-heading">
         <label htmlFor="graphlens-risk-min" style={{ fontSize: 12 }}>
           Minimum risk score

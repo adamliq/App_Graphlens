@@ -314,6 +314,39 @@ Both features are session-only, same as the per-type colour overrides
 a reload; re-export (CSV/JSON) afterward to keep the corrected data as a
 file.
 
+### Visual structure (1.23.0)
+
+- `shared/styles/base.css`, imported by every page's `index.jsx`, sets
+  the Splunk sans-serif font stack on each page's root container (Splunk
+  Web's template sets none, so plain HTML fell back to serif) and draws
+  the leading icon on every `.graphlens-error-banner`/
+  `.graphlens-info-banner` with a CSS pseudo-element.
+- `GraphToolbar.jsx` lays the toolbar out as three
+  `.graphlens-toolbar-group`s (find | view | data) separated by dividers,
+  with Reset graph after a flexible spacer. Each group is `nowrap`, so a
+  narrow screen wraps whole groups. Recalculate layout, Fit to screen and
+  Centre selected are icon-only `Button`s wrapped in `Tooltip`, each with
+  an `aria-label`.
+- `SidebarSection.jsx` wraps each left-sidebar panel in a collapsible
+  section. The heading carries the id the panel's own `<h3>` used to
+  have (the panels no longer render one), so existing `aria-labelledby`
+  references still resolve; the body is `hidden`, not unmounted, so
+  in-progress input survives collapsing. `App.jsx` keeps the open/closed
+  map in state, persists it to `localStorage` (try/catch, defaults on
+  failure), and opens Path finder when an endpoint is chosen.
+- `NodeContextMenu.jsx`/`EdgeContextMenu.jsx` use Popover
+  `appearance="normal"` with `hideArrow` (border and shadow) instead of
+  `"none"`, and give each `Menu.Item` an icon (`startAdornment`) and
+  dividers between groups.
+- `NodeDetailsPanel.jsx`/`EdgeDetailsPanel.jsx` render a two-column
+  `.graphlens-props` grid and a stacked action layout.
+- `GraphCanvas.jsx` caps the zoom an automatic fit (layout `fit: true`
+  or Fit to screen) can leave the graph at to `FIT_MAX_ZOOM` (1.75), via
+  `capFitZoom` on `layoutstop` and in `fitGraph`; manual zoom still
+  reaches `maxZoom` (4). Edge labels are ellipsised at 120px.
+- `.graphlens-data-table` gives the table view, supporting events and the
+  CSV preview one style: sticky header, zebra rows, hover highlight.
+
 ### Single-level undo for an edit (1.21.0)
 
 `handleSaveNodeEdit`/`handleSaveEdgeEdit` (`RelationshipExplorer/App.jsx`)

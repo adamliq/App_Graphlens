@@ -43,9 +43,10 @@ import ConfirmDialog from './components/ConfirmDialog';
 import ErrorNotification from './components/ErrorNotification';
 import EditUndoNotification from './components/EditUndoNotification';
 import EmptyState from './components/EmptyState';
+import SidebarSection from './components/SidebarSection';
 import PageNav from '../../shared/components/PageNav';
 
-const APP_VERSION = '1.22.0';
+const APP_VERSION = '1.23.0';
 
 function downloadBlob(blob, filename) {
   const url = URL.createObjectURL(blob);
@@ -56,6 +57,48 @@ function downloadBlob(blob, filename) {
   link.click();
   document.body.removeChild(link);
   setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
+// Which left-sidebar sections start open (1.23.0). The filters and the
+// legend are what most sessions use; the rest start collapsed so the
+// sidebar no longer opens as one long scroll. A viewer's own toggles are
+// remembered in this browser (localStorage - a per-viewer convenience
+// only; it falls back to these defaults whenever storage is unavailable).
+const DEFAULT_OPEN_SECTIONS = {
+  nodeTypes: true,
+  relationshipTypes: true,
+  risk: true,
+  timeWindow: true,
+  legend: true,
+  styleOverrides: false,
+  pathFinder: false,
+  query: false,
+  savedViews: false,
+};
+const OPEN_SECTIONS_STORAGE_KEY = 'graphlens.sidebar.openSections';
+
+function loadOpenSections() {
+  try {
+    const stored = JSON.parse(window.localStorage.getItem(OPEN_SECTIONS_STORAGE_KEY) || 'null');
+    if (stored && typeof stored === 'object') {
+      const merged = { ...DEFAULT_OPEN_SECTIONS };
+      Object.keys(DEFAULT_OPEN_SECTIONS).forEach((key) => {
+        if (typeof stored[key] === 'boolean') merged[key] = stored[key];
+      });
+      return merged;
+    }
+  } catch (err) {
+    // Storage blocked or corrupt - use the defaults.
+  }
+  return { ...DEFAULT_OPEN_SECTIONS };
+}
+
+function persistOpenSections(openSections) {
+  try {
+    window.localStorage.setItem(OPEN_SECTIONS_STORAGE_KEY, JSON.stringify(openSections));
+  } catch (err) {
+    // Not persisted - the toggle still applies for this page load.
+  }
 }
 
 export default function App() {
@@ -74,6 +117,22 @@ export default function App() {
   const [csvPreviewState, setCsvPreviewState] = useState({ open: false, header: [], rows: [], fileName: null, error: null });
   const [confirmState, setConfirmState] = useState(null);
   const [lastEdit, setLastEdit] = useState(null);
+  const [openSections, setOpenSections] = useState(loadOpenSections);
+  const setSectionOpen = useCallback((sectionId, isOpen) => {
+    setOpenSections((prev) => {
+      if (prev[sectionId] === isOpen) return prev;
+      const next = { ...prev, [sectionId]: isOpen };
+      persistOpenSections(next);
+      return next;
+    });
+  }, []);
+  const toggleSection = useCallback((sectionId) => {
+    setOpenSections((prev) => {
+      const next = { ...prev, [sectionId]: !prev[sectionId] };
+      persistOpenSections(next);
+      return next;
+    });
+  }, []);
   const [hasSessionEdits, setHasSessionEdits] = useState(false);
   const [evidence, setEvidence] = useState({ isLoading: false, error: null, rows: [], fieldOrder: [], targetLabel: null });
   const [pathEndpoints, setPathEndpoints] = useState({ startNodeId: null, endNodeId: null });
@@ -422,7 +481,10 @@ export default function App() {
 
   const handleSetPathEndpoint = useCallback((nodeId) => {
     setPathEndpoints((prev) => (!prev.startNodeId ? { ...prev, startNodeId: nodeId } : { ...prev, endNodeId: nodeId }));
-  }, []);
+    // The Path finder section starts collapsed (1.23.0); open it so the
+    // endpoint just chosen is visible rather than silently set.
+    setSectionOpen('pathFinder', true);
+  }, [setSectionOpen]);
 
   const handleFindPath = useCallback(() => {
     if (!pathEndpoints.startNodeId || !pathEndpoints.endNodeId) return null;
@@ -887,66 +949,84 @@ export default function App() {
       <div className="graphlens-filters">
         <ErrorNotification error={error} onDismiss={() => setError(null)} />
         <EditUndoNotification lastEdit={lastEdit} onUndo={handleUndoLastEdit} onDismiss={() => setLastEdit(null)} />
-        <NodeTypeFilter nodeTypes={nodeTypeList} hiddenNodeTypes={state.hiddenNodeTypes} onChange={(types) => actions.setHiddenNodeTypes(types)} />
-        <RelationshipTypeFilter relationshipTypes={relationshipTypeList} hiddenRelationshipTypes={state.hiddenRelationshipTypes} onChange={(types) => actions.setHiddenRelationshipTypes(types)} />
-        <RiskFilter
-          riskMin={state.activeFilters.riskMin}
-          riskMax={state.activeFilters.riskMax}
-          minEventCount={state.activeFilters.minEventCount}
-          onChange={(filters) => actions.setActiveFilters(filters)}
-        />
-        {settings.enableTimeSlicer && (
-          <TimeSlicer
-            minMs={timeBounds.min}
-            maxMs={timeBounds.max}
-            valueMin={state.activeFilters.timeFilterMin}
-            valueMax={state.activeFilters.timeFilterMax}
+        <SidebarSection sectionId="nodeTypes" title="Node types" headingId="graphlens-node-type-filter-heading" open={openSections.nodeTypes} onToggle={toggleSection} badge={nodeTypeList.length || null}>
+          <NodeTypeFilter nodeTypes={nodeTypeList} hiddenNodeTypes={state.hiddenNodeTypes} onChange={(types) => actions.setHiddenNodeTypes(types)} />
+        </SidebarSection>
+        <SidebarSection sectionId="relationshipTypes" title="Relationship types" headingId="graphlens-rel-type-filter-heading" open={openSections.relationshipTypes} onToggle={toggleSection} badge={relationshipTypeList.length || null}>
+          <RelationshipTypeFilter relationshipTypes={relationshipTypeList} hiddenRelationshipTypes={state.hiddenRelationshipTypes} onChange={(types) => actions.setHiddenRelationshipTypes(types)} />
+        </SidebarSection>
+        <SidebarSection sectionId="risk" title="Risk & frequency" headingId="graphlens-risk-filter-heading" open={openSections.risk} onToggle={toggleSection}>
+          <RiskFilter
+            riskMin={state.activeFilters.riskMin}
+            riskMax={state.activeFilters.riskMax}
+            minEventCount={state.activeFilters.minEventCount}
             onChange={(filters) => actions.setActiveFilters(filters)}
           />
+        </SidebarSection>
+        {settings.enableTimeSlicer && (
+          <SidebarSection sectionId="timeWindow" title="Time window" headingId="graphlens-time-slicer-heading" open={openSections.timeWindow} onToggle={toggleSection}>
+            <TimeSlicer
+              minMs={timeBounds.min}
+              maxMs={timeBounds.max}
+              valueMin={state.activeFilters.timeFilterMin}
+              valueMax={state.activeFilters.timeFilterMax}
+              onChange={(filters) => actions.setActiveFilters(filters)}
+            />
+          </SidebarSection>
         )}
+        <SidebarSection sectionId="legend" title="Legend" headingId="graphlens-legend-heading" open={openSections.legend} onToggle={toggleSection}>
+          <GraphLegend nodeTypes={nodeTypeList} relationshipTypes={relationshipTypeList} onSelectNodeType={handleSelectNodeType} />
+        </SidebarSection>
         {settings.enableStyleOverrides && (
-          <StyleOverridesPanel
-            nodeTypes={nodeTypeList}
-            relationshipTypes={relationshipTypeList}
-            nodeOverrides={sessionNodeColorOverrides}
-            relationshipOverrides={sessionRelationshipColorOverrides}
-            onSetNodeColor={handleSetNodeColorOverride}
-            onSetRelationshipColor={handleSetRelationshipColorOverride}
-            onClearNodeColor={handleClearNodeColorOverride}
-            onClearRelationshipColor={handleClearRelationshipColorOverride}
-          />
+          <SidebarSection sectionId="styleOverrides" title="Colours (this session only)" headingId="graphlens-style-overrides-heading" open={openSections.styleOverrides} onToggle={toggleSection}>
+            <StyleOverridesPanel
+              nodeTypes={nodeTypeList}
+              relationshipTypes={relationshipTypeList}
+              nodeOverrides={sessionNodeColorOverrides}
+              relationshipOverrides={sessionRelationshipColorOverrides}
+              onSetNodeColor={handleSetNodeColorOverride}
+              onSetRelationshipColor={handleSetRelationshipColorOverride}
+              onClearNodeColor={handleClearNodeColorOverride}
+              onClearRelationshipColor={handleClearRelationshipColorOverride}
+            />
+          </SidebarSection>
         )}
-        <GraphLegend nodeTypes={nodeTypeList} relationshipTypes={relationshipTypeList} onSelectNodeType={handleSelectNodeType} />
         {settings.enablePathFinder && (
-          <PathFinderPanel
-            nodes={renderable.nodes}
-            startNodeId={pathEndpoints.startNodeId}
-            endNodeId={pathEndpoints.endNodeId}
-            onSetStart={(id) => setPathEndpoints((prev) => ({ ...prev, startNodeId: id }))}
-            onSetEnd={(id) => setPathEndpoints((prev) => ({ ...prev, endNodeId: id }))}
-            onFindPath={handleFindPath}
-            onClearPath={handleClearPath}
-            path={path}
-          />
+          <SidebarSection sectionId="pathFinder" title="Path finder (visible graph only)" headingId="graphlens-pathfinder-heading" open={openSections.pathFinder} onToggle={toggleSection}>
+            <PathFinderPanel
+              nodes={renderable.nodes}
+              startNodeId={pathEndpoints.startNodeId}
+              endNodeId={pathEndpoints.endNodeId}
+              onSetStart={(id) => setPathEndpoints((prev) => ({ ...prev, startNodeId: id }))}
+              onSetEnd={(id) => setPathEndpoints((prev) => ({ ...prev, endNodeId: id }))}
+              onFindPath={handleFindPath}
+              onClearPath={handleClearPath}
+              path={path}
+            />
+          </SidebarSection>
         )}
         {settings.enableGraphQuery && (
-          <GraphQueryPanel
-            isRunning={queryState.isRunning}
-            error={queryState.error}
-            result={queryState.result}
-            onRunQuery={handleRunGraphQuery}
-            onLoadOntoCanvas={requestLoadQueryResultOntoCanvas}
-          />
+          <SidebarSection sectionId="query" title="Query" headingId="graphlens-query-heading" open={openSections.query} onToggle={toggleSection}>
+            <GraphQueryPanel
+              isRunning={queryState.isRunning}
+              error={queryState.error}
+              result={queryState.result}
+              onRunQuery={handleRunGraphQuery}
+              onLoadOntoCanvas={requestLoadQueryResultOntoCanvas}
+            />
+          </SidebarSection>
         )}
         {settings.enableSavedViews && (
-          <SavedViewsPanel
-            views={savedViews}
-            isLoading={savedViewsLoading}
-            error={savedViewsError}
-            onSave={handleSaveView}
-            onLoad={requestLoadSavedView}
-            onDelete={handleDeleteSavedView}
-          />
+          <SidebarSection sectionId="savedViews" title="Saved views" headingId="graphlens-saved-views-heading" open={openSections.savedViews} onToggle={toggleSection} badge={savedViews.length || null}>
+            <SavedViewsPanel
+              views={savedViews}
+              isLoading={savedViewsLoading}
+              error={savedViewsError}
+              onSave={handleSaveView}
+              onLoad={requestLoadSavedView}
+              onDelete={handleDeleteSavedView}
+            />
+          </SidebarSection>
         )}
       </div>
 

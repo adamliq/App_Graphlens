@@ -11,7 +11,6 @@ export default function RelationshipTypeFilter({ relationshipTypes, hiddenRelati
 
   return (
     <div className="graphlens-section">
-      <h3 id="graphlens-rel-type-filter-heading">Relationship types</h3>
       <ul style={{ listStyle: 'none', margin: 0, padding: 0 }} aria-labelledby="graphlens-rel-type-filter-heading">
         {relationshipTypes.map((rt) => {
           const inputId = `graphlens-rel-type-${rt.relationship_type}`;

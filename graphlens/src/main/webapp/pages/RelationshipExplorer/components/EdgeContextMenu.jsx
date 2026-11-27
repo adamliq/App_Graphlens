@@ -2,6 +2,7 @@ import React from 'react';
 import PropTypes from 'prop-types';
 import Popover from '@splunk/react-ui/Popover';
 import Menu from '@splunk/react-ui/Menu';
+import List from '@splunk/react-icons/List';
 
 /**
  * Right-click (Cytoscape's `cxttap`) menu for an edge - the counterpart
@@ -22,12 +23,15 @@ export default function EdgeContextMenu({ open, anchor, point, edge, onRequestCl
       anchor={anchor}
       pointTo={point}
       onRequestClose={onRequestClose}
-      appearance="none"
+      appearance="normal"
+      hideArrow
     >
-      <Menu>
-        <Menu.Heading>{edge.relationshipLabel}</Menu.Heading>
+      {/* Same framed, iconised styling as NodeContextMenu.jsx (1.23.0). */}
+      <Menu className="graphlens-context-menu">
+        <Menu.Heading title={edge.relationshipLabel}>{edge.relationshipLabel}</Menu.Heading>
         <Menu.Divider />
         <Menu.Item
+          startAdornment={<List />}
           onClick={() => {
             onViewEvidence(edge.id, 'edge');
             onRequestClose();

@@ -4,6 +4,8 @@ import Button from '@splunk/react-ui/Button';
 import Text from '@splunk/react-ui/Text';
 import NumberField from '@splunk/react-ui/Number';
 import Switch from '@splunk/react-ui/Switch';
+import List from '@splunk/react-icons/List';
+import Pencil from '@splunk/react-icons/Pencil';
 import { STATUS_COLORS, HIGH_RISK_THRESHOLD } from './GraphCanvas';
 
 function fieldsFromEdge(edge) {
@@ -43,40 +45,41 @@ export default function EdgeDetailsPanel({ edge, canEdit, onViewEvidence, onSave
     return (
       <div className="graphlens-section">
         <h3>Edit relationship</h3>
-        <p style={{ fontSize: 12, color: '#5c5c5c' }}>{edge.id}</p>
-        <label style={{ fontSize: 12, display: 'block', marginBottom: 6 }}>
+        <div className="graphlens-entity-id">{edge.id}</div>
+        <label className="graphlens-field">
           Relationship type
           <Text value={fields.relationship} onChange={(e, { value }) => setFields({ ...fields, relationship: value })} />
         </label>
-        <label style={{ fontSize: 12, display: 'block', marginBottom: 6 }}>
+        <label className="graphlens-field">
           Relationship label
           <Text value={fields.relationshipLabel} onChange={(e, { value }) => setFields({ ...fields, relationshipLabel: value })} />
         </label>
-        <label style={{ fontSize: 12, display: 'block', marginBottom: 6 }}>
+        <label className="graphlens-field">
           Risk score (0-100)
           <NumberField value={fields.riskScore} onChange={(e, { value }) => setFields({ ...fields, riskScore: value })} />
         </label>
-        <label style={{ fontSize: 12, display: 'block', marginBottom: 6 }}>
+        <label className="graphlens-field">
           Event count
           <NumberField value={fields.eventCount} onChange={(e, { value }) => setFields({ ...fields, eventCount: value })} />
         </label>
         <div style={{ marginBottom: 10 }}>
           <Switch selected={fields.directed} onClick={() => setFields({ ...fields, directed: !fields.directed })}>Directed</Switch>
         </div>
-        <div className="graphlens-actions-row">
-          <Button label="Save" appearance="primary" onClick={() => { onSaveEdit(edge.id, fields); setIsEditing(false); }} />
-          <Button label="Cancel" onClick={() => { setFields(fieldsFromEdge(edge)); setIsEditing(false); }} />
+        <div className="graphlens-actions-grid graphlens-actions-grid-2">
+          <Button label="Save" appearance="primary" onClick={() => { onSaveEdit(edge.id, fields); setIsEditing(false); }} inline={false} />
+          <Button label="Cancel" onClick={() => { setFields(fieldsFromEdge(edge)); setIsEditing(false); }} inline={false} />
         </div>
       </div>
     );
   }
 
+  // Same layout as NodeDetailsPanel.jsx's view mode (1.23.0).
   return (
     <div className="graphlens-section">
       <h3>Relationship details</h3>
-      <dl style={{ fontSize: 13, margin: 0 }}>
-        <dt style={{ fontWeight: 600 }}>{edge.relationshipLabel}</dt>
-        <dd style={{ margin: '2px 0 8px 0', color: '#5c5c5c' }}>{edge.id}</dd>
+      <div className="graphlens-entity-title">{edge.relationshipLabel}</div>
+      <div className="graphlens-entity-id">{edge.id}</div>
+      <dl className="graphlens-props">
         <dt>Source</dt>
         <dd>{edge.source}</dd>
         <dt>Target</dt>
@@ -92,9 +95,9 @@ export default function EdgeDetailsPanel({ edge, canEdit, onViewEvidence, onSave
         {edge.firstSeen && (<><dt>First seen</dt><dd>{edge.firstSeen}</dd></>)}
         {edge.lastSeen && (<><dt>Last seen</dt><dd>{edge.lastSeen}</dd></>)}
       </dl>
-      <div className="graphlens-actions-row">
-        <Button label="View supporting events" appearance="primary" onClick={() => onViewEvidence(edge.id, 'edge')} />
-        {canEdit && <Button label="Edit" onClick={() => { setFields(fieldsFromEdge(edge)); setIsEditing(true); }} />}
+      <div className="graphlens-actions-stack">
+        <Button label="View supporting events" icon={<List />} appearance="primary" onClick={() => onViewEvidence(edge.id, 'edge')} inline={false} />
+        {canEdit && <Button label="Edit" icon={<Pencil />} onClick={() => { setFields(fieldsFromEdge(edge)); setIsEditing(true); }} inline={false} />}
       </div>
     </div>
   );

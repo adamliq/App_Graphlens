@@ -25,7 +25,16 @@ const PAYLOADS = [
   '<svg/onload=alert(1)>',
 ];
 
-const RAW_TAG = /<(script|img|svg|iframe)\b/i;
+// The components legitimately render their own icon <svg>s (1.23.0), so
+// "no <svg> at all" is not the test. Instead every real tag in the output
+// is inspected: none may be a script/img/iframe, and none may carry an
+// event-handler attribute - escaped payload *text* (&lt;img onerror=...)
+// is inert and is not a tag. The payload must also never appear verbatim.
+function dangerousTags(html) {
+  const tags = html.match(/<[a-z][^>]*>/gi) || [];
+  return tags.filter((tag) => /^<(script|img|iframe)\b/i.test(tag) || /\son[a-z]+\s*=/i.test(tag));
+}
+
 const noop = () => {};
 
 function node(label) {
@@ -54,28 +63,41 @@ function renderNodePanel(label) {
   );
 }
 
+describe('the dangerous-tag check itself', () => {
+  test('flags raw payload markup but not escaped text or a plain icon svg', () => {
+    expect(dangerousTags('<div><img src=x onerror=alert(1)></div>')).toHaveLength(1);
+    expect(dangerousTags('<svg onload=alert(1)>')).toHaveLength(1);
+    expect(dangerousTags('<div>&lt;img src=x onerror=alert(1)&gt;</div>')).toEqual([]);
+    expect(dangerousTags('<svg aria-hidden="true" viewBox="0 0 24 24"><path d="M0 0"></path></svg>')).toEqual([]);
+  });
+});
+
 describe('components that show display text render it as escaped text, never as markup', () => {
   test.each(PAYLOADS)('NodeDetailsPanel: %j', (payload) => {
     const html = renderNodePanel(payload);
-    expect(html).not.toMatch(RAW_TAG);
+    expect(dangerousTags(html)).toEqual([]);
+    expect(html).not.toContain(payload);
     expect(html).toContain('&lt;');
   });
 
   test.each(PAYLOADS)('EdgeDetailsPanel: %j', (payload) => {
     const html = renderToStaticMarkup(<EdgeDetailsPanel edge={edge(payload)} onViewEvidence={noop} />);
-    expect(html).not.toMatch(RAW_TAG);
+    expect(dangerousTags(html)).toEqual([]);
+    expect(html).not.toContain(payload);
     expect(html).toContain('&lt;');
   });
 
   test.each(PAYLOADS)('EditUndoNotification: %j', (payload) => {
     const html = renderToStaticMarkup(<EditUndoNotification lastEdit={{ label: payload }} onUndo={noop} onDismiss={noop} />);
-    expect(html).not.toMatch(RAW_TAG);
+    expect(dangerousTags(html)).toEqual([]);
+    expect(html).not.toContain(payload);
     expect(html).toContain('&lt;');
   });
 
   test.each(PAYLOADS)('GraphTableView: %j', (payload) => {
     const html = renderToStaticMarkup(<GraphTableView nodes={[node(payload)]} edges={[edge(payload)]} />);
-    expect(html).not.toMatch(RAW_TAG);
+    expect(dangerousTags(html)).toEqual([]);
+    expect(html).not.toContain(payload);
     expect(html).toContain('&lt;');
   });
 });

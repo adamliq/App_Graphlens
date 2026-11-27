@@ -29,9 +29,34 @@
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 12px;
+  gap: 8px 12px;
   padding: 8px 12px;
   background: var(--graphlens-surface, #fff);
+}
+
+/* 1.23.0: toolbar groups (find | view | data) wrap as whole units. */
+.graphlens-toolbar-group {
+  display: flex;
+  flex-wrap: nowrap;
+  align-items: center;
+  gap: 6px;
+}
+
+.graphlens-toolbar-tabs {
+  display: flex;
+  gap: 4px;
+}
+
+.graphlens-toolbar-divider {
+  align-self: stretch;
+  width: 1px;
+  margin: 4px 0;
+  background: var(--graphlens-border, #d3d3d3);
+}
+
+.graphlens-toolbar-spacer {
+  flex: 1 1 0;
+  min-width: 0;
 }
 
 .graphlens-filters {
@@ -80,12 +105,251 @@
   margin-bottom: 16px;
 }
 
-.graphlens-section h3 {
+.graphlens-canvas-table h3 + div,
+.graphlens-canvas-table h3 + p {
+  margin-bottom: 16px;
+}
+
+.graphlens-section h3,
+.graphlens-canvas-table h3,
+.graphlens-evidence-heading {
   font-size: 12px;
+  font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.04em;
   color: var(--graphlens-muted, #5c5c5c);
   margin: 0 0 8px 0;
+}
+
+.graphlens-subheading {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--graphlens-muted, #5c5c5c);
+  margin: 12px 0 6px 0;
+}
+
+/* 1.23.0: collapsible left-sidebar sections (SidebarSection.jsx). */
+.graphlens-sidebar-section {
+  border-bottom: 1px solid var(--graphlens-divider, #ececec);
+}
+
+.graphlens-sidebar-section:last-child {
+  border-bottom: none;
+}
+
+.graphlens-sidebar-heading {
+  margin: 0;
+}
+
+.graphlens-sidebar-toggle {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  width: 100%;
+  padding: 10px 4px;
+  margin: 0 -4px;
+  background: none;
+  border: none;
+  border-radius: 3px;
+  cursor: pointer;
+  text-align: left;
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--graphlens-muted, #5c5c5c);
+}
+
+.graphlens-sidebar-toggle:hover {
+  color: #2b3033;
+  background: var(--graphlens-hover, rgba(0, 0, 0, 0.04));
+}
+
+.graphlens-sidebar-toggle:focus-visible {
+  outline: 2px solid #2b7de9;
+  outline-offset: 1px;
+}
+
+.graphlens-sidebar-chevron {
+  display: inline-flex;
+  flex: none;
+  font-size: 14px;
+  width: 14px;
+  margin-top: 1px;
+}
+
+.graphlens-sidebar-title {
+  flex: 1;
+  min-width: 0;
+}
+
+.graphlens-sidebar-body {
+  padding: 0 0 12px 0;
+}
+
+.graphlens-sidebar-body > .graphlens-section {
+  margin-bottom: 0;
+}
+
+.graphlens-count-badge {
+  display: inline-block;
+  min-width: 20px;
+  padding: 0 6px;
+  border-radius: 10px;
+  background: #e8ebee;
+  color: #3c444d;
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 18px;
+  text-align: center;
+  text-transform: none;
+  letter-spacing: 0;
+}
+
+/* 1.23.0: details panels - title/id, then a label | value grid. */
+.graphlens-entity-title {
+  font-size: 15px;
+  font-weight: 600;
+  color: #2b3033;
+  overflow-wrap: anywhere;
+}
+
+.graphlens-entity-id {
+  font-size: 12px;
+  color: var(--graphlens-muted, #6b7378);
+  margin: 2px 0 12px 0;
+  overflow-wrap: anywhere;
+}
+
+.graphlens-props {
+  display: grid;
+  grid-template-columns: max-content minmax(0, 1fr);
+  gap: 5px 14px;
+  margin: 0 0 14px 0;
+  font-size: 13px;
+}
+
+.graphlens-props dt {
+  color: var(--graphlens-muted, #6b7378);
+}
+
+.graphlens-props dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+}
+
+.graphlens-actions-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.graphlens-actions-grid {
+  display: flex;
+  gap: 6px;
+}
+
+.graphlens-actions-grid > * {
+  flex: 1 1 0;
+  min-width: 0;
+}
+
+.graphlens-actions-grid-2 {
+  margin-top: 4px;
+}
+
+.graphlens-field {
+  display: block;
+  margin-bottom: 8px;
+  font-size: 12px;
+  color: var(--graphlens-muted, #5c5c5c);
+}
+
+/* 1.23.0: right-click menus - a readable width, long names cut short. */
+.graphlens-context-menu {
+  min-width: 210px;
+  max-width: 280px;
+}
+
+.graphlens-context-menu [data-test="heading"],
+.graphlens-context-menu h2,
+.graphlens-context-menu h3,
+.graphlens-context-menu h4 {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* 1.23.0: shared table style - table view, evidence, CSV preview. */
+.graphlens-data-table {
+  width: 100%;
+  font-size: 12px;
+  border-collapse: separate;
+  border-spacing: 0;
+}
+
+.graphlens-data-table th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  text-align: left;
+  white-space: nowrap;
+  padding: 6px 8px;
+  background: #f2f4f5;
+  border-bottom: 1px solid #c3cbd4;
+  font-weight: 600;
+  color: #3c444d;
+}
+
+.graphlens-data-table td {
+  padding: 4px 8px;
+  border-bottom: 1px solid #ececec;
+}
+
+.graphlens-data-table tbody tr:nth-child(even) td {
+  background: #f9fafb;
+}
+
+.graphlens-data-table tbody tr:hover td {
+  background: #eef4fc;
+}
+
+.graphlens-data-table-editable td {
+  padding: 3px 4px;
+}
+
+.graphlens-cell-input {
+  width: 100%;
+  min-width: 90px;
+  font-size: 12px;
+  padding: 3px 5px;
+  border: 1px solid #d6dbe0;
+  border-radius: 3px;
+  background: #fff;
+}
+
+.graphlens-cell-input:focus {
+  outline: none;
+  border-color: #2b7de9;
+  box-shadow: 0 0 0 2px rgba(43, 125, 233, 0.2);
+}
+
+/* 1.23.0: supporting-events heading matches the other section headings. */
+.graphlens-evidence-heading {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 4px 0;
+}
+
+.graphlens-evidence-target {
+  text-transform: none;
+  letter-spacing: 0;
+  font-weight: 400;
+  color: #2b3033;
 }
 
 .graphlens-legend-item {
@@ -152,7 +416,7 @@
   border: 1px solid #d93f3f;
   background: #fdecec;
   color: #7a1f1f;
-  padding: 8px 12px;
+  padding: 8px 12px 8px 34px;
   border-radius: 4px;
   margin-bottom: 12px;
   font-size: 13px;
@@ -162,7 +426,7 @@
   border: 1px solid #2b7de9;
   background: #eaf2fd;
   color: #1a4a7a;
-  padding: 8px 12px;
+  padding: 8px 12px 8px 34px;
   border-radius: 4px;
   margin-bottom: 12px;
   font-size: 13px;

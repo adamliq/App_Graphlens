@@ -31,6 +31,20 @@ const STATUS_COLORS = {
 
 const HIGH_RISK_THRESHOLD = 70;
 
+// 1.23.0: the highest zoom an automatic fit (Fit to screen, or a layout's
+// own fit) may leave the graph at. Without it, fitting a graph of one or
+// two nodes zoomed all the way to maxZoom (4x), turning a 10px label into
+// a 40px one that dwarfed the rest of the page. Manual zooming can still
+// go to maxZoom.
+const FIT_MAX_ZOOM = 1.75;
+
+function capFitZoom(cy) {
+  if (cy.zoom() > FIT_MAX_ZOOM) {
+    cy.zoom(FIT_MAX_ZOOM);
+    cy.center();
+  }
+}
+
 const STYLESHEET = [
   {
     selector: 'node',
@@ -106,6 +120,10 @@ const STYLESHEET = [
       'text-background-shape': 'roundrectangle',
       'text-background-padding': '2px',
       'text-rotation': 'autorotate',
+      // Long relationship labels are cut with an ellipsis like node labels
+      // already are, instead of running the full length of the edge.
+      'text-wrap': 'ellipsis',
+      'text-max-width': '120px',
     },
   },
   {
@@ -310,7 +328,9 @@ export default function GraphCanvas({
     const cy = cyRef.current;
     if (!cy || cy.nodes().length === 0) return;
     const options = LAYOUT_OPTIONS[layoutName] || LAYOUT_OPTIONS.cose;
-    cy.layout(options).run();
+    const layout = cy.layout(options);
+    layout.one('layoutstop', () => capFitZoom(cy));
+    layout.run();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [layoutToken, layoutName]);
 
@@ -383,7 +403,9 @@ GraphCanvas.defaultProps = {
 };
 
 export function fitGraph(cy) {
-  if (cy) cy.fit(undefined, 30);
+  if (!cy) return;
+  cy.fit(undefined, 30);
+  capFitZoom(cy);
 }
 
 export function centerOnNode(cy, nodeId) {

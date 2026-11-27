@@ -25,7 +25,6 @@ export default function PathFinderPanel({ nodes, startNodeId, endNodeId, onSetSt
 
   return (
     <div className="graphlens-section">
-      <h3 id="graphlens-pathfinder-heading">Path finder (visible graph only)</h3>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }} aria-labelledby="graphlens-pathfinder-heading">
         <label htmlFor="graphlens-path-start" style={{ fontSize: 12 }}>
           Start node

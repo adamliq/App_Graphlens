@@ -7,8 +7,15 @@ export default function EvidencePanel({ isLoading, error, rows, fieldOrder, targ
   return (
     <div>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <h3 style={{ margin: '4px 0' }}>
-          Supporting events {targetLabel ? `for ${targetLabel}` : ''}
+        {/*
+          1.23.0: styled like every other section heading (it was the one
+          bare <h3>, rendered large and in the browser's serif font), with
+          the event count once results are in.
+        */}
+        <h3 className="graphlens-evidence-heading">
+          Supporting events
+          {targetLabel && <span className="graphlens-evidence-target">{` for ${targetLabel}`}</span>}
+          {targetLabel && !isLoading && !error && <span className="graphlens-count-badge">{rows.length}</span>}
         </h3>
         <div className="graphlens-actions-row" style={{ marginTop: 0 }}>
           {onOpenInSearch && <Button label="Open in Splunk Search" onClick={onOpenInSearch} />}
@@ -22,11 +29,11 @@ export default function EvidencePanel({ isLoading, error, rows, fieldOrder, targ
       )}
       {!isLoading && rows.length > 0 && (
         <div style={{ overflowX: 'auto' }}>
-          <table style={{ width: '100%', fontSize: 12, borderCollapse: 'collapse' }}>
+          <table className="graphlens-data-table">
             <thead>
               <tr>
                 {fieldOrder.map((f) => (
-                  <th key={f} style={{ textAlign: 'left', borderBottom: '1px solid #ccc', padding: '4px 8px' }}>{f}</th>
+                  <th key={f}>{f}</th>
                 ))}
               </tr>
             </thead>
@@ -35,7 +42,7 @@ export default function EvidencePanel({ isLoading, error, rows, fieldOrder, targ
                 // eslint-disable-next-line react/no-array-index-key
                 <tr key={idx}>
                   {fieldOrder.map((f) => (
-                    <td key={f} style={{ padding: '4px 8px', borderBottom: '1px solid #eee' }}>{String(row[f] ?? '')}</td>
+                    <td key={f}>{String(row[f] ?? '')}</td>
                   ))}
                 </tr>
               ))}

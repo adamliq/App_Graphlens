@@ -44,11 +44,25 @@ document remains the fuller, authoritative version.
   switch back to Graph to select, expand, pin, or hide anything. The
   other toolbar buttons below (layout, Fit to screen, Centre selected)
   only apply to the Graph view and are disabled while Table is shown.
-- **Fit to screen**: toolbar button - frames the whole visible graph.
-- **Centre selected**: toolbar button - pans/zooms to the selected node.
-- **Change layout**: toolbar dropdown (cose, concentric, breadthfirst,
-  circle, grid). **Recalculate layout** re-runs the current layout without
-  changing which layout is selected.
+- **Fit to screen**: toolbar icon button (four outward arrows; hover for
+  its name) - frames the whole visible graph. A very small graph is not
+  zoomed in beyond 1.75x, so one or two nodes are not blown up to fill
+  the screen.
+- **Centre selected**: toolbar icon button (hover for its name) -
+  pans/zooms to the selected node.
+- **Change layout**: toolbar **Layout** dropdown (cose, concentric,
+  breadthfirst, circle, grid). **Recalculate layout** (the circular-arrow
+  icon button beside it) re-runs the current layout without changing
+  which layout is selected.
+- **Toolbar groups** (1.23.0): find (search, time range) | view (Graph/
+  Table, layout and the three view icon buttons) | data (Import, Export,
+  Load from job), with **Reset graph** on the far right.
+- **Left sidebar sections** (1.23.0) collapse and expand by clicking
+  their heading. Node types, Relationship types, Risk & frequency, Time
+  window and Legend start open; Colours, Path finder, Query and Saved
+  views start collapsed. Your choice is remembered in this browser.
+  Choosing **Use as path endpoint** opens the Path finder section
+  automatically.
 - **Select several nodes at once**: hold **Shift** and drag a box around
   them, or click a node type in the legend to select every currently
   visible node of that type. An ordinary click-and-drag still pans the

@@ -10,11 +10,11 @@ function DataTable({ rows, columns }) {
   }
   return (
     <div style={{ overflowX: 'auto' }}>
-      <table style={{ width: '100%', fontSize: 12, borderCollapse: 'collapse' }}>
+      <table className="graphlens-data-table">
         <thead>
           <tr>
             {columns.map((c) => (
-              <th key={c} style={{ textAlign: 'left', borderBottom: '1px solid #ccc', padding: '4px 8px', whiteSpace: 'nowrap' }}>{c}</th>
+              <th key={c}>{c}</th>
             ))}
           </tr>
         </thead>
@@ -22,7 +22,7 @@ function DataTable({ rows, columns }) {
           {rows.map((row) => (
             <tr key={row.id}>
               {columns.map((c) => (
-                <td key={c} style={{ padding: '4px 8px', borderBottom: '1px solid #eee', whiteSpace: 'nowrap' }}>{String(row[c] ?? '')}</td>
+                <td key={c} style={{ whiteSpace: 'nowrap' }}>{String(row[c] ?? '')}</td>
               ))}
             </tr>
           ))}

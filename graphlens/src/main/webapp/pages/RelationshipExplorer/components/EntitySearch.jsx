@@ -28,7 +28,7 @@ export default function EntitySearch({ isLoading, results, onSearch, onPickResul
   }, [submit]);
 
   return (
-    <div style={{ position: 'relative', minWidth: 260 }}>
+    <div style={{ position: 'relative', minWidth: 200 }}>
       <label htmlFor="graphlens-entity-search" className="graphlens-visually-hidden">
         Search for an entity
       </label>
@@ -39,9 +39,20 @@ export default function EntitySearch({ isLoading, results, onSearch, onPickResul
           onChange={(e, { value }) => setTerm(value)}
           onKeyDown={handleKeyDown}
           placeholder="Search for a user, host, IP, application..."
+          style={{ width: 200 }}
         />
-        <Button label="Search" icon={<Magnifier />} appearance="primary" onClick={submit} disabled={term.trim().length === 0} />
-        {isLoading && <WaitSpinner size="small" />}
+        {/*
+          1.23.0: the spinner replaces the button's own icon while a search
+          runs, instead of appearing beside it - so the toolbar does not
+          grow (and re-wrap) for the duration of every search.
+        */}
+        <Button
+          label="Search"
+          icon={isLoading ? <WaitSpinner size="small" /> : <Magnifier />}
+          appearance="primary"
+          onClick={submit}
+          disabled={term.trim().length === 0}
+        />
       </div>
       {showResults && results.length > 0 && (
         <Menu style={{ position: 'absolute', top: '100%', left: 0, zIndex: 20, maxHeight: 260, overflowY: 'auto' }}>

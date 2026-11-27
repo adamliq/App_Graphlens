@@ -2,6 +2,7 @@ import React from 'react';
 import { createRoot } from 'react-dom/client';
 import SplunkThemeProvider from '@splunk/themes/SplunkThemeProvider';
 import App from './App';
+import '../../shared/styles/base.css';
 import './App.css';
 
 const container = document.getElementById('graphlens-relationship-explorer-root');

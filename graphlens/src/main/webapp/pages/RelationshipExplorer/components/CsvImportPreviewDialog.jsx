@@ -59,11 +59,11 @@ export default function CsvImportPreviewDialog({ open, header, rows, fileName, e
           </div>
         )}
         <div style={{ overflow: 'auto', maxHeight: 400, border: '1px solid #e5e5e5' }}>
-          <table style={{ width: '100%', fontSize: 12, borderCollapse: 'collapse' }}>
+          <table className="graphlens-data-table graphlens-data-table-editable">
             <thead>
               <tr>
                 {header.map((h) => (
-                  <th key={h} style={{ textAlign: 'left', borderBottom: '1px solid #ccc', padding: '4px 8px', whiteSpace: 'nowrap', position: 'sticky', top: 0, background: '#fff' }}>
+                  <th key={h}>
                     {h}
                   </th>
                 ))}
@@ -74,12 +74,12 @@ export default function CsvImportPreviewDialog({ open, header, rows, fileName, e
                 // eslint-disable-next-line react/no-array-index-key
                 <tr key={rowIndex}>
                   {header.map((h) => (
-                    <td key={h} style={{ padding: '2px 4px', borderBottom: '1px solid #eee' }}>
+                    <td key={h}>
                       <input
                         type="text"
                         value={row[h] !== undefined ? row[h] : ''}
                         onChange={(e) => updateCell(rowIndex, h, e.target.value)}
-                        style={{ width: '100%', minWidth: 90, boxSizing: 'border-box', fontSize: 12, padding: '3px 5px', border: '1px solid #ddd', borderRadius: 2 }}
+                        className="graphlens-cell-input"
                       />
                     </td>
                   ))}
