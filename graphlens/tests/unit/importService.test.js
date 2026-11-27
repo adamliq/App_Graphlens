@@ -31,6 +31,38 @@ describe('parseImportedGraphJson - round trip with exportGraphAsJson', () => {
   });
 });
 
+describe('parseImportedGraphJson - pre-1.22 exports stored labels HTML-escaped; they are decoded on import', () => {
+  function exportFile(appVersion, label, relationshipLabel) {
+    const metadata = appVersion === undefined ? undefined : { appVersion };
+    return JSON.stringify({
+      metadata,
+      nodes: [{ id: 'org:att', type: 'org', label }, { id: 'host:h1', type: 'host', label: 'h1' }],
+      edges: [{ id: 'e1', source: 'org:att', target: 'host:h1', relationship: 'OWNS', relationshipLabel }],
+    });
+  }
+
+  test('an export from 1.21.0 has its entities decoded', () => {
+    const { nodeRows, edgeRows } = parseImportedGraphJson(exportFile('1.21.0', 'AT&amp;T &lt;Mobility&gt;', 'R&amp;D &quot;owns&quot; &#39;it&#39;'));
+    expect(nodeRows[0].node_label).toBe('AT&T <Mobility>');
+    expect(edgeRows[0].relationship_label).toBe('R&D "owns" \'it\'');
+  });
+
+  test('a doubly-escaped literal entity decodes one level only ("&amp;lt;" -> "&lt;", not "<")', () => {
+    const { nodeRows } = parseImportedGraphJson(exportFile('1.4.0', 'use &amp;lt; here', 'x'));
+    expect(nodeRows[0].node_label).toBe('use &lt; here');
+  });
+
+  test.each(['1.22.0', '1.23.4', '2.0.0'])('an export from %s is left exactly as written', (version) => {
+    const { nodeRows } = parseImportedGraphJson(exportFile(version, 'AT&amp;T', 'x'));
+    expect(nodeRows[0].node_label).toBe('AT&amp;T');
+  });
+
+  test.each([undefined, 'not-a-version', ''])('a file with appVersion %j (hand-made) is left exactly as written', (version) => {
+    const { nodeRows } = parseImportedGraphJson(exportFile(version, 'AT&amp;T', 'x'));
+    expect(nodeRows[0].node_label).toBe('AT&amp;T');
+  });
+});
+
 describe('parseImportedGraphJson - rejects malformed input', () => {
   test('throws GraphLensValidationError for text that is not valid JSON', () => {
     expect(() => parseImportedGraphJson('not json {')).toThrow(GraphLensValidationError);

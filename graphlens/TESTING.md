@@ -51,7 +51,7 @@ touches `appserver/templates/`, `utilities/restClient.js`, or
 | File | Covers |
 |---|---|
 | `splSafety.test.js` | Identifier/type-token/allowlist validation, integer clamping, SPL string escaping, search-term sanitisation, HTML escaping, CSV export sanitisation, time-literal validation, index/sourcetype safe-fallback, unicode/encoded-payload edge cases |
-| `graphTransformer.test.js` | Node/edge creation from rows, deduplication (nodes and edges, including nodes discovered via multiple edge rows), malformed-row rejection, label HTML-escaping, risk-score clamping, node/edge limit enforcement |
+| `graphTransformer.test.js` | Node/edge creation from rows, deduplication (nodes and edges, including nodes discovered via multiple edge rows), malformed-row rejection, labels stored verbatim with control characters stripped, risk-score clamping, node/edge limit enforcement |
 | `graphStateReducer.test.js` | Expansion (parent/child linking, already-expanded no-op, node-limit enforcement), collapse reference-counting (shared-node survival, pin/selection retention, cascading removal), hide/unhide, risk/event-count filtering |
 | `pathFinder.test.js` | Shortest-path BFS over the visible graph: multi-hop, shortcut preference, no-path case, missing-endpoint case, `maxDepth` enforcement, self-path, undirected traversal |
 | `exportService.test.js` | JSON export metadata/content, CSV formula-injection defanging, CSV quoting, unsupported-format rejection |
@@ -67,8 +67,12 @@ injection, wildcards, oversized input (10,000 chars), NUL bytes, and a
 standard XSS payload set (`<script>`, `<img onerror>`, `<svg onload>`,
 `javascript:` URIs, template-injection-looking strings, iframe injection)
 - against every function that turns untrusted input into a search token,
-graph element, or exported value. See SECURITY.md for the corresponding
-narrative description of each control.
+graph element, or exported value. `xss.test.js` also scans `src/` for
+HTML sinks (`dangerouslySetInnerHTML`, `innerHTML`, `DOMParser`, ...) and
+fails if one appears, and `xssRender.test.jsx` renders the real details
+panels, undo banner and table view with the payloads (via
+`react-dom/server`) and checks the markup contains no live tag. See
+SECURITY.md for the corresponding narrative description of each control.
 
 Two categories in the design brief require a **live Splunk instance** and
 are not automatable as Jest unit tests in this repository:

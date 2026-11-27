@@ -141,7 +141,7 @@ export default function NodeDetailsPanel({
         )}
         <Button label="View supporting events" onClick={() => onViewEvidence(node.id, 'node')} />
         <Button label="Use as path endpoint" onClick={() => onSetPathEndpoint(node.id)} />
-        {canEdit && <Button label="Edit" onClick={() => setIsEditing(true)} />}
+        {canEdit && <Button label="Edit" onClick={() => { setFields(fieldsFromNode(node)); setIsEditing(true); }} />}
       </div>
     </div>
   );

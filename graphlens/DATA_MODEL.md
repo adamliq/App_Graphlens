@@ -23,9 +23,9 @@
 |---|---|---|---|
 | `node_id` | string | yes | Namespaced, stable identifier. Must match `^[A-Za-z0-9][A-Za-z0-9:_\-.@/]{0,254}$` (see splSafety.js `ID_PATTERN`). |
 | `node_type` | string | yes | Short type token, e.g. `user`, `host`, `ip`. Governed by `graphlens_node_types`. |
-| `node_label` | string | yes | Display label. HTML-escaped on ingest; treat as untrusted. |
+| `node_label` | string | yes | Display label. Stored as plain text (control characters stripped, max 200 chars) and only ever rendered as text; treat as untrusted. |
 | `node_group` | string | no | Free grouping label (business service, subnet, etc.) for clustering. |
-| `description` | string | no | Free text. HTML-escaped on ingest. |
+| `description` | string | no | Free text. Stored as plain text (control characters other than newline/tab stripped, max 1000 chars). |
 | `risk_score` | number | no | Clamped to 0-100 on ingest. |
 | `first_seen` / `last_seen` | ISO-8601 string | no | Widened (min/max) across duplicate rows on merge. |
 | `event_count` | number | no | Summed across duplicate rows on merge. |

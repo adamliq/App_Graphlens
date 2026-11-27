@@ -94,7 +94,7 @@ export default function EdgeDetailsPanel({ edge, canEdit, onViewEvidence, onSave
       </dl>
       <div className="graphlens-actions-row">
         <Button label="View supporting events" appearance="primary" onClick={() => onViewEvidence(edge.id, 'edge')} />
-        {canEdit && <Button label="Edit" onClick={() => setIsEditing(true)} />}
+        {canEdit && <Button label="Edit" onClick={() => { setFields(fieldsFromEdge(edge)); setIsEditing(true); }} />}
       </div>
     </div>
   );

@@ -117,15 +117,34 @@ validator without ever reaching `dispatch`.
 
 ## Cross-site scripting (XSS) prevention
 
-- React's default JSX text rendering HTML-escapes all dynamic text
-  content; GraphLens does not use `dangerouslySetInnerHTML` anywhere.
-- Node/edge labels and descriptions are additionally HTML-escaped at the
-  data layer, in `graphTransformer.js`, the moment a search result is
-  turned into graph state - before any component ever sees them. This
-  means even a value that later gets serialised into an export, a
-  tooltip, or a non-React string context is already safe.
-- `escapeHtml` in `splSafety.js` is available for the rare case content is
-  rendered outside of React's default escaping.
+- **Display text is stored as plain text (since 1.22.0).** Node/edge
+  labels, descriptions and edited values are kept exactly as the source
+  data had them - `graphTransformer.js` only strips control characters
+  and caps their length. Until 1.21.0 they were also HTML-escaped at
+  that point, but every place they are shown already renders them as
+  text, so the escaping was applied twice: "AT&T" was displayed as
+  "AT&amp;T", and re-saving an edit escaped it again each time.
+- **Nothing ever interprets display text as HTML.** Every component that
+  shows it uses React's default JSX text rendering, which escapes it;
+  Cytoscape draws labels onto a `<canvas>`, never into the DOM; and
+  GraphLens has no HTML sink anywhere in `src/` (no
+  `dangerouslySetInnerHTML`, `innerHTML`/`outerHTML`,
+  `insertAdjacentHTML`, `document.write`, `DOMParser`, `eval` or
+  HTML-label Cytoscape extension). `tests/security/xss.test.js` scans the
+  source tree for each of these and fails if one appears, and
+  `tests/security/xssRender.test.jsx` renders the real details panels,
+  undo banner and table view with the payload set and checks the
+  produced markup contains no live tag.
+- **Text leaving the app stays inert.** A JSON export carries labels as
+  JSON string values (data, not markup); CSV export cells are defanged
+  against formula injection (below); and `escapeHtml` in `splSafety.js`
+  is still used wherever text is placed into an HTML string (the export
+  error message).
+- **Old exports are decoded on import.** A JSON export written by a
+  version before 1.22.0 (`metadata.appVersion` < 1.22) holds labels in
+  their escaped form; Import decodes the five entities
+  (`&lt; &gt; &quot; &#39; &amp;`, `&amp;` last) back to the original
+  text. A file with no or an unparseable `appVersion` is left as is.
 - CSV export cells are separately defanged against formula-injection
   payloads (`sanitizeForExportCell` - a leading `=`, `+`, `-`, `@` or tab
   is prefixed with a single quote, per OWASP CSV-injection guidance) since
@@ -162,11 +181,11 @@ of its two accepted shapes it turns out to be:
   always starts with `{`) for a file extension that matches neither.
 - Either way, every resulting node/edge row is then converted to the
   same raw "row" shape a search result arrives in and run through
-  `graphTransformer.transformRowsToGraph` - the same validation, escaping,
-  deduplication and `maxVisibleNodes`/`maxVisibleEdges` enforcement a live
+  `graphTransformer.transformRowsToGraph` - the same validation,
+  control-character stripping, deduplication and `maxVisibleNodes`/`maxVisibleEdges` enforcement a live
   search's results go through. An invalid identifier is dropped, not
-  imported; a label is HTML-escaped the same way (see `tests/security/
-  xss.test.js`'s import-pipeline cases, one per format). An import can
+  imported; a label is stored as plain text the same way (see
+  `tests/security/xss.test.js`'s import-pipeline cases, one per format). An import can
   never cause GraphLens to accept or display anything it would not
   otherwise accept from a search.
 - Import is gated by the same `enableExport` feature flag as Export (no
@@ -275,11 +294,13 @@ loading straight onto the canvas.
   corrected data as a file.
 - **Every edited value is sanitised exactly as a fresh row would be**:
   `graphTransformer.js`'s new `sanitizeNodeEdit`/`sanitizeEdgeEdit`
-  reuse the exact same label-escaping (`escapeHtml`), risk-score-clamping
+  reuse the exact same label sanitising (control-character stripping and
+  length caps), risk-score-clamping
   (0-100) and event-count-clamping logic `transformRowsToGraph`'s own
   `upsertNode`/`upsertEdge` already apply to every other admission path -
-  a hand-typed edit can never introduce markup or an out-of-range value
-  a live search result could not already produce (see `tests/security/
+  a hand-typed edit can never introduce a value a live search result
+  could not already produce, and since 1.22.0 saving the same text
+  repeatedly never changes it (see `tests/security/
   xss.test.js`'s edit-mode cases). `id`/`source`/`target` are never
   editable fields - changing them would just be creating a different
   node/edge under a confusing guise, not editing this one.
@@ -340,6 +361,15 @@ loading straight onto the canvas.
   not, with no third path. It only ever appears when the canvas
   currently has at least one node (`nodeCount > 0`); an empty canvas
   skips it entirely, since there is nothing it could lose.
+- **The edits-only discard guard (1.22.0)** uses the same dialog in front
+  of picking a search result, loading a query result onto the canvas and
+  loading a saved view - actions that also replace the graph but are
+  frequent enough that asking every time would be noise. It appears only
+  when the current graph holds an on-canvas edit (an App.jsx
+  `hasSessionEdits` flag set by Save and cleared by anything that
+  replaces the graph), and every one of those paths now also discards
+  the single-level undo snapshot, so Undo can never restore a stale
+  snapshot into an unrelated graph that reuses the same id.
 - **The time slicer** is a pure client-side filter over data already
   fetched (see ARCHITECTURE.md) - identical in kind to the existing Risk
   filter, just filtering on `firstSeen`/`lastSeen` instead of risk score.
