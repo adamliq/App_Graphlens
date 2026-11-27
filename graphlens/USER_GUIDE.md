@@ -62,8 +62,11 @@ document remains the fuller, authoritative version.
   Collapse, Pin/Unpin, Hide, Centre on screen, View supporting events,
   Use as path endpoint - without leaving the canvas or scrolling to the
   details panel first. Right-clicking also selects the node, so the
-  details panel updates to match. Right-clicking an edge or empty canvas
-  shows no menu.
+  details panel updates to match.
+- **Right-click a relationship** (1.21.0): opens a smaller context menu
+  with **View supporting events** - the one action the details panel
+  offers for a relationship beyond editing it. Right-clicking empty
+  canvas shows no menu either way.
 
 ## Filters
 
@@ -210,7 +213,10 @@ carrying spreadsheet-formula-injection payloads.
 
 Toolbar **Import** button accepts either of two file shapes, detected
 automatically (by file extension, falling back to content if neither
-matches), replacing whatever graph is currently shown:
+matches), replacing whatever graph is currently shown. If the canvas
+already has anything on it, clicking Import first asks you to confirm
+(1.21.0) before the file picker even opens - Cancel to keep what's on
+screen:
 
 - A **JSON** file previously produced by **Export > JSON (graph)** - a
   convenience for resuming or sharing a specific graph snapshot. This is
@@ -251,7 +257,12 @@ type, risk score, event count, and a few other fields, then **Save** or
 **Cancel**. An edit only changes what you see in this browser session -
 it is never sent to Splunk, never seen by anyone else, and is lost the
 moment you Reset graph or reload the page. If you want to keep a
-correction, re-export (CSV/JSON) afterward.
+correction, re-export (CSV/JSON) afterward. If you make a mistake, a
+banner reading **Edited "&lt;name&gt;"** appears with an **Undo** button
+(1.21.0) - it reverts that one edit back to what it was just before you
+saved. Only your single most recent edit can be undone this way (making
+another edit, or Dismissing the banner, clears it); it is lost on Reset
+graph or a reload, same as the edit itself.
 
 ## Load from job
 
@@ -269,7 +280,9 @@ after it finishes (a few minutes by Splunk's own default, unless it has
 been pinned or scheduled), so this only works while it still does. Every
 row is re-validated exactly the same way a live search result would be
 (invalid identifiers are silently dropped, labels are HTML-escaped) - it
-can never add anything GraphLens would not otherwise accept.
+can never add anything GraphLens would not otherwise accept. If the
+canvas already has anything on it, opening **Load from job** first asks
+you to confirm (1.21.0), same as Import.
 
 ## Graph limits
 
@@ -281,4 +294,7 @@ limit in the Configuration page.
 ## Resetting
 
 Toolbar **Reset graph** clears everything and returns you to the empty
-state, ready for a new search.
+state, ready for a new search. If the canvas already has anything on
+it, it first asks you to confirm (1.21.0) - Cancel to keep what's on
+screen. On an already-empty canvas it clears immediately, with no
+confirmation to click through.

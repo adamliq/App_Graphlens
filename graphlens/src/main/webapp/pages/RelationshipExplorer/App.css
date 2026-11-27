@@ -158,6 +158,16 @@
   font-size: 13px;
 }
 
+.graphlens-info-banner {
+  border: 1px solid #2b7de9;
+  background: #eaf2fd;
+  color: #1a4a7a;
+  padding: 8px 12px;
+  border-radius: 4px;
+  margin-bottom: 12px;
+  font-size: 13px;
+}
+
 .graphlens-actions-row {
   display: flex;
   flex-wrap: wrap;

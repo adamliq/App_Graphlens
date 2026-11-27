@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import PropTypes from 'prop-types';
 import cytoscape from 'cytoscape';
 import NodeContextMenu from './NodeContextMenu';
+import EdgeContextMenu from './EdgeContextMenu';
 
 const DEFAULT_NODE_COLOR = '#5A2BE2';
 const DEFAULT_EDGE_COLOR = '#9B9B9B';
@@ -175,7 +176,11 @@ export default function GraphCanvas({
 }) {
   const containerRef = useRef(null);
   const cyRef = useRef(null);
-  const [contextMenu, setContextMenu] = useState({ open: false, nodeId: null, point: null });
+  // One shared slot for either kind of right-click menu (never both at
+  // once, since a single click can only ever hit one element) - `kind`
+  // picks which of NodeContextMenu/EdgeContextMenu is actually open
+  // below, both sharing the same close-on-tap/pan/zoom behaviour.
+  const [contextMenu, setContextMenu] = useState({ open: false, kind: null, id: null, point: null });
   const closeContextMenu = () => setContextMenu((s) => (s.open ? { ...s, open: false } : s));
 
   useEffect(() => {
@@ -210,23 +215,27 @@ export default function GraphCanvas({
     // still drives the details panel exactly as before.
     cy.on('select unselect', 'node', () => onMultiSelectNodes(cy.nodes(':selected').map((n) => n.id())));
 
-    // Right-click (cxttap) a node: select it exactly like a left click
-    // would (so the Details panel agrees with whatever the menu is
-    // about to act on), then open NodeContextMenu at the click's
-    // position relative to this canvas (renderedPosition, which is
-    // already in the same coordinate space Popover's `pointTo` expects
-    // relative to its anchor). The container's own native `contextmenu`
-    // listener below suppresses the browser's own right-click menu
-    // everywhere on the canvas, node or not, so right-clicking an edge
-    // or empty background never shows a mismatched browser menu next to
-    // ours.
+    // Right-click (cxttap) a node or edge: select it exactly like a left
+    // click would (so the Details panel agrees with whatever the menu
+    // is about to act on), then open the matching context menu at the
+    // click's position relative to this canvas (renderedPosition, which
+    // is already in the same coordinate space Popover's `pointTo`
+    // expects relative to its anchor). The container's own native
+    // `contextmenu` listener below suppresses the browser's own
+    // right-click menu everywhere on the canvas, element or not, so
+    // right-clicking empty background never shows a mismatched browser
+    // menu next to ours (it just shows no menu at all).
     cy.on('cxttap', 'node', (evt) => {
       onSelectNode(evt.target.id());
-      setContextMenu({ open: true, nodeId: evt.target.id(), point: { x: evt.renderedPosition.x, y: evt.renderedPosition.y } });
+      setContextMenu({ open: true, kind: 'node', id: evt.target.id(), point: { x: evt.renderedPosition.x, y: evt.renderedPosition.y } });
+    });
+    cy.on('cxttap', 'edge', (evt) => {
+      onSelectEdge(evt.target.id());
+      setContextMenu({ open: true, kind: 'edge', id: evt.target.id(), point: { x: evt.renderedPosition.x, y: evt.renderedPosition.y } });
     });
     // Close the menu on any ordinary tap (selection/deselection already
     // handled by the listeners above) and whenever the viewport moves,
-    // so it never floats disconnected from the node it was opened for.
+    // so it never floats disconnected from the element it was opened for.
     cy.on('tap pan zoom', () => closeContextMenu());
 
     const containerEl = containerRef.current;
@@ -305,20 +314,25 @@ export default function GraphCanvas({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [layoutToken, layoutName]);
 
-  const contextMenuNode = contextMenu.nodeId
-    ? (nodes.find((n) => n.data.id === contextMenu.nodeId) || { data: { id: contextMenu.nodeId, label: contextMenu.nodeId } }).data
+  const contextMenuNodeId = contextMenu.kind === 'node' ? contextMenu.id : null;
+  const contextMenuEdgeId = contextMenu.kind === 'edge' ? contextMenu.id : null;
+  const contextMenuNode = contextMenuNodeId
+    ? (nodes.find((n) => n.data.id === contextMenuNodeId) || { data: { id: contextMenuNodeId, label: contextMenuNodeId } }).data
+    : null;
+  const contextMenuEdge = contextMenuEdgeId
+    ? (edges.find((e) => e.data.id === contextMenuEdgeId) || { data: { id: contextMenuEdgeId, relationshipLabel: contextMenuEdgeId } }).data
     : null;
 
   return (
     <>
       <div ref={containerRef} className="graphlens-canvas" role="img" aria-label="Relationship graph canvas" />
       <NodeContextMenu
-        open={contextMenu.open}
+        open={contextMenu.open && contextMenu.kind === 'node'}
         anchor={containerRef.current}
         point={contextMenu.point}
         node={contextMenuNode}
-        isExpanded={contextMenu.nodeId ? expandedNodeIds.includes(contextMenu.nodeId) : false}
-        isPinned={contextMenu.nodeId ? pinnedNodeIds.includes(contextMenu.nodeId) : false}
+        isExpanded={contextMenuNodeId ? expandedNodeIds.includes(contextMenuNodeId) : false}
+        isPinned={contextMenuNodeId ? pinnedNodeIds.includes(contextMenuNodeId) : false}
         onRequestClose={closeContextMenu}
         onExpand={onExpandNode}
         onCollapse={onCollapseNode}
@@ -328,6 +342,14 @@ export default function GraphCanvas({
         onViewEvidence={onViewEvidence}
         onSetPathEndpoint={onSetPathEndpoint}
         onCenter={(nodeId) => centerOnNode(cyRef.current, nodeId)}
+      />
+      <EdgeContextMenu
+        open={contextMenu.open && contextMenu.kind === 'edge'}
+        anchor={containerRef.current}
+        point={contextMenu.point}
+        edge={contextMenuEdge}
+        onRequestClose={closeContextMenu}
+        onViewEvidence={onViewEvidence}
       />
     </>
   );

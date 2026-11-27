@@ -1,7 +1,7 @@
 import React from 'react';
 import PageNav from '../../shared/components/PageNav';
 
-const APP_VERSION = '1.20.0';
+const APP_VERSION = '1.21.0';
 
 /**
  * Static, no-dependency reference page - unlike the other three pages,
@@ -77,8 +77,14 @@ export default function App() {
             menu with the same actions the details panel already offers -
             Expand/Collapse, Pin/Unpin, Hide, Centre on screen, View
             supporting events, Use as path endpoint. Right-clicking also
-            selects the node. Right-clicking an edge or empty canvas shows
-            no menu.
+            selects the node.
+          </li>
+          <li>
+            <strong>Right-click a relationship</strong> (1.21.0): opens a
+            smaller context menu with View supporting events - the one
+            action beyond editing the details panel offers for a
+            relationship. Right-clicking empty canvas shows no menu
+            either way.
           </li>
         </ul>
       </section>
@@ -181,7 +187,10 @@ export default function App() {
           only ever include what is currently visible to you. Toolbar
           <strong> Import</strong> button accepts either of two file
           shapes, replacing the current graph - detected automatically by
-          file extension (falling back to content, if neither matches):
+          file extension (falling back to content, if neither matches).
+          If the canvas already has anything on it, Import (and
+          <strong> Load from job</strong> below) asks you to confirm
+          first (1.21.0); an empty canvas skips straight to it:
         </p>
         <ul>
           <li>
@@ -233,7 +242,11 @@ export default function App() {
           data,&quot; for why this is the one capability in GraphLens
           with no corresponding server-side enforcement: nothing is
           written back to Splunk, so there is nothing for a REST
-          endpoint to reject.
+          endpoint to reject. Saving shows an <strong>Edited
+          &quot;&lt;name&gt;&quot;</strong> banner with an
+          <strong> Undo</strong> button (1.21.0) that reverts that one
+          save - only the single most recent edit can be undone this
+          way; making another edit, or dismissing the banner, clears it.
         </p>
       </section>
 
@@ -422,7 +435,11 @@ export default function App() {
 
       <section className="graphlens-section">
         <h2>Resetting</h2>
-        <p>Toolbar <strong>Reset graph</strong> clears everything and returns you to the empty state.</p>
+        <p>
+          Toolbar <strong>Reset graph</strong> clears everything and
+          returns you to the empty state - asking you to confirm first
+          (1.21.0) if the canvas already has anything on it.
+        </p>
       </section>
 
       <p style={{ fontSize: 12, color: '#5c5c5c' }}>
