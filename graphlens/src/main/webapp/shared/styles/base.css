@@ -1,0 +1,77 @@
+/*
+ * Shared base styles, imported by every page's index.jsx (1.23.0).
+ *
+ * Splunk Web's page template sets no font on the app's root container,
+ * so every plain HTML element (headings, paragraphs, definition lists,
+ * table cells) fell back to the browser's default serif font while the
+ * @splunk/react-ui components beside them used the Splunk sans-serif
+ * stack. Setting the same stack on each page root makes the two match.
+ */
+#graphlens-relationship-explorer-root,
+#graphlens-health-root,
+#graphlens-configuration-root,
+#graphlens-help-root {
+  font-family: "Splunk Platform Sans", Inter, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  font-size: 14px;
+  line-height: 1.4;
+  color: #2b3033;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Native form controls do not inherit the font by default. */
+#graphlens-relationship-explorer-root :is(button, input, select, textarea),
+#graphlens-health-root :is(button, input, select, textarea),
+#graphlens-configuration-root :is(button, input, select, textarea),
+#graphlens-help-root :is(button, input, select, textarea) {
+  font-family: inherit;
+}
+
+/*
+ * Status banners get a leading icon (1.23.0), drawn in CSS so every
+ * existing banner on every page - including ones that are just a line of
+ * text - picks it up without markup changes. Error: "!" on red; info:
+ * "i" on blue.
+ */
+.graphlens-error-banner,
+.graphlens-info-banner {
+  position: relative;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 2px 8px;
+  line-height: 1.4;
+}
+
+.graphlens-error-banner::before,
+.graphlens-info-banner::before {
+  position: absolute;
+  left: 10px;
+  top: 9px;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  color: #fff;
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 16px;
+  text-align: center;
+  font-family: inherit;
+}
+
+.graphlens-error-banner::before {
+  content: "!";
+  background: #d93f3f;
+}
+
+.graphlens-info-banner::before {
+  content: "i";
+  background: #2b7de9;
+  font-style: italic;
+  font-family: Georgia, serif;
+}
+
+.graphlens-banner-text {
+  flex: 1 1 140px;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}

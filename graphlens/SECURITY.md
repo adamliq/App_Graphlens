@@ -375,7 +375,9 @@ loading straight onto the canvas.
   filter, just filtering on `firstSeen`/`lastSeen` instead of risk score.
   It never changes what is searched or dispatches anything of its own.
 - **Session-only style overrides** are kept in React state alone - never
-  written to KV Store, never to browser storage, and never sent to
+  written to KV Store, never to browser storage (the only thing GraphLens
+  keeps there is which sidebar sections are open - see PRIVACY.md), and
+  never sent to
   Splunk or anywhere else. They cannot affect any other user's session
   and do not survive a reload; they also never change the *curated*
   per-type colours an administrator maintains in

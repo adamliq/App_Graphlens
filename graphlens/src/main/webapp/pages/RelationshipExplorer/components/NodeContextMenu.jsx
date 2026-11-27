@@ -2,6 +2,14 @@ import React from 'react';
 import PropTypes from 'prop-types';
 import Popover from '@splunk/react-ui/Popover';
 import Menu from '@splunk/react-ui/Menu';
+import PlusCircle from '@splunk/react-icons/PlusCircle';
+import MinusCircle from '@splunk/react-icons/MinusCircle';
+import Pin from '@splunk/react-icons/Pin';
+import PinStuck from '@splunk/react-icons/PinStuck';
+import EyeSlashed from '@splunk/react-icons/EyeSlashed';
+import NodesCentered from '@splunk/react-icons/NodesCentered';
+import List from '@splunk/react-icons/List';
+import NodeStartToEnd from '@splunk/react-icons/NodeStartToEnd';
 
 /**
  * Right-click (Cytoscape's `cxttap`) menu for a node - GraphCanvas.jsx
@@ -44,25 +52,34 @@ export default function NodeContextMenu({
       anchor={anchor}
       pointTo={point}
       onRequestClose={onRequestClose}
-      appearance="none"
+      appearance="normal"
+      hideArrow
     >
-      <Menu>
-        <Menu.Heading>{node.label}</Menu.Heading>
+      {/*
+        1.23.0: "normal" appearance (border, rounded corners, shadow)
+        instead of "none", which left the menu as a borderless white box
+        on the near-white canvas. Items are grouped - graph actions, view
+        actions, investigate - each with an icon matching the toolbar's.
+      */}
+      <Menu className="graphlens-context-menu">
+        <Menu.Heading title={node.label}>{node.label}</Menu.Heading>
         <Menu.Divider />
         {isExpanded ? (
-          <Menu.Item onClick={act(onCollapse)}>Collapse</Menu.Item>
+          <Menu.Item startAdornment={<MinusCircle />} onClick={act(onCollapse)}>Collapse</Menu.Item>
         ) : (
-          <Menu.Item onClick={act(onExpand)}>Expand</Menu.Item>
+          <Menu.Item startAdornment={<PlusCircle />} onClick={act(onExpand)}>Expand</Menu.Item>
         )}
         {isPinned ? (
-          <Menu.Item onClick={act(onUnpin)}>Unpin</Menu.Item>
+          <Menu.Item startAdornment={<PinStuck />} onClick={act(onUnpin)}>Unpin</Menu.Item>
         ) : (
-          <Menu.Item onClick={act(onPin)}>Pin</Menu.Item>
+          <Menu.Item startAdornment={<Pin />} onClick={act(onPin)}>Pin</Menu.Item>
         )}
-        <Menu.Item onClick={act(onHide)}>Hide</Menu.Item>
-        <Menu.Item onClick={act(onCenter)}>Centre on screen</Menu.Item>
-        <Menu.Item onClick={act((id) => onViewEvidence(id, 'node'))}>View supporting events</Menu.Item>
-        <Menu.Item onClick={act(onSetPathEndpoint)}>Use as path endpoint</Menu.Item>
+        <Menu.Item startAdornment={<EyeSlashed />} onClick={act(onHide)}>Hide</Menu.Item>
+        <Menu.Divider />
+        <Menu.Item startAdornment={<NodesCentered />} onClick={act(onCenter)}>Centre on screen</Menu.Item>
+        <Menu.Divider />
+        <Menu.Item startAdornment={<List />} onClick={act((id) => onViewEvidence(id, 'node'))}>View supporting events</Menu.Item>
+        <Menu.Item startAdornment={<NodeStartToEnd />} onClick={act(onSetPathEndpoint)}>Use as path endpoint</Menu.Item>
       </Menu>
     </Popover>
   );

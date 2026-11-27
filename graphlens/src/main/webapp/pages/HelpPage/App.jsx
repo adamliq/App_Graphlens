@@ -1,7 +1,7 @@
 import React from 'react';
 import PageNav from '../../shared/components/PageNav';
 
-const APP_VERSION = '1.22.0';
+const APP_VERSION = '1.23.0';
 
 /**
  * Static, no-dependency reference page - unlike the other three pages,
@@ -62,8 +62,9 @@ export default function App() {
             tables instead of the canvas - read-only; switch back to Graph
             to interact with the graph again.
           </li>
-          <li><strong>Fit to screen</strong> / <strong>Centre selected</strong>: toolbar buttons.</li>
-          <li><strong>Change layout</strong>: toolbar dropdown. Recalculate layout re-runs the current layout.</li>
+          <li><strong>Fit to screen</strong> / <strong>Centre selected</strong>: toolbar icon buttons - hover for their names.</li>
+          <li><strong>Change layout</strong>: toolbar <strong>Layout</strong> dropdown. The circular-arrow icon button beside it (Recalculate layout) re-runs the current layout.</li>
+          <li><strong>Sidebar sections</strong> (1.23.0): click a section heading to collapse or expand it. Your choice is remembered in this browser.</li>
           <li>
             <strong>Select several nodes at once</strong>: hold Shift and
             drag a box around them (an ordinary drag still pans), or click a

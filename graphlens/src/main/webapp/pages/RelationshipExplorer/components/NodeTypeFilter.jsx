@@ -12,7 +12,6 @@ export default function NodeTypeFilter({ nodeTypes, hiddenNodeTypes, onChange })
 
   return (
     <div className="graphlens-section">
-      <h3 id="graphlens-node-type-filter-heading">Node types</h3>
       <ul style={{ listStyle: 'none', margin: 0, padding: 0 }} aria-labelledby="graphlens-node-type-filter-heading">
         {nodeTypes.map((nt) => {
           const inputId = `graphlens-node-type-${nt.node_type}`;

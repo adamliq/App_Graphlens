@@ -4,6 +4,14 @@ import Button from '@splunk/react-ui/Button';
 import Text from '@splunk/react-ui/Text';
 import NumberField from '@splunk/react-ui/Number';
 import TextArea from '@splunk/react-ui/TextArea';
+import PlusCircle from '@splunk/react-icons/PlusCircle';
+import MinusCircle from '@splunk/react-icons/MinusCircle';
+import Pin from '@splunk/react-icons/Pin';
+import PinStuck from '@splunk/react-icons/PinStuck';
+import EyeSlashed from '@splunk/react-icons/EyeSlashed';
+import List from '@splunk/react-icons/List';
+import NodeStartToEnd from '@splunk/react-icons/NodeStartToEnd';
+import Pencil from '@splunk/react-icons/Pencil';
 import { STATUS_COLORS, HIGH_RISK_THRESHOLD } from './GraphCanvas';
 
 function fieldsFromNode(node) {
@@ -63,55 +71,58 @@ export default function NodeDetailsPanel({
     return (
       <div className="graphlens-section">
         <h3>Edit node</h3>
-        <p style={{ fontSize: 12, color: '#5c5c5c' }}>
-          {node.id}
-        </p>
-        <label style={{ fontSize: 12, display: 'block', marginBottom: 6 }}>
+        <div className="graphlens-entity-id">{node.id}</div>
+        <label className="graphlens-field">
           Label
           <Text value={fields.label} onChange={(e, { value }) => setFields({ ...fields, label: value })} />
         </label>
-        <label style={{ fontSize: 12, display: 'block', marginBottom: 6 }}>
+        <label className="graphlens-field">
           Type
           <Text value={fields.type} onChange={(e, { value }) => setFields({ ...fields, type: value })} />
         </label>
-        <label style={{ fontSize: 12, display: 'block', marginBottom: 6 }}>
+        <label className="graphlens-field">
           Group
           <Text value={fields.group} onChange={(e, { value }) => setFields({ ...fields, group: value })} />
         </label>
-        <label style={{ fontSize: 12, display: 'block', marginBottom: 6 }}>
+        <label className="graphlens-field">
           Risk score (0-100)
           <NumberField value={fields.riskScore} onChange={(e, { value }) => setFields({ ...fields, riskScore: value })} />
         </label>
-        <label style={{ fontSize: 12, display: 'block', marginBottom: 6 }}>
+        <label className="graphlens-field">
           Event count
           <NumberField value={fields.eventCount} onChange={(e, { value }) => setFields({ ...fields, eventCount: value })} />
         </label>
-        <label style={{ fontSize: 12, display: 'block', marginBottom: 6 }}>
+        <label className="graphlens-field">
           Description
           <TextArea value={fields.description} onChange={(e, { value }) => setFields({ ...fields, description: value })} rowsMin={2} />
         </label>
-        <label style={{ fontSize: 12, display: 'block', marginBottom: 6 }}>
+        <label className="graphlens-field">
           Source index
           <Text value={fields.sourceIndex} onChange={(e, { value }) => setFields({ ...fields, sourceIndex: value })} />
         </label>
-        <label style={{ fontSize: 12, display: 'block', marginBottom: 10 }}>
+        <label className="graphlens-field">
           Source sourcetype
           <Text value={fields.sourceSourcetype} onChange={(e, { value }) => setFields({ ...fields, sourceSourcetype: value })} />
         </label>
-        <div className="graphlens-actions-row">
-          <Button label="Save" appearance="primary" onClick={() => { onSaveEdit(node.id, fields); setIsEditing(false); }} />
-          <Button label="Cancel" onClick={() => { setFields(fieldsFromNode(node)); setIsEditing(false); }} />
+        <div className="graphlens-actions-grid graphlens-actions-grid-2">
+          <Button label="Save" appearance="primary" onClick={() => { onSaveEdit(node.id, fields); setIsEditing(false); }} inline={false} />
+          <Button label="Cancel" onClick={() => { setFields(fieldsFromNode(node)); setIsEditing(false); }} inline={false} />
         </div>
       </div>
     );
   }
 
+  // 1.23.0: the title/id sit above a two-column property grid (label |
+  // value) instead of a browser-default <dl> that put every value on its
+  // own indented line; actions are laid out as one primary button, the
+  // two long investigate actions full width, then a row of three short
+  // ones - instead of a wrapping row of mixed-width buttons.
   return (
     <div className="graphlens-section">
       <h3>Node details</h3>
-      <dl style={{ fontSize: 13, margin: 0 }}>
-        <dt style={{ fontWeight: 600 }}>{node.label}</dt>
-        <dd style={{ margin: '2px 0 8px 0', color: '#5c5c5c' }}>{node.id}</dd>
+      <div className="graphlens-entity-title">{node.label}</div>
+      <div className="graphlens-entity-id">{node.id}</div>
+      <dl className="graphlens-props">
         <dt>Type</dt>
         <dd>{node.type}</dd>
         {node.group && (<><dt>Group</dt><dd>{node.group}</dd></>)}
@@ -127,21 +138,23 @@ export default function NodeDetailsPanel({
         {node.sourceIndex && (<><dt>Source index</dt><dd>{node.sourceIndex}</dd></>)}
         {node.sourceSourcetype && (<><dt>Source sourcetype</dt><dd>{node.sourceSourcetype}</dd></>)}
       </dl>
-      <div className="graphlens-actions-row">
+      <div className="graphlens-actions-stack">
         {!isExpanded ? (
-          <Button label="Expand" onClick={() => onExpand(node.id)} appearance="primary" />
+          <Button label="Expand" icon={<PlusCircle />} onClick={() => onExpand(node.id)} appearance="primary" inline={false} />
         ) : (
-          <Button label="Collapse" onClick={() => onCollapse(node.id)} />
+          <Button label="Collapse" icon={<MinusCircle />} onClick={() => onCollapse(node.id)} inline={false} />
         )}
-        <Button label="Hide" onClick={() => onHide(node.id)} />
-        {isPinned ? (
-          <Button label="Unpin" onClick={() => onUnpin(node.id)} />
-        ) : (
-          <Button label="Pin" onClick={() => onPin(node.id)} />
-        )}
-        <Button label="View supporting events" onClick={() => onViewEvidence(node.id, 'node')} />
-        <Button label="Use as path endpoint" onClick={() => onSetPathEndpoint(node.id)} />
-        {canEdit && <Button label="Edit" onClick={() => { setFields(fieldsFromNode(node)); setIsEditing(true); }} />}
+        <Button label="View supporting events" icon={<List />} onClick={() => onViewEvidence(node.id, 'node')} inline={false} />
+        <Button label="Use as path endpoint" icon={<NodeStartToEnd />} onClick={() => onSetPathEndpoint(node.id)} inline={false} />
+        <div className="graphlens-actions-grid">
+          {isPinned ? (
+            <Button label="Unpin" icon={<PinStuck />} onClick={() => onUnpin(node.id)} inline={false} />
+          ) : (
+            <Button label="Pin" icon={<Pin />} onClick={() => onPin(node.id)} inline={false} />
+          )}
+          <Button label="Hide" icon={<EyeSlashed />} onClick={() => onHide(node.id)} inline={false} />
+          {canEdit && <Button label="Edit" icon={<Pencil />} onClick={() => { setFields(fieldsFromNode(node)); setIsEditing(true); }} inline={false} />}
+        </div>
       </div>
     </div>
   );

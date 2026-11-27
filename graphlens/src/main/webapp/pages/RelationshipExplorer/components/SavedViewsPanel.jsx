@@ -32,7 +32,6 @@ export default function SavedViewsPanel({ views, isLoading, error, onSave, onLoa
 
   return (
     <div className="graphlens-section">
-      <h3 id="graphlens-saved-views-heading">Saved views</h3>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }} aria-labelledby="graphlens-saved-views-heading">
         <label htmlFor="graphlens-saved-view-name" style={{ fontSize: 12 }}>
           Name

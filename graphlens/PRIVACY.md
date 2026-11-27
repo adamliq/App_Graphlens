@@ -15,6 +15,7 @@ analytics, and no telemetry service.
 | Annotations | `graphlens_annotations` KV Store collection | User notes attached to a node/edge | Until deleted, or until the optional `expiry` field is reached and it is cleaned up |
 | Audit trail | `graphlens_audit_log` KV Store collection | Operational health/troubleshooting (section "Audit logging" in SECURITY.md) | Recommend a periodic retention job (see ADMIN_GUIDE.md); not automatically purged by GraphLens itself |
 | Administrator configuration | `graphlens_settings.conf` (`local/` override) | Graph limits, feature toggles, search defaults | Standard Splunk configuration lifecycle |
+| Which left-sidebar sections are open (1.23.0) | Browser `localStorage`, key `graphlens.sidebar.openSections` - a map of section name to true/false, nothing else | Keep the sidebar the way the viewer left it | Until the viewer clears site data; falls back to the defaults if storage is blocked |
 
 ## Personal data
 
@@ -34,10 +35,10 @@ The only personal data GraphLens handles is:
 
 GraphLens does not collect device fingerprints, does not set its own
 cookies (only the Splunk session cookie already used by Splunk Web
-applies), and does not use browser local storage for anything beyond
-transient, explicitly-opt-in UI preferences if you enable that in a future
-configuration (1.0.0 does not persist any graph state to local storage by
-default).
+applies), and uses browser local storage for one UI preference only:
+which left-sidebar sections are open (1.23.0, see the table above). No
+graph data, search result, label, edit or identifier is ever written to
+browser storage.
 
 ## Data subject requests
 

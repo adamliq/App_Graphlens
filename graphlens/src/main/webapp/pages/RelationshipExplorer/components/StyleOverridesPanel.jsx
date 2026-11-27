@@ -22,7 +22,6 @@ export default function StyleOverridesPanel({
 
   return (
     <div className="graphlens-section">
-      <h3 id="graphlens-style-overrides-heading">Colours (this session only)</h3>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }} aria-labelledby="graphlens-style-overrides-heading">
         <label htmlFor="graphlens-style-node-type" style={{ fontSize: 12 }}>
           Node type

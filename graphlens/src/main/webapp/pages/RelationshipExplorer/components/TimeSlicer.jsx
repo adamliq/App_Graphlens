@@ -15,7 +15,6 @@ export default function TimeSlicer({ minMs, maxMs, valueMin, valueMax, onChange 
   if (minMs === null || maxMs === null || minMs >= maxMs) {
     return (
       <div className="graphlens-section">
-        <h3 id="graphlens-time-slicer-heading">Time window</h3>
         <p style={{ fontSize: 12, color: '#8a8a8a' }} aria-labelledby="graphlens-time-slicer-heading">
           Not enough time-stamped data in the current graph to slice by time.
         </p>
@@ -28,7 +27,6 @@ export default function TimeSlicer({ minMs, maxMs, valueMin, valueMax, onChange 
 
   return (
     <div className="graphlens-section">
-      <h3 id="graphlens-time-slicer-heading">Time window</h3>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }} aria-labelledby="graphlens-time-slicer-heading">
         <label htmlFor="graphlens-time-from" style={{ fontSize: 12 }}>
           From: {new Date(effMin).toLocaleString()}
