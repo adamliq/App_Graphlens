@@ -1,7 +1,7 @@
 import React from 'react';
 import PageNav from '../../shared/components/PageNav';
 
-const APP_VERSION = '1.24.1';
+const APP_VERSION = '1.25.0';
 
 /**
  * Static, no-dependency reference page - unlike the other three pages,
@@ -59,10 +59,13 @@ export default function App() {
           <li>
             <strong>Graph / Table</strong>: toolbar buttons. Table shows the
             same, already-filtered nodes and relationships as two plain
-            tables instead of the canvas - read-only; switch back to Graph
-            to interact with the graph again.
+            tables instead of the canvas. Select a row (click, or Enter on
+            its first cell) to select that node or relationship (1.25.0).
           </li>
-          <li><strong>Fit to screen</strong> / <strong>Centre selected</strong>: toolbar icon buttons - hover for their names.</li>
+          <li><strong>Fit to screen</strong> / <strong>Centre on selection</strong>: toolbar icon buttons - hover for their names.</li>
+          <li><strong>Search</strong>: arrow keys choose a match, Enter opens it; focus then moves to its Expand button.</li>
+          <li><strong>Hide</strong>: Undo straight away, or use the sidebar&apos;s Hidden nodes section to Show them again.</li>
+          <li><strong>Keyboard</strong>: skip links at the top of the page jump to details or the graph; Shift+F10 on the graph opens the menu for the selection.</li>
           <li><strong>Change layout</strong>: toolbar <strong>Layout</strong> dropdown. The circular-arrow icon button beside it (Recalculate layout) re-runs the current layout.</li>
           <li><strong>Sidebar sections</strong> (1.23.0): click a section heading to collapse or expand it. Your choice is remembered in this browser.</li>
           <li>
@@ -76,9 +79,9 @@ export default function App() {
           <li>
             <strong>Right-click a node</strong> (1.20.0): opens a context
             menu with the same actions the details panel already offers -
-            Expand/Collapse, Pin/Unpin, Hide, Centre on screen, View
-            supporting events, Use as path endpoint. Right-clicking also
-            selects the node.
+            Expand/Collapse, Pin/Unpin, Hide, View supporting events,
+            Path from here, Path to here, Centre on selection.
+            Right-clicking also selects the node.
           </li>
           <li>
             <strong>Right-click a relationship</strong> (1.21.0): opens a
@@ -138,8 +141,12 @@ export default function App() {
       <section className="graphlens-section">
         <h2>Path finder</h2>
         <p>
-          In the left-hand panel, choose a start and end node from the
-          currently <em>visible</em> graph and click <strong>Find shortest path</strong>.
+          Right-click a node and choose <strong>Path from here</strong>,
+          then <strong>Path to here</strong> on another; the path is found,
+          highlighted and reported at the top of the graph as soon as both
+          ends are set. Or, in the left-hand panel, choose a start and end
+          node from the currently <em>visible</em> graph and click
+          <strong>Find shortest path</strong>.
           This highlights the shortest route using only edges already loaded
           in your browser - a convenience for visually tracing a connection,
           not an unrestricted graph-database traversal. If the two nodes

@@ -11,12 +11,13 @@ import Button from '@splunk/react-ui/Button';
  * overwritten by the next edit) - this is a quick "oops" recovery, not
  * a full undo history. Clicking Undo (or Dismiss) clears it either way.
  */
-export default function EditUndoNotification({ lastEdit, onUndo, onDismiss }) {
+export default function EditUndoNotification({ lastEdit, message, onUndo, onDismiss }) {
   if (!lastEdit) return null;
   return (
     <div className="graphlens-info-banner" role="status">
       <span className="graphlens-banner-text">
-        Edited &quot;{lastEdit.label}&quot;.
+        {/* 1.25.0: `message` lets Hide reuse this banner ("Hid ..."). */}
+        {message || `Edited "${lastEdit.label}".`}
       </span>
       <Button label="Undo" appearance="secondary" onClick={onUndo} />
       <Button label="Dismiss" appearance="secondary" onClick={onDismiss} />
@@ -26,8 +27,9 @@ export default function EditUndoNotification({ lastEdit, onUndo, onDismiss }) {
 
 EditUndoNotification.propTypes = {
   lastEdit: PropTypes.shape({ label: PropTypes.string }),
+  message: PropTypes.string,
   onUndo: PropTypes.func.isRequired,
   onDismiss: PropTypes.func.isRequired,
 };
 
-EditUndoNotification.defaultProps = { lastEdit: null };
+EditUndoNotification.defaultProps = { lastEdit: null, message: '' };

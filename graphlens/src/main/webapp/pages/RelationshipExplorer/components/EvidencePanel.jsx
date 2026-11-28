@@ -2,6 +2,7 @@ import React from 'react';
 import PropTypes from 'prop-types';
 import WaitSpinner from '@splunk/react-ui/WaitSpinner';
 import Button from '@splunk/react-ui/Button';
+import External from '@splunk/react-icons/ArrowSquareTopRight';
 
 export default function EvidencePanel({ isLoading, error, rows, fieldOrder, targetLabel, onOpenInSearch, onClear }) {
   return (
@@ -18,10 +19,18 @@ export default function EvidencePanel({ isLoading, error, rows, fieldOrder, targ
           {targetLabel && !isLoading && !error && <span className="graphlens-count-badge">{rows.length}</span>}
         </h3>
         <div className="graphlens-actions-row" style={{ marginTop: 0 }}>
-          {onOpenInSearch && <Button label="Open in Splunk Search" onClick={onOpenInSearch} />}
+          {onOpenInSearch && <Button label="Open in Splunk Search" icon={<External />} onClick={onOpenInSearch} />}
           {targetLabel && <Button label="Clear" appearance="secondary" onClick={onClear} />}
         </div>
       </div>
+      {/*
+        1.25.0: results appear in this bottom panel, away from the button
+        that asked for them - announce the outcome to screen readers.
+      */}
+      <span className="graphlens-visually-hidden" role="status" aria-live="polite">
+        {isLoading && targetLabel ? `Loading supporting events for ${targetLabel}.` : ''}
+        {!isLoading && !error && targetLabel ? `${rows.length} supporting event${rows.length === 1 ? '' : 's'} found for ${targetLabel}.` : ''}
+      </span>
       {isLoading && <WaitSpinner size="small" />}
       {error && <div className="graphlens-error-banner" role="alert">{error.message}</div>}
       {!isLoading && !error && targetLabel && rows.length === 0 && (

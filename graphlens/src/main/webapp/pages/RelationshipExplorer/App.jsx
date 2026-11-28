@@ -20,7 +20,7 @@ import { setInitialNode as replaySetInitialNode, mergeExpansion as replayMergeEx
 import { sanitizeSearchTerm, isValidId, GraphLensValidationError } from '../../shared/utilities/splSafety';
 
 import GraphToolbar from './components/GraphToolbar';
-import GraphCanvas, { fitGraph, centerOnNode, selectNodesByType } from './components/GraphCanvas';
+import GraphCanvas, { fitGraph, centerOnNode, selectNodesByType, fitElements } from './components/GraphCanvas';
 import NodeTypeFilter from './components/NodeTypeFilter';
 import RelationshipTypeFilter from './components/RelationshipTypeFilter';
 import RiskFilter from './components/RiskFilter';
@@ -44,9 +44,11 @@ import ErrorNotification from './components/ErrorNotification';
 import EditUndoNotification from './components/EditUndoNotification';
 import EmptyState from './components/EmptyState';
 import SidebarSection from './components/SidebarSection';
+import HiddenNodesPanel from './components/HiddenNodesPanel';
+import PathStatusChip from './components/PathStatusChip';
 import PageNav from '../../shared/components/PageNav';
 
-const APP_VERSION = '1.24.1';
+const APP_VERSION = '1.25.0';
 
 function downloadBlob(blob, filename) {
   const url = URL.createObjectURL(blob);
@@ -67,6 +69,7 @@ function downloadBlob(blob, filename) {
 const DEFAULT_OPEN_SECTIONS = {
   nodeTypes: true,
   relationshipTypes: true,
+  hiddenNodes: true,
   risk: true,
   timeWindow: true,
   legend: true,
@@ -116,16 +119,20 @@ export default function App() {
   const [canEditGraphData, setCanEditGraphData] = useState(false);
   const [csvPreviewState, setCsvPreviewState] = useState({ open: false, header: [], rows: [], fileName: null, error: null });
   const [confirmState, setConfirmState] = useState(null);
+  // 1.25.0: the element that opened the current dialog, so focus can go
+  // back to it when the dialog closes (it used to fall to <body>).
+  const returnFocusRef = useRef(null);
+  // 1.25.0: one-level undo for Hide (the reducer always had unhideNode,
+  // but nothing in the UI called it - Reset graph was the only way back).
+  const [lastHide, setLastHide] = useState(null);
+  // 1.25.0: bumped by a search pick so focus can move to the details panel.
+  const [focusDetailsToken, setFocusDetailsToken] = useState(0);
+  // 1.25.0: Filters drawer at narrow widths (CSS shows the toggle <= 1100px).
+  const [filtersDrawerOpen, setFiltersDrawerOpen] = useState(false);
+  const detailsRef = useRef(null);
+  const filtersRef = useRef(null);
   const [lastEdit, setLastEdit] = useState(null);
   const [openSections, setOpenSections] = useState(loadOpenSections);
-  const setSectionOpen = useCallback((sectionId, isOpen) => {
-    setOpenSections((prev) => {
-      if (prev[sectionId] === isOpen) return prev;
-      const next = { ...prev, [sectionId]: isOpen };
-      persistOpenSections(next);
-      return next;
-    });
-  }, []);
   const toggleSection = useCallback((sectionId) => {
     setOpenSections((prev) => {
       const next = { ...prev, [sectionId]: !prev[sectionId] };
@@ -210,6 +217,17 @@ export default function App() {
     ? nodeCount >= settings.maxVisibleNodes || edgeCount >= settings.maxVisibleEdges
     : false;
 
+  const rememberFocus = useCallback(() => {
+    const el = document.activeElement;
+    if (el && el !== document.body) returnFocusRef.current = el;
+  }, []);
+
+  const restoreFocus = useCallback(() => {
+    const el = returnFocusRef.current;
+    returnFocusRef.current = null;
+    if (el && document.body.contains(el)) window.setTimeout(() => el.focus(), 0);
+  }, []);
+
   // Guards Reset graph / Import / Load from job (1.21.0) - each one
   // replaces the whole canvas with no way back, and since 1.19.0 that
   // can silently discard an on-canvas edit (itself session-only, so
@@ -222,6 +240,7 @@ export default function App() {
       action();
       return;
     }
+    if (!returnFocusRef.current) rememberFocus();
     setConfirmState({
       title,
       message,
@@ -231,7 +250,7 @@ export default function App() {
         action();
       },
     });
-  }, []);
+  }, [rememberFocus]);
 
   const confirmIfGraphHasContent = useCallback(
     (action, opts) => confirmBeforeDiscard(nodeCount > 0, action, opts),
@@ -258,7 +277,9 @@ export default function App() {
   const discardEditState = useCallback(() => {
     setLastEdit(null);
     setHasSessionEdits(false);
+    setLastHide(null);
   }, []);
+
 
   const rawNodeTypeList = useMemo(() => deriveNodeTypeList(Object.values(state.visibleNodes), nodeTypeConfig), [state.visibleNodes, nodeTypeConfig]);
   const rawRelationshipTypeList = useMemo(() => deriveRelationshipTypeList(Object.values(state.visibleEdges), relationshipTypeConfig), [state.visibleEdges, relationshipTypeConfig]);
@@ -343,8 +364,10 @@ export default function App() {
     actions.setInitialNode(result);
     setSearchResults([]);
     setPath(null);
+    setPathEndpoints({ startNodeId: null, endNodeId: null });
     discardEditState();
     setLayoutToken((t) => t + 1);
+    setFocusDetailsToken((t) => t + 1);
   }, [actions, discardEditState]);
 
   const requestPickResult = useCallback(
@@ -437,8 +460,35 @@ export default function App() {
     multiSelectedNodeIds.forEach((id) => actions.unpinNode(id));
   }, [multiSelectedNodeIds, actions]);
 
+  // 1.25.0: Hide is undoable (banner) and recoverable (Hidden nodes list),
+  // and hiding the selected node clears the selection - the details panel
+  // used to keep showing a node that was no longer on the graph.
+  const handleHideNode = useCallback((nodeId) => {
+    const node = state.visibleNodes[nodeId];
+    actions.hideNode(nodeId);
+    if (state.selectedNodeId === nodeId) actions.clearSelection();
+    setLastHide({ ids: [nodeId], label: node ? node.label : nodeId });
+  }, [actions, state.visibleNodes, state.selectedNodeId]);
+
+  const handleUndoHide = useCallback(() => {
+    if (!lastHide) return;
+    lastHide.ids.forEach((id) => actions.unhideNode(id));
+    setLastHide(null);
+  }, [lastHide, actions]);
+
+  const handleShowHiddenNode = useCallback((nodeId) => {
+    actions.unhideNode(nodeId);
+    setLastHide((prev) => (prev && prev.ids.includes(nodeId) ? null : prev));
+  }, [actions]);
+
+  const handleShowAllHidden = useCallback(() => {
+    state.hiddenNodeIds.forEach((id) => actions.unhideNode(id));
+    setLastHide(null);
+  }, [actions, state.hiddenNodeIds]);
+
   const handleBulkHide = useCallback(() => {
     multiSelectedNodeIds.forEach((id) => actions.hideNode(id));
+    setLastHide({ ids: [...multiSelectedNodeIds], label: `${multiSelectedNodeIds.length} nodes` });
     // The hidden nodes are about to be removed from the canvas entirely
     // (selectRenderableElements filters them out), so their selection no
     // longer means anything - clear it rather than leave the bulk panel
@@ -469,12 +519,13 @@ export default function App() {
         return;
       }
       const spl = buildEvidenceSpl(tokens, 100);
+      setEvidence((prev) => ({ ...prev, spl }));
       const job = dispatchAdHocSearch(
         spl,
         { earliest: timeRange.earliest, latest: timeRange.latest, maxWaitMs: settings.searchDispatchMaxTimeSeconds * 1000 },
       );
       const { rows, fieldOrder } = await job.waitForResults({ count: 100 });
-      setEvidence({ isLoading: false, error: null, rows, fieldOrder, targetLabel: kind === 'node' ? target.label : target.relationshipLabel });
+      setEvidence({ isLoading: false, error: null, rows, fieldOrder, targetLabel: kind === 'node' ? target.label : target.relationshipLabel, spl });
       recordAuditEvent(AUDIT_ACTIONS.VIEW_EVIDENCE, kind === 'node' ? { nodeId: targetId } : { edgeId: targetId });
     } catch (err) {
       const normalized = toUserFacingError(err);
@@ -482,12 +533,31 @@ export default function App() {
     }
   }, [settings, state.visibleNodes, state.visibleEdges, timeRange.earliest, timeRange.latest]);
 
-  const handleSetPathEndpoint = useCallback((nodeId) => {
-    setPathEndpoints((prev) => (!prev.startNodeId ? { ...prev, startNodeId: nodeId } : { ...prev, endNodeId: nodeId }));
-    // The Path finder section starts collapsed (1.23.0); open it so the
-    // endpoint just chosen is visible rather than silently set.
-    setSectionOpen('pathFinder', true);
-  }, [setSectionOpen]);
+  // 1.25.0: explicit "Path from here" / "Path to here" replace "Use as
+  // path endpoint" (which set the start once, then the end every time
+  // after, without saying which). As soon as both ends are set the path
+  // is searched - see the effect below - and PathStatusChip reports it on
+  // the canvas, so nobody has to scroll the sidebar to a Find button.
+  // 1.25.0: "Open in Splunk Search" (EvidencePanel always supported it;
+  // it was never wired up). Opens the same evidence search - built only
+  // from validated tokens by buildEvidenceSpl - in the Search app, with the
+  // same time range, in a new tab.
+  const handleOpenEvidenceInSearch = useCallback(() => {
+    if (!evidence.spl) return;
+    const url = new URL('../search/search', window.location.href);
+    url.searchParams.set('q', evidence.spl);
+    url.searchParams.set('earliest', timeRange.earliest);
+    url.searchParams.set('latest', timeRange.latest);
+    window.open(url.toString(), '_blank', 'noopener');
+  }, [evidence.spl, timeRange.earliest, timeRange.latest]);
+
+  const handleSetPathStart = useCallback((nodeId) => {
+    setPathEndpoints((prev) => ({ ...prev, startNodeId: nodeId }));
+  }, []);
+
+  const handleSetPathEnd = useCallback((nodeId) => {
+    setPathEndpoints((prev) => ({ ...prev, endNodeId: nodeId }));
+  }, []);
 
   const handleFindPath = useCallback(() => {
     if (!pathEndpoints.startNodeId || !pathEndpoints.endNodeId) return null;
@@ -501,6 +571,22 @@ export default function App() {
     setPath(null);
     setPathEndpoints({ startNodeId: null, endNodeId: null });
   }, []);
+
+  // Runs the path search whenever both ends are (re)set, from the canvas
+  // menu, the details panel or the Path finder dropdowns alike. Keyed on
+  // the endpoints only - filtering the graph afterwards doesn't re-run it.
+  const [pathSearched, setPathSearched] = useState(false);
+  useEffect(() => {
+    if (!pathEndpoints.startNodeId || !pathEndpoints.endNodeId) {
+      setPathSearched(false);
+      return;
+    }
+    const found = handleFindPath();
+    setPathSearched(true);
+    // Bring the whole path into view, clear of the status chip.
+    if (found) fitElements(cyRef.current, [...found.nodeIds, ...found.edgeIds]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pathEndpoints.startNodeId, pathEndpoints.endNodeId]);
 
   const handleReset = useCallback(() => {
     actions.reset();
@@ -904,12 +990,61 @@ export default function App() {
 
   const hasGraph = Object.keys(state.visibleNodes).length > 0;
 
+  // 1.25.0: after a search pick, focus the details panel's first action
+  // (Expand) - keyboard users used to land on <body>, 39 Tab presses away.
+  useEffect(() => {
+    if (!focusDetailsToken) return;
+    window.setTimeout(() => {
+      const root = detailsRef.current;
+      if (!root) return;
+      const target = root.querySelector('.graphlens-actions-stack button') || root;
+      target.focus();
+    }, 60);
+  }, [focusDetailsToken]);
+
+  // 1.25.0: when the last open dialog closes, return focus to whatever
+  // opened it (Export, Reset graph, Import, Load from job).
+  const anyDialogOpen = exportDialogOpen || loadFromJobDialogOpen || csvPreviewState.open || !!confirmState;
+  const wasDialogOpenRef = useRef(false);
+  useEffect(() => {
+    if (wasDialogOpenRef.current && !anyDialogOpen) restoreFocus();
+    wasDialogOpenRef.current = anyDialogOpen;
+  }, [anyDialogOpen, restoreFocus]);
+
+  // 1.25.0: narrow-width Filters drawer - Escape closes it and returns
+  // focus to the toggle; opening it focuses its first control.
+  useEffect(() => {
+    if (!filtersDrawerOpen) return undefined;
+    const root = filtersRef.current;
+    window.setTimeout(() => {
+      const first = root && root.querySelector('button, input, [tabindex="0"]');
+      if (first) first.focus();
+    }, 0);
+    const onKey = (event) => {
+      if (event.key === 'Escape') {
+        setFiltersDrawerOpen(false);
+        const toggle = document.querySelector('.graphlens-filters-toggle');
+        if (toggle) toggle.focus();
+      }
+    };
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, [filtersDrawerOpen]);
+
   if (!settings) {
     return <div className="graphlens-app" aria-busy="true" />;
   }
 
   return (
-    <div className="graphlens-app">
+    <div className={filtersDrawerOpen ? 'graphlens-app graphlens-filters-open' : 'graphlens-app'}>
+      {/*
+        1.25.0: skip links. The sidebar sits between the toolbar and the
+        details panel in tab order (39 Tab presses from search to Expand).
+      */}
+      <nav className="graphlens-skip-links" aria-label="Skip links">
+        <a href="#graphlens-details-region" className="graphlens-skip-link" onClick={(e) => { e.preventDefault(); if (detailsRef.current) detailsRef.current.focus(); }}>Skip to details</a>
+        <a href="#graphlens-graph-region" className="graphlens-skip-link" onClick={(e) => { e.preventDefault(); const c = document.querySelector('.graphlens-canvas, .graphlens-canvas-table'); if (c) { if (!c.hasAttribute('tabindex')) c.setAttribute('tabindex', '-1'); c.focus(); } }}>Skip to graph</a>
+      </nav>
       <div className="graphlens-pagenav">
         <PageNav activeTabId="graphlens_relationship_explorer" />
       </div>
@@ -929,13 +1064,15 @@ export default function App() {
         onRecalculateLayout={() => setLayoutToken((t) => t + 1)}
         onFit={() => fitGraph(cyRef.current)}
         onCenterSelected={() => centerOnNode(cyRef.current, state.selectedNodeId)}
-        onReset={requestReset}
-        onExportOpen={() => setExportDialogOpen(true)}
+        onReset={() => { rememberFocus(); requestReset(); }}
+        onExportOpen={() => { rememberFocus(); setExportDialogOpen(true); }}
         exportEnabled={settings.enableExport}
-        onImportClick={requestImport}
+        onImportClick={() => { rememberFocus(); requestImport(); }}
         importEnabled={settings.enableExport}
-        onLoadFromJobOpen={requestLoadFromJobOpen}
+        onLoadFromJobOpen={() => { rememberFocus(); requestLoadFromJobOpen(); }}
         loadFromJobEnabled={settings.enableExport}
+        filtersDrawerOpen={filtersDrawerOpen}
+        onToggleFiltersDrawer={() => setFiltersDrawerOpen((o) => !o)}
       />
       <input
         ref={importInputRef}
@@ -949,15 +1086,31 @@ export default function App() {
         }}
       />
 
-      <div className="graphlens-filters">
+      <section id="graphlens-filters-region" className="graphlens-filters" ref={filtersRef} aria-label="Filters and tools">
+        <button type="button" className="graphlens-filters-close" onClick={() => setFiltersDrawerOpen(false)}>Close filters</button>
         <ErrorNotification error={error} onDismiss={() => setError(null)} />
         <EditUndoNotification lastEdit={lastEdit} onUndo={handleUndoLastEdit} onDismiss={() => setLastEdit(null)} />
+        <EditUndoNotification
+          lastEdit={lastHide}
+          message={lastHide ? `Hid "${lastHide.label}".` : ''}
+          onUndo={handleUndoHide}
+          onDismiss={() => setLastHide(null)}
+        />
         <SidebarSection sectionId="nodeTypes" title="Node types" headingId="graphlens-node-type-filter-heading" open={openSections.nodeTypes} onToggle={toggleSection} badge={nodeTypeList.length || null}>
           <NodeTypeFilter nodeTypes={nodeTypeList} hiddenNodeTypes={state.hiddenNodeTypes} onChange={(types) => actions.setHiddenNodeTypes(types)} />
         </SidebarSection>
         <SidebarSection sectionId="relationshipTypes" title="Relationship types" headingId="graphlens-rel-type-filter-heading" open={openSections.relationshipTypes} onToggle={toggleSection} badge={relationshipTypeList.length || null}>
           <RelationshipTypeFilter relationshipTypes={relationshipTypeList} hiddenRelationshipTypes={state.hiddenRelationshipTypes} onChange={(types) => actions.setHiddenRelationshipTypes(types)} />
         </SidebarSection>
+        {state.hiddenNodeIds.length > 0 && (
+          <SidebarSection sectionId="hiddenNodes" title="Hidden nodes" headingId="graphlens-hidden-nodes-heading" open={openSections.hiddenNodes} onToggle={toggleSection} badge={state.hiddenNodeIds.length}>
+            <HiddenNodesPanel
+              nodes={state.hiddenNodeIds.map((id) => state.visibleNodes[id] || { id, label: id })}
+              onShow={handleShowHiddenNode}
+              onShowAll={handleShowAllHidden}
+            />
+          </SidebarSection>
+        )}
         <SidebarSection sectionId="risk" title="Risk & frequency" headingId="graphlens-risk-filter-heading" open={openSections.risk} onToggle={toggleSection}>
           <RiskFilter
             riskMin={state.activeFilters.riskMin}
@@ -967,7 +1120,7 @@ export default function App() {
           />
         </SidebarSection>
         {settings.enableTimeSlicer && (
-          <SidebarSection sectionId="timeWindow" title="Time window" headingId="graphlens-time-slicer-heading" open={openSections.timeWindow} onToggle={toggleSection}>
+          <SidebarSection sectionId="timeWindow" title="Filter by activity time" headingId="graphlens-time-slicer-heading" open={openSections.timeWindow} onToggle={toggleSection}>
             <TimeSlicer
               minMs={timeBounds.min}
               maxMs={timeBounds.max}
@@ -1031,9 +1184,9 @@ export default function App() {
             />
           </SidebarSection>
         )}
-      </div>
+      </section>
 
-      <div className="graphlens-canvas-wrapper">
+      <section id="graphlens-graph-region" className="graphlens-canvas-wrapper" aria-label="Graph">
         {!hasGraph && <EmptyState />}
         {canvasViewMode === 'graph' ? (
           <GraphCanvas
@@ -1047,19 +1200,37 @@ export default function App() {
             onSelectNode={(id) => actions.selectNode(id)}
             onSelectEdge={(id) => actions.selectEdge(id)}
             onClearSelection={() => actions.clearSelection()}
+            selectedNodeId={state.selectedNodeId}
+            selectedEdgeId={state.selectedEdgeId}
             onExpandNode={handleExpandNode}
             onCollapseNode={handleCollapseNode}
-            onHideNode={(id) => actions.hideNode(id)}
+            onHideNode={handleHideNode}
             onPinNode={(id) => actions.pinNode(id)}
             onUnpinNode={(id) => actions.unpinNode(id)}
             onViewEvidence={handleViewEvidence}
-            onSetPathEndpoint={handleSetPathEndpoint}
+            onSetPathStart={handleSetPathStart}
+            onSetPathEnd={handleSetPathEnd}
             onMultiSelectNodes={setMultiSelectedNodeIds}
             onCyReady={(cy) => { cyRef.current = cy; }}
           />
         ) : (
-          <GraphTableView nodes={renderable.nodes} edges={renderable.edges} />
+          <GraphTableView
+            nodes={renderable.nodes}
+            edges={renderable.edges}
+            selectedNodeId={state.selectedNodeId}
+            selectedEdgeId={state.selectedEdgeId}
+            onSelectNode={(id) => actions.selectNode(id)}
+            onSelectEdge={(id) => actions.selectEdge(id)}
+          />
         )}
+        <PathStatusChip
+          startLabel={pathEndpoints.startNodeId ? ((state.visibleNodes[pathEndpoints.startNodeId] || {}).label || pathEndpoints.startNodeId) : null}
+          endLabel={pathEndpoints.endNodeId ? ((state.visibleNodes[pathEndpoints.endNodeId] || {}).label || pathEndpoints.endNodeId) : null}
+          searched={pathSearched}
+          path={path}
+          maxDepth={settings.maxPathDepth}
+          onClear={handleClearPath}
+        />
         <GraphLimitBanner
           visible={limitReached}
           nodeCount={nodeCount}
@@ -1067,9 +1238,9 @@ export default function App() {
           edgeCount={edgeCount}
           maxVisibleEdges={settings.maxVisibleEdges}
         />
-      </div>
+      </section>
 
-      <div className="graphlens-details">
+      <section id="graphlens-details-region" className="graphlens-details" ref={detailsRef} tabIndex={-1} aria-label="Details">
         {multiSelectedNodeIds.length > 1 ? (
           <BulkActionsPanel
             count={multiSelectedNodeIds.length}
@@ -1089,11 +1260,12 @@ export default function App() {
                 canEdit={canEditGraphData}
                 onExpand={handleExpandNode}
                 onCollapse={handleCollapseNode}
-                onHide={(id) => actions.hideNode(id)}
+                onHide={handleHideNode}
                 onPin={(id) => actions.pinNode(id)}
                 onUnpin={(id) => actions.unpinNode(id)}
                 onViewEvidence={handleViewEvidence}
-                onSetPathEndpoint={handleSetPathEndpoint}
+                onSetPathStart={handleSetPathStart}
+                onSetPathEnd={handleSetPathEnd}
                 onSaveEdit={handleSaveNodeEdit}
               />
             )}
@@ -1113,18 +1285,19 @@ export default function App() {
             )}
           </>
         )}
-      </div>
+      </section>
 
-      <div className="graphlens-evidence">
+      <section className="graphlens-evidence" aria-label="Supporting events">
         <EvidencePanel
           isLoading={evidence.isLoading}
           error={evidence.error}
           rows={evidence.rows}
           fieldOrder={evidence.fieldOrder}
           targetLabel={evidence.targetLabel}
+          onOpenInSearch={evidence.spl ? handleOpenEvidenceInSearch : undefined}
           onClear={() => setEvidence({ isLoading: false, error: null, rows: [], fieldOrder: [], targetLabel: null })}
         />
-      </div>
+      </section>
 
       <ExportDialog
         open={exportDialogOpen}

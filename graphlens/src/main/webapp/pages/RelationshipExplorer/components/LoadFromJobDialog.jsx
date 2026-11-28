@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import PropTypes from 'prop-types';
+import useFocusOnOpen from './useFocusOnOpen';
 import Modal from '@splunk/react-ui/Modal';
 import Button from '@splunk/react-ui/Button';
 import Text from '@splunk/react-ui/Text';
@@ -7,11 +8,21 @@ import WaitSpinner from '@splunk/react-ui/WaitSpinner';
 
 export default function LoadFromJobDialog({ open, isLoading, error, onClose, onLoad }) {
   const [sid, setSid] = useState('');
+  const inputRef = useRef(null);
+  useFocusOnOpen(open, inputRef);
 
   if (!open) return null;
 
   return (
-    <Modal onRequestClose={onClose} open={open} style={{ width: 460 }}>
+    <Modal
+      onRequestClose={onClose}
+      open={open}
+      style={{ width: 460 }}
+      // 1.25.0: focus starts on the useful control (useFocusOnOpen above),
+      // not the header's Close (X); returnFocus is a no-op because App.jsx
+      // returns focus to whatever opened the dialog once the last one closes.
+      returnFocus={() => {}}
+    >
       <Modal.Header title="Load from job" onRequestClose={onClose} />
       <Modal.Body>
         <p style={{ fontSize: 13 }}>
@@ -36,6 +47,7 @@ export default function LoadFromJobDialog({ open, isLoading, error, onClose, onL
             value={sid}
             disabled={isLoading}
             onChange={(e, { value }) => setSid(value)}
+            inputRef={inputRef}
             placeholder="e.g. 1795637807.16"
           />
         </label>

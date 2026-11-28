@@ -1,8 +1,9 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import PropTypes from 'prop-types';
 import Popover from '@splunk/react-ui/Popover';
 import Menu from '@splunk/react-ui/Menu';
 import List from '@splunk/react-icons/List';
+import { focusFirstMenuItem, handleMenuArrowKeys } from './menuKeyboard';
 
 /**
  * Right-click (Cytoscape's `cxttap`) menu for an edge - the counterpart
@@ -14,20 +15,26 @@ import List from '@splunk/react-icons/List';
  * state and anchor point; the action here is the exact same
  * onViewEvidence handler App.jsx already passes to EdgeDetailsPanel.
  */
-export default function EdgeContextMenu({ open, anchor, point, edge, onRequestClose, onViewEvidence }) {
+export default function EdgeContextMenu({ open, anchor, edge, onRequestClose, onViewEvidence }) {
+  useEffect(() => {
+    if (open) focusFirstMenuItem('.graphlens-context-menu');
+  }, [open]);
+
   if (!edge) return null;
 
   return (
     <Popover
       open={open}
       anchor={anchor}
-      pointTo={point}
+      defaultPlacement="below"
+      align="edge"
       onRequestClose={onRequestClose}
       appearance="normal"
       hideArrow
+      takeFocus
     >
       {/* Same framed, iconised styling as NodeContextMenu.jsx (1.23.0). */}
-      <Menu className="graphlens-context-menu">
+      <Menu className="graphlens-context-menu" onKeyDown={handleMenuArrowKeys}>
         <Menu.Heading title={edge.relationshipLabel}>{edge.relationshipLabel}</Menu.Heading>
         <Menu.Divider />
         <Menu.Item
@@ -47,7 +54,6 @@ export default function EdgeContextMenu({ open, anchor, point, edge, onRequestCl
 EdgeContextMenu.propTypes = {
   open: PropTypes.bool.isRequired,
   anchor: PropTypes.object,
-  point: PropTypes.shape({ x: PropTypes.number, y: PropTypes.number }),
   edge: PropTypes.object,
   onRequestClose: PropTypes.func.isRequired,
   onViewEvidence: PropTypes.func.isRequired,
@@ -55,6 +61,5 @@ EdgeContextMenu.propTypes = {
 
 EdgeContextMenu.defaultProps = {
   anchor: null,
-  point: undefined,
   edge: null,
 };

@@ -38,7 +38,8 @@ export default function NodeDetailsPanel({
   onPin,
   onUnpin,
   onViewEvidence,
-  onSetPathEndpoint,
+  onSetPathStart,
+  onSetPathEnd,
   onSaveEdit,
 }) {
   const [isEditing, setIsEditing] = useState(false);
@@ -151,7 +152,15 @@ export default function NodeDetailsPanel({
           <Button label="Collapse" icon={<MinusCircle />} onClick={() => onCollapse(node.id)} inline={false} />
         )}
         <Button label="View supporting events" icon={<List />} onClick={() => onViewEvidence(node.id, 'node')} inline={false} />
-        <Button label="Use as path endpoint" icon={<NodeStartToEnd />} onClick={() => onSetPathEndpoint(node.id)} inline={false} />
+        {/*
+          1.25.0: "Use as path endpoint" set the start on first use and the
+          end on every later use without saying which. Two explicit actions;
+          setting the second end runs the path search (App.jsx).
+        */}
+        <div className="graphlens-actions-grid graphlens-actions-grid-pair">
+          <Button label="Path from here" icon={<NodeStartToEnd />} onClick={() => onSetPathStart(node.id)} inline={false} />
+          <Button label="Path to here" icon={<NodeStartToEnd />} onClick={() => onSetPathEnd(node.id)} inline={false} />
+        </div>
         <div className="graphlens-actions-grid">
           {isPinned ? (
             <Button label="Unpin" icon={<PinStuck />} onClick={() => onUnpin(node.id)} inline={false} />
@@ -162,6 +171,7 @@ export default function NodeDetailsPanel({
           {canEdit && <Button label="Edit" icon={<Pencil />} onClick={() => { setFields(fieldsFromNode(node)); setIsEditing(true); }} inline={false} />}
         </div>
       </div>
+      {!isExpanded && <p className="graphlens-hint">Tip: double-click a node on the graph to expand it.</p>}
     </div>
   );
 }
@@ -177,7 +187,8 @@ NodeDetailsPanel.propTypes = {
   onPin: PropTypes.func.isRequired,
   onUnpin: PropTypes.func.isRequired,
   onViewEvidence: PropTypes.func.isRequired,
-  onSetPathEndpoint: PropTypes.func.isRequired,
+  onSetPathStart: PropTypes.func.isRequired,
+  onSetPathEnd: PropTypes.func.isRequired,
   onSaveEdit: PropTypes.func,
 };
 

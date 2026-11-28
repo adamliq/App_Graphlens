@@ -1,5 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useRef, useState, useEffect } from 'react';
 import PropTypes from 'prop-types';
+import useFocusOnOpen from './useFocusOnOpen';
 import Modal from '@splunk/react-ui/Modal';
 import Button from '@splunk/react-ui/Button';
 
@@ -25,6 +26,8 @@ const PREVIEW_ROW_LIMIT = 200;
  */
 export default function CsvImportPreviewDialog({ open, header, rows, fileName, error, onClose, onLoad }) {
   const [editedRows, setEditedRows] = useState(rows);
+  const firstCellRef = useRef(null);
+  useFocusOnOpen(open, firstCellRef);
 
   useEffect(() => {
     setEditedRows(rows);
@@ -40,7 +43,14 @@ export default function CsvImportPreviewDialog({ open, header, rows, fileName, e
   };
 
   return (
-    <Modal onRequestClose={onClose} open={open} style={{ width: 760 }}>
+    <Modal
+      onRequestClose={onClose}
+      open={open}
+      style={{ width: 760 }}
+      // 1.25.0: focus starts in the first editable cell (useFocusOnOpen);
+      // App.jsx returns focus to the Import button when the dialog closes.
+      returnFocus={() => {}}
+    >
       <Modal.Header title="Review CSV before loading" onRequestClose={onClose} />
       <Modal.Body>
         <p style={{ fontSize: 13 }}>
@@ -73,9 +83,11 @@ export default function CsvImportPreviewDialog({ open, header, rows, fileName, e
               {previewRows.map((row, rowIndex) => (
                 // eslint-disable-next-line react/no-array-index-key
                 <tr key={rowIndex}>
-                  {header.map((h) => (
+                  {header.map((h, colIndex) => (
                     <td key={h}>
                       <input
+                        ref={rowIndex === 0 && colIndex === 0 ? firstCellRef : undefined}
+                        aria-label={`Row ${rowIndex + 1}, ${h}`}
                         type="text"
                         value={row[h] !== undefined ? row[h] : ''}
                         onChange={(e) => updateCell(rowIndex, h, e.target.value)}

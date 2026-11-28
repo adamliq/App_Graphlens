@@ -189,6 +189,8 @@ export default function GraphCanvas({
   pinnedNodeIds,
   expandedNodeIds,
   highlightedPath,
+  selectedNodeId,
+  selectedEdgeId,
   onSelectNode,
   onSelectEdge,
   onClearSelection,
@@ -198,18 +200,37 @@ export default function GraphCanvas({
   onPinNode,
   onUnpinNode,
   onViewEvidence,
-  onSetPathEndpoint,
+  onSetPathStart,
+  onSetPathEnd,
   onMultiSelectNodes,
   onCyReady,
 }) {
   const containerRef = useRef(null);
   const cyRef = useRef(null);
+  // 1.25.0: last known position of every node removed from the canvas, so
+  // a node brought back by Undo / Show (Hidden nodes) returns to where it
+  // was rather than the canvas origin - confirmed live it reappeared in
+  // the top-left corner, half off-screen.
+  const lastPositionsRef = useRef({});
   // One shared slot for either kind of right-click menu (never both at
   // once, since a single click can only ever hit one element) - `kind`
   // picks which of NodeContextMenu/EdgeContextMenu is actually open
   // below, both sharing the same close-on-tap/pan/zoom behaviour.
   const [contextMenu, setContextMenu] = useState({ open: false, kind: null, id: null, point: null });
-  const closeContextMenu = () => setContextMenu((s) => (s.open ? { ...s, open: false } : s));
+  // 1.25.0: the menus anchor to this 1px element, placed at the click (or
+  // the selected element, from the keyboard). Popover's `pointTo` does not
+  // move the popover itself, so anchoring to the whole canvas put the menu
+  // against the canvas edge - measured off-screen once the menu grew.
+  const [menuAnchorEl, setMenuAnchorEl] = useState(null);
+  // 1.25.0: closing the menu returns keyboard focus to the canvas when the
+  // menu had it (Escape, or choosing an item) - it used to fall to <body>.
+  const closeContextMenu = () => {
+    setContextMenu((s) => (s.open ? { ...s, open: false } : s));
+    const active = document.activeElement;
+    if (containerRef.current && (!active || active === document.body || (active.closest && active.closest('.graphlens-context-menu')))) {
+      containerRef.current.focus({ preventScroll: true });
+    }
+  };
 
   useEffect(() => {
     const cy = cytoscape({
@@ -270,6 +291,21 @@ export default function GraphCanvas({
     const preventNativeContextMenu = (evt) => evt.preventDefault();
     containerEl.addEventListener('contextmenu', preventNativeContextMenu);
 
+    // 1.25.0: keyboard access to the right-click menu. The canvas itself
+    // is focusable (tabIndex below); Shift+F10 or the Menu key opens the
+    // menu for whatever is currently selected (chosen via search, the
+    // Table view, or a click), positioned at that element.
+    const openMenuFromKeyboard = (evt) => {
+      if (!((evt.key === 'F10' && evt.shiftKey) || evt.key === 'ContextMenu')) return;
+      const selected = cy.$(':selected');
+      if (selected.length !== 1) return;
+      evt.preventDefault();
+      const ele = selected[0];
+      const point = ele.isNode() ? ele.renderedPosition() : ele.renderedMidpoint();
+      setContextMenu({ open: true, kind: ele.isNode() ? 'node' : 'edge', id: ele.id(), point: { x: point.x, y: point.y } });
+    };
+    containerEl.addEventListener('keydown', openMenuFromKeyboard);
+
     const handleKeyDown = (evt) => { if (evt.key === 'Shift') cy.boxSelectionEnabled(true); };
     const handleKeyUp = (evt) => { if (evt.key === 'Shift') cy.boxSelectionEnabled(false); };
     document.addEventListener('keydown', handleKeyDown);
@@ -279,6 +315,7 @@ export default function GraphCanvas({
 
     return () => {
       containerEl.removeEventListener('contextmenu', preventNativeContextMenu);
+      containerEl.removeEventListener('keydown', openMenuFromKeyboard);
       document.removeEventListener('keydown', handleKeyDown);
       document.removeEventListener('keyup', handleKeyUp);
       cy.destroy();
@@ -298,7 +335,10 @@ export default function GraphCanvas({
       const nextEdgeIds = new Set(edges.map((e) => e.data.id));
 
       cy.nodes().forEach((ele) => {
-        if (!nextNodeIds.has(ele.id())) ele.remove();
+        if (!nextNodeIds.has(ele.id())) {
+          lastPositionsRef.current[ele.id()] = { ...ele.position() };
+          ele.remove();
+        }
       });
       cy.edges().forEach((ele) => {
         if (!nextEdgeIds.has(ele.id())) ele.remove();
@@ -311,7 +351,8 @@ export default function GraphCanvas({
         if (existing.length > 0) {
           existing.data(data);
         } else {
-          cy.add({ group: 'nodes', data });
+          const remembered = lastPositionsRef.current[n.data.id];
+          cy.add(remembered ? { group: 'nodes', data, position: remembered } : { group: 'nodes', data });
         }
       });
 
@@ -331,6 +372,22 @@ export default function GraphCanvas({
       }
     });
   }, [nodes, edges, pinnedNodeIds, highlightedPath]);
+
+  // 1.25.0: keep the canvas's own selection in step with the app's
+  // single selection when it changes from outside the canvas - picking a
+  // search result or a Table view row used to show the node in the details
+  // panel with no selected ring on the graph. A click on the canvas
+  // selects natively first, so this is then a no-op.
+  useEffect(() => {
+    const cy = cyRef.current;
+    if (!cy) return;
+    const id = selectedNodeId || selectedEdgeId;
+    if (!id) return;
+    const ele = cy.getElementById(id);
+    if (ele.length === 0 || ele.selected()) return;
+    cy.elements().unselect();
+    ele.select();
+  }, [selectedNodeId, selectedEdgeId, nodes, edges]);
 
   // Layout only re-runs when layoutToken changes (explicit "recalculate
   // layout" action, a fresh search, or an expansion), never on selection.
@@ -355,11 +412,27 @@ export default function GraphCanvas({
 
   return (
     <>
-      <div ref={containerRef} className="graphlens-canvas" role="img" aria-label="Relationship graph canvas" />
+      {/*
+        1.25.0: focusable, so the right-click menu can be opened from the
+        keyboard (Shift+F10 / Menu key) and focus has somewhere to return
+        to when it closes.
+      */}
+      <div
+        ref={containerRef}
+        className="graphlens-canvas graphlens-focus-ring"
+        role="group"
+        tabIndex={0}
+        aria-label="Relationship graph. Press Shift+F10 for actions on the selected node or relationship."
+      />
+      <span
+        ref={setMenuAnchorEl}
+        className="graphlens-menu-anchor"
+        aria-hidden="true"
+        style={{ left: contextMenu.point ? contextMenu.point.x : 0, top: contextMenu.point ? contextMenu.point.y : 0 }}
+      />
       <NodeContextMenu
         open={contextMenu.open && contextMenu.kind === 'node'}
-        anchor={containerRef.current}
-        point={contextMenu.point}
+        anchor={menuAnchorEl}
         node={contextMenuNode}
         isExpanded={contextMenuNodeId ? expandedNodeIds.includes(contextMenuNodeId) : false}
         isPinned={contextMenuNodeId ? pinnedNodeIds.includes(contextMenuNodeId) : false}
@@ -370,13 +443,13 @@ export default function GraphCanvas({
         onPin={onPinNode}
         onUnpin={onUnpinNode}
         onViewEvidence={onViewEvidence}
-        onSetPathEndpoint={onSetPathEndpoint}
+        onSetPathStart={onSetPathStart}
+        onSetPathEnd={onSetPathEnd}
         onCenter={(nodeId) => centerOnNode(cyRef.current, nodeId)}
       />
       <EdgeContextMenu
         open={contextMenu.open && contextMenu.kind === 'edge'}
-        anchor={containerRef.current}
-        point={contextMenu.point}
+        anchor={menuAnchorEl}
         edge={contextMenuEdge}
         onRequestClose={closeContextMenu}
         onViewEvidence={onViewEvidence}
@@ -393,6 +466,8 @@ GraphCanvas.propTypes = {
   pinnedNodeIds: PropTypes.array.isRequired,
   expandedNodeIds: PropTypes.array.isRequired,
   highlightedPath: PropTypes.shape({ nodeIds: PropTypes.array, edgeIds: PropTypes.array }),
+  selectedNodeId: PropTypes.string,
+  selectedEdgeId: PropTypes.string,
   onSelectNode: PropTypes.func.isRequired,
   onSelectEdge: PropTypes.func.isRequired,
   onClearSelection: PropTypes.func.isRequired,
@@ -402,19 +477,36 @@ GraphCanvas.propTypes = {
   onPinNode: PropTypes.func.isRequired,
   onUnpinNode: PropTypes.func.isRequired,
   onViewEvidence: PropTypes.func.isRequired,
-  onSetPathEndpoint: PropTypes.func.isRequired,
+  onSetPathStart: PropTypes.func.isRequired,
+  onSetPathEnd: PropTypes.func.isRequired,
   onMultiSelectNodes: PropTypes.func.isRequired,
   onCyReady: PropTypes.func,
 };
 
 GraphCanvas.defaultProps = {
   highlightedPath: null,
+  selectedNodeId: null,
+  selectedEdgeId: null,
   onCyReady: undefined,
 };
 
 export function fitGraph(cy) {
   if (!cy) return;
   cy.fit(undefined, 30);
+  capFitZoom(cy);
+}
+
+/**
+ * Fits the view to the given element ids (1.25.0, a found path) with
+ * enough padding to keep them clear of the path status chip drawn over
+ * the top-left of the canvas, capped like every other automatic fit.
+ */
+export function fitElements(cy, ids, padding = 70) {
+  if (!cy || !ids || ids.length === 0) return;
+  const eles = cy.collection();
+  ids.forEach((id) => { eles.merge(cy.getElementById(id)); });
+  if (eles.length === 0) return;
+  cy.fit(eles, padding);
   capFitZoom(cy);
 }
 
