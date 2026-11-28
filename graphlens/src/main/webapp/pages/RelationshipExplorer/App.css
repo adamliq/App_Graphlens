@@ -483,6 +483,35 @@
   font-weight: 700;
 }
 
+/*
+ * 1.24.1: the rule above replaces the component library's box-shadow,
+ * which is also where its keyboard focus ring lives - so the selected
+ * view button had no visible focus (found by a Tab sweep). Re-add the
+ * same ring on keyboard focus, outside the pressed-state inset.
+ */
+#graphlens-relationship-explorer-root .graphlens-view-tab[aria-selected="true"]:focus-visible {
+  box-shadow: inset 0 0 0 1px #3c444d, 0 0 0 2px #f2f4f5, 0 0 0 5px var(--graphlens-focus);
+}
+
+/*
+ * 1.24.1: Windows high-contrast / forced-colours mode. The browser drops
+ * author background colours, which emptied the type swatches and status
+ * samples - but the graph canvas keeps its colours, so the legend stopped
+ * explaining the canvas. They are informational graphics, so they keep
+ * their own colours. The selected view button, whose grey fill and inset
+ * are also dropped, gets a thick system-colour border instead.
+ */
+@media (forced-colors: active) {
+  .graphlens-type-swatch,
+  .graphlens-indicator-sample {
+    forced-color-adjust: none;
+  }
+
+  #graphlens-relationship-explorer-root .graphlens-view-tab[aria-selected="true"] {
+    border: 3px solid Highlight;
+  }
+}
+
 /* 1.24.0: Reset graph hover text #a1382b on #fad6d1 (~5.0:1; was 3.58:1). */
 #graphlens-relationship-explorer-root .graphlens-reset-button:hover:not([disabled]),
 #graphlens-relationship-explorer-root .graphlens-reset-button:hover:not([disabled]) * {
