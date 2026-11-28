@@ -2,6 +2,26 @@
 
 All notable changes to GraphLens are documented in this file.
 
+## [1.24.1] - 2026-11-28
+
+Found by re-auditing the released 1.24.0 package (a keyboard Tab sweep
+and Windows forced-colours emulation, neither covered by the first
+audit).
+
+### Fixed
+
+- **The selected Graph/Table button had no keyboard focus ring.** 1.24.0's
+  pressed-state style replaced the component library's box-shadow, which
+  is also where its focus ring lives; it was the only one of 44 Tab stops
+  without a visible indicator (WCAG 2.4.7). The ring is restored on
+  keyboard focus.
+- **Forced-colours (high-contrast) mode emptied the legend.** The browser
+  removed the type swatches' and status samples' colours while the graph
+  canvas kept its own, so nothing linked canvas colours/shapes to types.
+  Swatches and samples now keep their colours (`forced-color-adjust:
+  none`), and the selected view button gets a thick system-colour border
+  in that mode (otherwise only its bold label showed it was selected).
+
 ## [1.24.0] - 2026-11-27
 
 Fixes every finding from a colour, border and shading audit of 1.23.0

@@ -46,7 +46,7 @@ import EmptyState from './components/EmptyState';
 import SidebarSection from './components/SidebarSection';
 import PageNav from '../../shared/components/PageNav';
 
-const APP_VERSION = '1.24.0';
+const APP_VERSION = '1.24.1';
 
 function downloadBlob(blob, filename) {
   const url = URL.createObjectURL(blob);
