@@ -187,7 +187,7 @@ disconnected from the element it was opened for.
 
 This is deliberately a thin UI convenience, not a second implementation
 of anything: every item in the node menu (Expand/Collapse, Pin/Unpin,
-Hide, Centre on screen, View supporting events, Use as path endpoint)
+Hide, View supporting events, Path from here / Path to here, Centre on selection)
 and the edge menu's single item (View supporting events) is the exact
 same handler `RelationshipExplorer/App.jsx` already passes to
 `NodeDetailsPanel.jsx`/`EdgeDetailsPanel.jsx` for that same action, now
@@ -325,7 +325,7 @@ file.
   `.graphlens-toolbar-group`s (find | view | data) separated by dividers,
   with Reset graph after a flexible spacer. Each group is `nowrap`, so a
   narrow screen wraps whole groups. Recalculate layout, Fit to screen and
-  Centre selected are icon-only `Button`s wrapped in `Tooltip`, each with
+  Centre on selection are icon-only `Button`s wrapped in `Tooltip`, each with
   an `aria-label`.
 - `SidebarSection.jsx` wraps each left-sidebar panel in a collapsible
   section. The heading carries the id the panel's own `<h3>` used to
@@ -346,6 +346,49 @@ file.
   reaches `maxZoom` (4). Edge labels are ellipsised at 120px.
 - `.graphlens-data-table` gives the table view, supporting events and the
   CSV preview one style: sticky header, zebra rows, hover highlight.
+
+### Controls review (1.25.0)
+
+- **Search** (`EntitySearch.jsx`): WAI-ARIA combobox - focus stays in
+  the field, ArrowUp/Down move `aria-activedescendant` over a
+  `role="listbox"`, Enter picks, Escape or an outside `mousedown`
+  closes. The ARIA attributes are set on the `<input>` via `inputRef`
+  (the component library spreads extra props onto its wrapper).
+- **Selection sync** (`GraphCanvas.jsx`): an effect selects the app's
+  `selectedNodeId`/`selectedEdgeId` in Cytoscape when it changed from
+  outside the canvas (search pick, Table row).
+- **Focus**: `App.jsx` moves focus to the details panel's first action
+  after a pick (`focusDetailsToken`), remembers the element that opened a
+  dialog (`rememberFocus`) and restores it when the last dialog closes
+  (`restoreFocus`, driven by an `anyDialogOpen` effect). Dialogs set their
+  own first focus after rendering (`useFocusOnOpen.js`) - the library's
+  `initialFocus={ref}` ran before the refs attached - and pass a no-op
+  `returnFocus` to `Modal`.
+- **Canvas keyboard access**: the Cytoscape container is focusable
+  (`tabIndex=0`); Shift+F10 / ContextMenu opens the menu for the single
+  selected element. Menus anchor to a 1px `.graphlens-menu-anchor` at the
+  click/element point (Popover's `pointTo` does not move the popover),
+  focus their first item (`menuKeyboard.js`), handle Arrow/Home/End, and
+  return focus to the canvas on close.
+- **Hide**: `handleHideNode` clears a hidden selection and records
+  `lastHide` for an Undo banner (`EditUndoNotification` with `message`);
+  `HiddenNodesPanel.jsx` calls the reducer's existing `unhideNode`.
+  `GraphCanvas.jsx` keeps the last position of every removed node
+  (`lastPositionsRef`) and re-adds a restored node there.
+- **Paths**: `handleSetPathStart`/`handleSetPathEnd` replace the
+  start-then-end `handleSetPathEndpoint`; an effect keyed on both
+  endpoints runs `handleFindPath` and `fitElements` (padding clears the
+  chip). `PathStatusChip.jsx` reports progress/result (`role="status"`).
+- **Table view** (`GraphTableView.jsx`): the first cell of each row is a
+  `<button>` (and the row is clickable) calling `actions.selectNode` /
+  `selectEdge`; the selected row has `aria-current`.
+- **Evidence**: `EvidencePanel.jsx` announces the result count in a
+  polite live region; `handleOpenEvidenceInSearch` opens the stored,
+  token-built evidence SPL in the Search app (`../search/search?q=...`).
+- **Layout**: skip links; labelled `section` regions; Graph/Table are
+  `aria-pressed` toggles; below 1100px the sidebar becomes a drawer in
+  the canvas grid cell (`.graphlens-filters-open`), and the details grid
+  stacks via a container query (`@container (max-width: 260px)`).
 
 ### Colour and state channels (1.24.0)
 

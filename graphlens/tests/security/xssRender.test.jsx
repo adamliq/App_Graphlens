@@ -32,7 +32,13 @@ const PAYLOADS = [
 // is inert and is not a tag. The payload must also never appear verbatim.
 function dangerousTags(html) {
   const tags = html.match(/<[a-z][^>]*>/gi) || [];
-  return tags.filter((tag) => /^<(script|img|iframe)\b/i.test(tag) || /\son[a-z]+\s*=/i.test(tag));
+  // Quoted attribute *values* are text (React escapes them) - e.g. an
+  // aria-label naming a node whose label is a payload - so they are
+  // blanked out before looking for an event-handler attribute *name*.
+  return tags.filter((tag) => {
+    const withoutValues = tag.replace(/"[^"]*"/g, '""').replace(/'[^']*'/g, "''");
+    return /^<(script|img|iframe)\b/i.test(withoutValues) || /\son[a-z]+\s*=/i.test(withoutValues);
+  });
 }
 
 const noop = () => {};
@@ -58,7 +64,8 @@ function renderNodePanel(label) {
       onPin={noop}
       onUnpin={noop}
       onViewEvidence={noop}
-      onSetPathEndpoint={noop}
+      onSetPathStart={noop}
+      onSetPathEnd={noop}
     />,
   );
 }
@@ -69,6 +76,10 @@ describe('the dangerous-tag check itself', () => {
     expect(dangerousTags('<svg onload=alert(1)>')).toHaveLength(1);
     expect(dangerousTags('<div>&lt;img src=x onerror=alert(1)&gt;</div>')).toEqual([]);
     expect(dangerousTags('<svg aria-hidden="true" viewBox="0 0 24 24"><path d="M0 0"></path></svg>')).toEqual([]);
+    // An escaped payload inside an attribute value is text, not a handler...
+    expect(dangerousTags('<button aria-label="Select node &lt;img src=x onerror=alert(1)&gt;">')).toEqual([]);
+    // ...but a real handler attribute is still caught.
+    expect(dangerousTags('<button aria-label="x" onclick="alert(1)">')).toHaveLength(1);
   });
 });
 

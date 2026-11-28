@@ -304,3 +304,12 @@ instance's configured home) to switch away from GraphLens entirely.
   absent from `| from datamodel:`'s results, not included by default the
   way a plain index search would include it. See DATA_INGESTION.md
   section F.
+
+## Keyboard use of the graph canvas (1.25.0)
+
+The canvas itself is a drawing: nodes and relationships can't be moved
+between with the arrow keys. Keyboard users select them through search
+(arrow keys and Enter in the results), the **Table** view (each row has a
+selectable first cell) or the Path finder dropdowns; once something is
+selected, Shift+F10 on the focused graph opens its right-click menu, and
+every action is also in the details panel.

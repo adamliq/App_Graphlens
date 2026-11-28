@@ -1,5 +1,6 @@
-import React from 'react';
+import React, { useRef } from 'react';
 import PropTypes from 'prop-types';
+import useFocusOnOpen from './useFocusOnOpen';
 import Modal from '@splunk/react-ui/Modal';
 import Button from '@splunk/react-ui/Button';
 
@@ -16,15 +17,26 @@ import Button from '@splunk/react-ui/Button';
  * instead; see its confirmIfGraphHasContent helper.
  */
 export default function ConfirmDialog({ open, title, message, confirmLabel, onConfirm, onCancel }) {
+  const cancelRef = useRef(null);
+  useFocusOnOpen(open, cancelRef);
   if (!open) return null;
   return (
-    <Modal onRequestClose={onCancel} open={open} style={{ width: 420 }}>
+    <Modal
+      onRequestClose={onCancel}
+      open={open}
+      style={{ width: 420 }}
+      // 1.25.0: focus starts on the useful control (useFocusOnOpen above),
+      // not the header's Close (X); returnFocus is a no-op because App.jsx
+      // returns focus to whatever opened the dialog once the last one closes.
+      returnFocus={() => {}}
+    >
       <Modal.Header title={title} onRequestClose={onCancel} />
       <Modal.Body>
         <p style={{ fontSize: 13 }}>{message}</p>
       </Modal.Body>
       <Modal.Footer>
-        <Button label="Cancel" appearance="secondary" onClick={onCancel} />
+        {/* Focused first: every use of this dialog guards a destructive action. */}
+        <Button label="Cancel" appearance="secondary" onClick={onCancel} elementRef={cancelRef} />
         <Button label={confirmLabel} appearance="destructive" onClick={onConfirm} />
       </Modal.Footer>
     </Modal>

@@ -475,7 +475,7 @@
  * primary fill used by call-to-action buttons. Id-qualified so it outranks
  * the component library's class-based button styles.
  */
-#graphlens-relationship-explorer-root .graphlens-view-tab[aria-selected="true"] {
+#graphlens-relationship-explorer-root .graphlens-view-tab[aria-pressed="true"] {
   background: #e1e6eb;
   border-color: #3c444d;
   box-shadow: inset 0 0 0 1px #3c444d;
@@ -489,7 +489,7 @@
  * view button had no visible focus (found by a Tab sweep). Re-add the
  * same ring on keyboard focus, outside the pressed-state inset.
  */
-#graphlens-relationship-explorer-root .graphlens-view-tab[aria-selected="true"]:focus-visible {
+#graphlens-relationship-explorer-root .graphlens-view-tab[aria-pressed="true"]:focus-visible {
   box-shadow: inset 0 0 0 1px #3c444d, 0 0 0 2px #f2f4f5, 0 0 0 5px var(--graphlens-focus);
 }
 
@@ -507,7 +507,7 @@
     forced-color-adjust: none;
   }
 
-  #graphlens-relationship-explorer-root .graphlens-view-tab[aria-selected="true"] {
+  #graphlens-relationship-explorer-root .graphlens-view-tab[aria-pressed="true"] {
     border: 3px solid Highlight;
   }
 }
@@ -593,8 +593,274 @@
 
 
 
-@media (max-width: 1024px) {
+/* ---------- 1.25.0: controls review ---------- */
+
+.graphlens-app {
+  position: relative;
+}
+
+/* Context-menu anchor: a 1px point inside the canvas wrapper. */
+.graphlens-menu-anchor {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  pointer-events: none;
+}
+
+/* Skip links: out of the grid flow, visible only when focused. */
+.graphlens-skip-links {
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: 100;
+}
+
+.graphlens-skip-link {
+  position: absolute;
+  left: -10000px;
+  top: 4px;
+  padding: 6px 10px;
+  background: #fff;
+  color: var(--graphlens-text);
+  border: 2px solid var(--graphlens-focus);
+  border-radius: 4px;
+  white-space: nowrap;
+  font-weight: 600;
+}
+
+.graphlens-skip-link:focus {
+  left: 8px;
+}
+
+.graphlens-skip-link + .graphlens-skip-link:focus {
+  left: 140px;
+}
+
+.graphlens-details:focus {
+  outline: none;
+}
+
+.graphlens-details:focus-visible {
+  outline: 2px solid var(--graphlens-focus);
+  outline-offset: -2px;
+}
+
+/* Search results (combobox listbox). */
+.graphlens-search-results {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  z-index: 20;
+  min-width: 260px;
+  max-height: 260px;
+  overflow-y: auto;
+  margin: 0;
+  padding: 4px 0;
+  list-style: none;
+  background: #fff;
+  border: 1px solid var(--graphlens-control-border);
+  border-radius: 4px;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.12);
+}
+
+.graphlens-search-option {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 7px 12px;
+  min-height: 32px;
+  cursor: pointer;
+  color: var(--graphlens-text-strong);
+}
+
+.graphlens-search-option-active {
+  background: #e1e6eb;
+  box-shadow: inset 3px 0 0 var(--graphlens-focus);
+}
+
+.graphlens-search-option-type {
+  color: var(--graphlens-text-subtle);
+  font-size: 12px;
+}
+
+.graphlens-search-empty {
+  padding: 8px 12px;
+  color: var(--graphlens-text-subtle);
+}
+
+/* Path status chip on the graph. */
+.graphlens-path-chip {
+  position: absolute;
+  left: 12px;
+  top: 12px;
+  z-index: 6;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  max-width: calc(100% - 24px);
+  padding: 6px 6px 6px 12px;
+  background: #fff;
+  border: 1px solid var(--graphlens-control-border);
+  border-left: 4px solid var(--graphlens-text-muted);
+  border-radius: 4px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  font-size: 13px;
+  color: var(--graphlens-text);
+}
+
+.graphlens-path-chip-found {
+  border-left-color: #1f9e54;
+}
+
+/* Hidden nodes list. */
+.graphlens-hidden-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.graphlens-hidden-list li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 2px 0;
+}
+
+.graphlens-hidden-label {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 13px;
+}
+
+/* Details panel hint. */
+.graphlens-hint {
+  margin: 10px 0 0;
+  font-size: 12px;
+  color: var(--graphlens-text-subtle);
+}
+
+/* Selectable table rows. */
+.graphlens-data-table-selectable tbody tr {
+  cursor: pointer;
+}
+
+.graphlens-row-select {
+  padding: 0;
+  border: none;
+  background: none;
+  font: inherit;
+  color: #1c5fa8;
+  text-decoration: underline;
+  cursor: pointer;
+  text-align: left;
+}
+
+.graphlens-data-table tbody tr.graphlens-row-selected td {
+  background: #e1e6eb;
+  box-shadow: inset 0 -1px 0 #3c444d, inset 0 1px 0 #3c444d;
+  font-weight: 600;
+}
+
+.graphlens-data-table tbody tr.graphlens-row-selected td:first-child {
+  box-shadow: inset 4px 0 0 #1a1a1a, inset 0 -1px 0 #3c444d, inset 0 1px 0 #3c444d;
+}
+
+/* Type filter rows: >= 24px targets, the whole row is the label. */
+.graphlens-filters li:has(input[type="checkbox"]) {
+  display: flex;
+  align-items: center;
+  min-height: 26px;
+  margin-bottom: 0 !important;
+}
+
+.graphlens-filters li input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  margin: 0;
+  flex: none;
+}
+
+.graphlens-filters .graphlens-type-label {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  min-height: 26px;
+  cursor: pointer;
+}
+
+.graphlens-filters input[type="range"] {
+  height: 24px;
+}
+
+/* Details: stack label above value when the panel is narrow. */
+.graphlens-details {
+  container-type: inline-size;
+}
+
+@container (max-width: 260px) {
+  .graphlens-props {
+    grid-template-columns: minmax(0, 1fr);
+    row-gap: 1px;
+  }
+
+  .graphlens-props dd {
+    margin-bottom: 6px;
+  }
+
+  /* Two long labels side by side truncated ("Path fro..."); stack them. */
+  .graphlens-actions-grid-pair {
+    flex-direction: column;
+  }
+}
+
+/* Filters drawer (narrow widths). */
+.graphlens-filters-toggle,
+.graphlens-filters-close {
+  display: none !important;
+}
+
+@media (max-width: 1100px) {
   .graphlens-app {
-    grid-template-columns: 220px 1fr 260px;
+    grid-template-columns: 1fr 260px;
+    grid-template-areas:
+      "pagenav pagenav"
+      "toolbar toolbar"
+      "canvas details"
+      "evidence evidence";
+  }
+
+  .graphlens-filters-toggle {
+    display: inline-flex !important;
+  }
+
+  .graphlens-filters {
+    grid-area: canvas;
+    justify-self: start;
+    align-self: stretch;
+    width: 280px;
+    max-width: 90%;
+    z-index: 25;
+    display: none;
+    box-shadow: 4px 0 16px rgba(0, 0, 0, 0.18);
+  }
+
+  .graphlens-filters-open .graphlens-filters {
+    display: block;
+  }
+
+  .graphlens-filters-close {
+    display: block !important;
+    margin: 0 0 8px auto;
+    padding: 4px 10px;
+    border: 1px solid var(--graphlens-control-border);
+    border-radius: 4px;
+    background: #fff;
+    font: inherit;
+    font-size: 12px;
+    cursor: pointer;
   }
 }

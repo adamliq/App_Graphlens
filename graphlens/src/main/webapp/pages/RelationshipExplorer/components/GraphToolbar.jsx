@@ -13,6 +13,7 @@ import TrashCanCross from '@splunk/react-icons/TrashCanCross';
 import ArrowCircleInRight from '@splunk/react-icons/ArrowCircleInRight';
 import ArrowCircleOutRight from '@splunk/react-icons/ArrowCircleOutRight';
 import MagnifierClock from '@splunk/react-icons/MagnifierClock';
+import Filter from '@splunk/react-icons/Filter';
 import EntitySearch from './EntitySearch';
 import TimeRangeSelector from './TimeRangeSelector';
 import { CYTOSCAPE_LAYOUTS } from './GraphCanvas';
@@ -39,6 +40,8 @@ export default function GraphToolbar({
   importEnabled,
   onLoadFromJobOpen,
   loadFromJobEnabled,
+  filtersDrawerOpen,
+  onToggleFiltersDrawer,
 }) {
   const viewDisabled = viewMode !== 'graph';
   const hasDataActions = importEnabled || exportEnabled || loadFromJobEnabled;
@@ -50,6 +53,18 @@ export default function GraphToolbar({
   // laptop widths.
   return (
     <div className="graphlens-toolbar" role="toolbar" aria-label="Graph controls">
+      {/*
+        1.25.0: shown only at narrow widths (CSS), where the sidebar becomes
+        a drawer over the graph instead of a fixed column.
+      */}
+      <Button
+        label="Filters"
+        icon={<Filter />}
+        className="graphlens-filters-toggle"
+        aria-expanded={filtersDrawerOpen}
+        aria-controls="graphlens-filters-region"
+        onClick={onToggleFiltersDrawer}
+      />
       <div className="graphlens-toolbar-group">
         <EntitySearch isLoading={isSearching} results={searchResults} onSearch={onSearch} onPickResult={onPickResult} />
         <TimeRangeSelector earliest={earliest} latest={latest} onChange={onTimeRangeChange} />
@@ -57,18 +72,18 @@ export default function GraphToolbar({
       <span className="graphlens-toolbar-divider" aria-hidden="true" />
       <div className="graphlens-toolbar-group">
         {/*
-          1.24.0: the selected view is a neutral "pressed" state (styled
-          from aria-selected in App.css), no longer the green primary fill
-          every call-to-action button (Search, Expand, Save) uses.
+          1.24.0: the selected view is a neutral "pressed" state rather than
+          the green primary fill every call-to-action button uses.
+          1.25.0: a pair of toggle buttons (aria-pressed) rather than ARIA
+          tabs - the tab role promised arrow-key switching it never had.
         */}
-        <div role="tablist" aria-label="Graph view" className="graphlens-toolbar-tabs">
+        <div role="group" aria-label="Graph view" className="graphlens-toolbar-tabs">
           <Button
             label="Graph"
             icon={<ChartLinkGraph />}
             appearance="secondary"
             className="graphlens-view-tab"
-            role="tab"
-            aria-selected={viewMode === 'graph'}
+            aria-pressed={viewMode === 'graph'}
             onClick={() => onViewModeChange('graph')}
           />
           <Button
@@ -76,8 +91,7 @@ export default function GraphToolbar({
             icon={<Table />}
             appearance="secondary"
             className="graphlens-view-tab"
-            role="tab"
-            aria-selected={viewMode === 'table'}
+            aria-pressed={viewMode === 'table'}
             onClick={() => onViewModeChange('table')}
           />
         </div>
@@ -97,17 +111,18 @@ export default function GraphToolbar({
         <Tooltip content="Fit to screen">
           <Button icon={<ArrowsFourCorners />} aria-label="Fit to screen" onClick={onFit} disabled={viewDisabled} />
         </Tooltip>
-        <Tooltip content="Centre selected">
-          <Button icon={<NodesCentered />} aria-label="Centre selected" onClick={onCenterSelected} disabled={viewDisabled} />
+        <Tooltip content="Centre on selection">
+          <Button icon={<NodesCentered />} aria-label="Centre on selection" onClick={onCenterSelected} disabled={viewDisabled} />
         </Tooltip>
       </div>
       {hasDataActions && (
         <>
           <span className="graphlens-toolbar-divider" aria-hidden="true" />
           <div className="graphlens-toolbar-group">
-            {importEnabled && <Button label="Import" icon={<ArrowCircleInRight />} onClick={onImportClick} />}
-            {exportEnabled && <Button label="Export" icon={<ArrowCircleOutRight />} onClick={onExportOpen} />}
-            {loadFromJobEnabled && <Button label="Load from job" icon={<MagnifierClock />} onClick={onLoadFromJobOpen} />}
+            {/* 1.25.0: "..." marks buttons that open a dialog or file picker first. */}
+            {importEnabled && <Button label="Import…" aria-label="Import" icon={<ArrowCircleInRight />} onClick={onImportClick} />}
+            {exportEnabled && <Button label="Export…" aria-label="Export" icon={<ArrowCircleOutRight />} onClick={onExportOpen} />}
+            {loadFromJobEnabled && <Button label="Load from job…" aria-label="Load from job" icon={<MagnifierClock />} onClick={onLoadFromJobOpen} />}
           </div>
         </>
       )}
@@ -139,4 +154,8 @@ GraphToolbar.propTypes = {
   importEnabled: PropTypes.bool.isRequired,
   onLoadFromJobOpen: PropTypes.func.isRequired,
   loadFromJobEnabled: PropTypes.bool.isRequired,
+  filtersDrawerOpen: PropTypes.bool,
+  onToggleFiltersDrawer: PropTypes.func,
 };
+
+GraphToolbar.defaultProps = { filtersDrawerOpen: false, onToggleFiltersDrawer: () => {} };

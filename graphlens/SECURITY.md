@@ -345,8 +345,9 @@ loading straight onto the canvas.
   once per selected node.
 - **The right-click context menu (1.20.0, extended to edges in 1.21.0)**
   adds no new action and no new capability: every item it offers
-  (Expand/Collapse, Pin/Unpin, Hide, Centre on screen, View supporting
-  events, Use as path endpoint for a node; View supporting events alone
+  (Expand/Collapse, Pin/Unpin, Hide, View supporting events, Path from
+  here / Path to here, Centre on selection for a node; View supporting
+  events alone
   for an edge) dispatches the exact same handler the details panel's
   own button for that action already uses, and every one of those
   actions is already available to any viewer-tier user with no
@@ -361,6 +362,12 @@ loading straight onto the canvas.
   not, with no third path. It only ever appears when the canvas
   currently has at least one node (`nodeCount > 0`); an empty canvas
   skips it entirely, since there is nothing it could lose.
+- **Open in Splunk Search (1.25.0)** opens the evidence search the panel
+  just ran - built only from validated, escaped tokens by
+  `buildEvidenceSpl` - in Splunk's own Search app, in a new tab
+  (`noopener`), with the same time range. It runs under the user's own
+  Splunk permissions there, exactly as typing it would; GraphLens adds no
+  privilege and sends nothing elsewhere.
 - **The edits-only discard guard (1.22.0)** uses the same dialog in front
   of picking a search result, loading a query result onto the canvas and
   loading a saved view - actions that also replace the graph but are

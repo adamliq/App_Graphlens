@@ -2,6 +2,66 @@
 
 All notable changes to GraphLens are documented in this file.
 
+## [1.25.0] - 2026-11-28
+
+Implements a controls/usability review, walked live with mouse and
+keyboard against three tasks: find an entity and see what it connects to
+(T1), check the evidence behind a relationship (T2), and trace how two
+entities are connected (T3).
+
+### Changed
+
+- **Search results are keyboard-operable** (combobox pattern): ArrowUp/
+  Down choose, Enter opens, Escape or a click elsewhere closes (the list
+  used to stay open over the graph). The picked node is selected on the
+  graph and focus moves to its **Expand** button. Keyboard T1: about 47
+  key presses -> 9.
+- **Path from here / Path to here** replace "Use as path endpoint"
+  (which set the start once, then silently replaced the end), in the
+  right-click menu and the details panel. Setting both ends finds the
+  path at once, fits it into view and reports it in a strip at the top of
+  the graph with Clear. T3: 6 actions (one a sidebar scroll) -> 4.
+- **Hide can be undone**: an Undo banner, and a **Hidden nodes** sidebar
+  section with Show / Show all (only Reset graph could restore a node
+  before). Hiding the selected node clears the details panel, and a
+  restored node returns to its previous position.
+- **Table view rows are selectable** (click, or Enter on the first
+  cell), with the selected row marked - the keyboard route to
+  relationships (T2 by keyboard: impossible -> 14 key actions).
+- **Right-click menus**: open at the node/relationship (they were placed
+  against the canvas edge, off-screen once taller), take focus, move with
+  arrow keys, and return focus to the graph. The graph is focusable and
+  Shift+F10 / Menu key opens the menu for the selection.
+- **Dialogs** open on their first useful control (Cancel for
+  destructive confirms) and return focus to the button that opened them
+  (it fell to the page body).
+- **Supporting events** announce their result count, and **Open in
+  Splunk Search** (supported but never wired up) opens the evidence
+  search in the Search app.
+- **Skip links** ("Skip to details", "Skip to graph") and labelled page
+  regions; the sidebar sat 39 Tab presses between search and details.
+- **Labels**: "Centre on selection" everywhere (was "Centre selected" /
+  "Centre on screen"); the sidebar's "Time window" is now "Filter by
+  activity time", and the toolbar range's tooltip says it applies to new
+  searches only; Import..., Export..., Load from job... show they open a
+  dialog first; a tip mentions double-click to expand.
+- **Graph / Table** are pressed/unpressed toggle buttons (their ARIA tab
+  role promised arrow-key switching they never had).
+- **Narrow widths**: below 1100px the sidebar becomes a drawer opened by
+  a **Filters** button (the graph was 302px wide at 800px; now 523px),
+  and the details panel stacks label over value and its two path buttons
+  instead of truncating them.
+- **Targets**: type-filter rows are 26px tall with the whole row
+  clickable; time sliders 24px.
+
+### Tests
+
+- New `tests/unit/controls.test.jsx`: search keyboard selection and
+  closing, selectable table rows, Hidden nodes, path status, menu arrow
+  keys. The render XSS test's tag check now ignores quoted attribute
+  values (an escaped payload in an aria-label is text) while still
+  catching real handler attributes.
+
 ## [1.24.1] - 2026-11-28
 
 Found by re-auditing the released 1.24.0 package (a keyboard Tab sweep

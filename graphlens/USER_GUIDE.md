@@ -40,15 +40,18 @@ document remains the fuller, authoritative version.
 - **Graph / Table**: toolbar buttons. Graph is the usual interactive
   canvas; Table shows the identical, already-filtered set of nodes and
   relationships as two plain tables instead - useful for scanning or
-  copying values you can't easily read off the canvas. It's read-only:
-  switch back to Graph to select, expand, pin, or hide anything. The
-  other toolbar buttons below (layout, Fit to screen, Centre selected)
-  only apply to the Graph view and are disabled while Table is shown.
+  copying values you can't easily read off the canvas. Click a row, or
+  Tab to the link in its first cell and press Enter, to select that node
+  or relationship (1.25.0); the details panel then offers the same
+  actions as for a selection on the graph. This is also the keyboard
+  route to relationships. The other toolbar buttons below (layout, Fit
+  to screen, Centre on selection) only apply to the Graph view and are
+  disabled while Table is shown.
 - **Fit to screen**: toolbar icon button (four outward arrows; hover for
   its name) - frames the whole visible graph. A very small graph is not
   zoomed in beyond 1.75x, so one or two nodes are not blown up to fill
   the screen.
-- **Centre selected**: toolbar icon button (hover for its name) -
+- **Centre on selection**: toolbar icon button (hover for its name) -
   pans/zooms to the selected node.
 - **Change layout**: toolbar **Layout** dropdown (cose, concentric,
   breadthfirst, circle, grid). **Recalculate layout** (the circular-arrow
@@ -58,11 +61,26 @@ document remains the fuller, authoritative version.
   Table, layout and the three view icon buttons) | data (Import, Export,
   Load from job), with **Reset graph** on the far right.
 - **Left sidebar sections** (1.23.0) collapse and expand by clicking
-  their heading. Node types, Relationship types, Risk & frequency, Time
-  window and Legend start open; Colours, Path finder, Query and Saved
-  views start collapsed. Your choice is remembered in this browser.
-  Choosing **Use as path endpoint** opens the Path finder section
-  automatically.
+  their heading. Node types, Relationship types, Risk & frequency,
+  Filter by activity time and Legend start open; Colours, Path finder,
+  Query and Saved views start collapsed. Your choice is remembered in
+  this browser. Below 1100px wide the sidebar becomes a drawer over the
+  graph (1.25.0): open it with the toolbar's **Filters** button; Escape
+  or **Close filters** closes it.
+- **Search** (1.25.0): type, press Enter, then use the arrow keys to
+  choose a match and Enter to open it (or click it). The chosen node is
+  selected on the graph and keyboard focus moves to its **Expand**
+  button. Escape, or clicking anywhere else, closes the list.
+- **Hide** (1.25.0): a hidden node can be brought back - a banner offers
+  **Undo** straight away, and the sidebar's **Hidden nodes** section
+  lists every hidden node with **Show** and **Show all**. A restored node
+  returns to where it was.
+- **Keyboard**: two skip links (Tab once or twice from the top of the
+  page) jump to **details** or the **graph**. On the graph, Shift+F10 (or
+  the Menu key) opens the right-click menu for the selected node or
+  relationship; arrow keys move through it and Escape closes it. Dialogs
+  open on their first useful control (Cancel for anything destructive)
+  and return focus to the button that opened them.
 - **Select several nodes at once**: hold **Shift** and drag a box around
   them, or click a node type in the legend to select every currently
   visible node of that type. An ordinary click-and-drag still pans the
@@ -73,9 +91,9 @@ document remains the fuller, authoritative version.
   has, just applied to every selected node at once.
 - **Right-click a node** (1.20.0): opens a context menu with the same
   actions the details panel already offers for that node - Expand/
-  Collapse, Pin/Unpin, Hide, Centre on screen, View supporting events,
-  Use as path endpoint - without leaving the canvas or scrolling to the
-  details panel first. Right-clicking also selects the node, so the
+  Collapse, Pin/Unpin, Hide, View supporting events, Path from here,
+  Path to here, Centre on selection - without leaving the canvas or
+  scrolling to the details panel first. Right-clicking also selects the node, so the
   details panel updates to match.
 - **Right-click a relationship** (1.21.0): opens a smaller context menu
   with **View supporting events** - the one action the details panel
@@ -89,15 +107,18 @@ Left-hand panel:
 - **Node types** / **Relationship types**: checkboxes to hide specific
   types from view (data stays loaded; only the display is filtered).
 - **Risk & frequency**: minimum/maximum risk score and minimum event count.
-- **Time window** (the "time slicer"): two sliders bounding which nodes/
+- **Filter by activity time** (the "time slicer"; called Time window
+  before 1.25.0): two sliders bounding which nodes/
   edges are shown, by their own first-seen/last-seen span, to whatever
   range is currently loaded. This is separate from, and does not change,
   the toolbar's time range below - it only hides elements already
   fetched, the same way the Risk filter does, rather than re-running any
   search. Click **Reset window** to go back to showing everything loaded.
-- **Time range**: toolbar dropdown - changes the time window used by
-  subsequent searches (expansion, entity search). Changing it does not
-  retroactively re-run past expansions.
+- **Time range**: toolbar dropdown (its tooltip says "Search range") -
+  changes the time window used by subsequent searches (expansion, entity
+  search). Changing it does not retroactively re-run past expansions or
+  filter what is already on the graph - use Filter by activity time for
+  that.
 
 ## Legend
 
@@ -139,12 +160,19 @@ Select a node or edge, then click **View supporting events**. GraphLens
 runs a single, bounded, pre-approved search (never your own free-form SPL)
 against the index/sourcetype that produced the relationship, and shows the
 matching raw events in the bottom panel. This never shows you data outside
-your own Splunk search permissions.
+your own Splunk search permissions. **Open in Splunk Search** (1.25.0)
+runs the same evidence search in Splunk's Search app, in a new tab, for
+digging further.
 
 ## Path finder
 
-In the left-hand panel, choose a start and end node from the currently
-*visible* graph and click **Find shortest path**. GraphLens highlights the
+Right-click a node (or use its details panel) and choose **Path from
+here**, then do the same on another node with **Path to here** (1.25.0).
+As soon as both ends are set GraphLens finds the path, highlights it,
+fits it into view and reports it in a strip at the top of the graph
+("Path from A to B: 3 nodes, 2 hops") with a **Clear** button. You can
+also choose the two nodes in the left-hand panel's Path finder section
+and click **Find shortest path**. GraphLens highlights the
 shortest route between them using only edges already loaded in your
 browser. This is a convenience for visually tracing a connection, not an
 unrestricted graph-database traversal - if the two nodes aren't connected
